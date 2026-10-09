@@ -2,11 +2,11 @@
 Boîte de dialogue de configuration.
 """
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QComboBox, QMessageBox
 )
-from PyQt6.QtCore import Qt
+from PySide6.QtCore import Qt
 
 from config.config_manager import config_manager
 

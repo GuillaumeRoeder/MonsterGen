@@ -4,14 +4,14 @@ Fenêtre principale de l'application MonsterGen.
 
 import sys
 from typing import Optional, List, Dict
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget,
     QLabel, QLineEdit, QTextEdit, QComboBox, QPushButton, QSpinBox,
     QGroupBox, QFormLayout, QMessageBox, QFileDialog, QTabWidget,
     QScrollArea, QListWidget, QListWidgetItem, QInputDialog
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QObject
-from PyQt6.QtGui import QFont, QIcon
+from PySide6.QtCore import Qt, Signal, QObject
+from PySide6.QtGui import QFont, QIcon
 
 from src.models.monster import Monster, Alignment, Size, AbilityScores, Action
 from src.ai.ai_generator import ai_generator
@@ -21,9 +21,9 @@ from config.config_manager import config_manager
 
 class SignalEmitter(QObject):
     """Émetteur de signaux pour la communication entre threads."""
-    update_status = pyqtSignal(str)
-    show_options = pyqtSignal(str, List[str])
-    generation_complete = pyqtSignal(Monster)
+    update_status = Signal(str)
+    show_options = Signal(str, List[str])
+    generation_complete = Signal(Monster)
 
 
 class MainWindow(QMainWindow):
