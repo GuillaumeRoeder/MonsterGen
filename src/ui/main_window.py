@@ -6,7 +6,7 @@ import sys
 from typing import Optional, List, Dict
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget,
-    QLabel, QLineEdit, QTextEdit, QComboBox, QPushButton, QSpinBox,
+    QLabel, QLineEdit, QTextEdit, QComboBox, QPushButton, QSpinBox, QDoubleSpinBox,
     QGroupBox, QFormLayout, QMessageBox, QFileDialog, QTabWidget,
     QScrollArea, QListWidget, QListWidgetItem, QInputDialog
 )
@@ -239,11 +239,11 @@ class MainWindow(QMainWindow):
         layout.addRow(chars_layout2)
         
         # Challenge Rating
-        self.cr_spin = QSpinBox()
+        self.cr_spin = QDoubleSpinBox()
         self.cr_spin.setRange(0, 30)
-        self.cr_spin.setSpecialValueText("")
         self.cr_spin.setDecimals(1)
-        self.cr_spin.setStepType(QSpinBox.StepType.AdaptiveDecimalStepType)
+        self.cr_spin.setSingleStep(0.5)
+        self.cr_spin.setSpecialValueText("")
         layout.addRow("Challenge Rating (CR) :", self.cr_spin)
         
         return tab
