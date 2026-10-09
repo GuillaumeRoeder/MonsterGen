@@ -13,6 +13,12 @@ class AIGenerator:
     """Générateur IA pour compléter les données manquantes."""
     
     def __init__(self):
+        self.api_key = None
+        self.endpoint = None
+        self.model = None
+    
+    def reload_config(self):
+        """Recharge la configuration depuis le gestionnaire."""
         self.api_key = config_manager.get_api_key()
         self.endpoint = config_manager.get_endpoint()
         self.model = config_manager.get_model()
@@ -128,6 +134,9 @@ class AIGenerator:
     
     def _call_ai_api(self, prompt: str) -> Optional[Dict]:
         """Appelle l'API IA pour générer des suggestions."""
+        # Recharger la config pour s'assurer d'avoir la clé à jour
+        self.reload_config()
+        
         if not self.api_key:
             raise ValueError("Aucune clé API configurée. Veuillez configurer votre clé API dans les paramètres.")
         
@@ -183,6 +192,12 @@ class AIGenerator:
     
     def generate_options(self, monster: Monster, field_name: str) -> List[str]:
         """Génère des options pour un champ spécifique."""
+        # Recharger la config à chaque appel pour avoir la clé API à jour
+        self.reload_config()
+        
+        if not self.api_key:
+            raise ValueError("Aucune clé API configurée. Veuillez configurer votre clé API dans les paramètres.")
+        
         prompt = self._generate_prompt(monster, field_name)
         result = self._call_ai_api(prompt)
         
@@ -193,6 +208,12 @@ class AIGenerator:
     
     def generate_full_monster(self, partial_data: Dict) -> Monster:
         """Génère un monstre complet à partir de données partielles."""
+        # Recharger la config
+        self.reload_config()
+        
+        if not self.api_key:
+            raise ValueError("Aucune clé API configurée. Veuillez configurer votre clé API dans les paramètres.")
+        
         # Créer un monstre partiel
         monster = Monster.from_dict(partial_data)
         

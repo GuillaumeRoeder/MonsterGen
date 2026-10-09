@@ -792,13 +792,17 @@ class MainWindow(QMainWindow):
     def generate_missing_fields(self):
         """Génère les champs manquants avec l'IA."""
         # Vérifier que la clé API est configurée
-        if not config_manager.get_api_key():
+        api_key = config_manager.get_api_key()
+        if not api_key:
             QMessageBox.warning(
                 self,
                 "Clé API manquante",
                 "Veuillez configurer votre clé API dans les paramètres avant de générer des champs."
             )
             return
+        
+        # Recharger la configuration du générateur IA
+        ai_generator.reload_config()
         
         # Récupérer le monstre actuel
         monster = self.get_monster_from_form()
@@ -832,18 +836,27 @@ class MainWindow(QMainWindow):
             )
             return
         
-        # Générer les options pour chaque champ manquant
+        # Générer toutes les options en une seule boîte de dialogue
+        all_options = {}
+        error_messages = []
         for field in missing_fields:
             try:
                 options = ai_generator.generate_options(monster, field)
                 if options:
-                    self.signal_emitter.show_options.emit(field, options)
+                    all_options[field] = options
             except Exception as e:
-                QMessageBox.critical(
-                    self,
-                    "Erreur de génération",
-                    f"Erreur lors de la génération des options pour {field} : {str(e)}"
-                )
+                error_messages.append(f"{field}: {str(e)}")
+                continue
+        
+        # Afficher une seule boîte de dialogue pour tous les champs
+        if all_options:
+            self.show_all_options_dialog(all_options)
+        elif error_messages:
+            QMessageBox.critical(
+                self,
+                "Erreurs de génération",
+                "Impossible de générer des options:\n\n" + "\n".join(error_messages)
+            )
     
     def show_options_dialog(self, field_name: str, options: List[str]):
         """Affiche une boîte de dialogue pour sélectionner une option."""
