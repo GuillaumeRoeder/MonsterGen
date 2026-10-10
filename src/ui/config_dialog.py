@@ -18,6 +18,36 @@ class ConfigDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Configuration de MonsterGen")
         self.setMinimumWidth(400)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #3a3a3a;
+            }
+            
+            QLabel {
+                color: #e0e0e0;
+            }
+            
+            QLineEdit, QComboBox {
+                background-color: #4a4a4a;
+                color: #e0e0e0;
+                border: 1px solid #5a5a5a;
+                border-radius: 4px;
+                padding: 6px;
+            }
+            
+            QPushButton {
+                background-color: #4a4a4a;
+                color: #e0e0e0;
+                border: 1px solid #5a5a5a;
+                border-radius: 4px;
+                padding: 8px 16px;
+            }
+            
+            QPushButton:hover {
+                background-color: #5a5a5a;
+                border: 1px solid #00aaff;
+            }
+        """)
         self.setup_ui()
     
     def setup_ui(self):
@@ -29,6 +59,7 @@ class ConfigDialog(QDialog):
         # Clé API
         api_key_layout = QHBoxLayout()
         api_key_label = QLabel("Clé API IA :")
+        api_key_label.setStyleSheet("color: #00aaff;")
         self.api_key_edit = QLineEdit()
         self.api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
         self.api_key_edit.setPlaceholderText("Entrez votre clé API")
@@ -39,6 +70,7 @@ class ConfigDialog(QDialog):
         # Modèle IA
         model_layout = QHBoxLayout()
         model_label = QLabel("Modèle IA :")
+        model_label.setStyleSheet("color: #00aaff;")
         self.model_combo = QComboBox()
         self.model_combo.addItems([
             "mistral-tiny",
@@ -53,6 +85,7 @@ class ConfigDialog(QDialog):
         # Endpoint IA
         endpoint_layout = QHBoxLayout()
         endpoint_label = QLabel("Endpoint IA :")
+        endpoint_label.setStyleSheet("color: #00aaff;")
         self.endpoint_edit = QLineEdit()
         self.endpoint_edit.setPlaceholderText("URL de l'endpoint IA")
         endpoint_layout.addWidget(endpoint_label)
@@ -62,6 +95,7 @@ class ConfigDialog(QDialog):
         # Chemin de sauvegarde
         save_path_layout = QHBoxLayout()
         save_path_label = QLabel("Chemin de sauvegarde :")
+        save_path_label.setStyleSheet("color: #00aaff;")
         self.save_path_edit = QLineEdit()
         self.save_path_edit.setPlaceholderText("Chemin par défaut pour les fiches")
         save_path_layout.addWidget(save_path_label)
