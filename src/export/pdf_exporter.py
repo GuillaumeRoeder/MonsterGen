@@ -1,14 +1,14 @@
 """
-Module d'export PDF pour les fiches de PNJ/Monstre.
+Module d'export PDF pour les fiches de PNJ/Monstre au format DnD 5e officiel.
 """
 
 import os
 from datetime import datetime
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 from reportlab.lib.pagesizes import letter, A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle, StyleSheet1
 from reportlab.lib.units import inch, mm
 from reportlab.lib import colors
 from reportlab.platypus import (
@@ -20,6 +20,7 @@ from reportlab.platypus import (
     Frame,
     PageTemplate,
     Image,
+    PageBreak,
 )
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
@@ -27,7 +28,7 @@ from src.models.monster import Monster, Alignment, Size
 
 
 class PDFExporter:
-    """Exporteur PDF pour les fiches de PNJ/Monstre."""
+    """Exporteur PDF pour les fiches de PNJ/Monstre au format DnD 5e."""
     
     def __init__(self, page_size=A4):
         self.page_size = page_size
@@ -35,16 +36,14 @@ class PDFExporter:
     
     def _create_styles(self):
         """Crée les styles pour le document."""
-        # Créer une nouvelle feuille de styles
-        from reportlab.lib.styles import StyleSheet1
         styles = StyleSheet1()
         
         # Style de base
         base_style = ParagraphStyle(
             name="Normal",
-            fontSize=10,
-            leading=12,
-            spaceAfter=3,
+            fontSize=9,
+            leading=10,
+            spaceAfter=2,
             fontName="Helvetica",
         )
         styles.add(base_style)
@@ -53,81 +52,86 @@ class PDFExporter:
         title_style = ParagraphStyle(
             name="Title",
             parent=base_style,
-            fontSize=24,
-            leading=28,
+            fontSize=20,
+            leading=24,
             alignment=TA_CENTER,
-            spaceAfter=20,
-            textColor=colors.darkred,
+            spaceAfter=0,
+            textColor=colors.black,
             fontName="Helvetica-Bold",
         )
         styles.add(title_style)
+        
+        # Style pour le nom du monstre
+        name_style = ParagraphStyle(
+            name="MonsterName",
+            parent=base_style,
+            fontSize=18,
+            leading=22,
+            alignment=TA_CENTER,
+            spaceAfter=0,
+            textColor=colors.black,
+            fontName="Helvetica-Bold",
+        )
+        styles.add(name_style)
         
         # Style pour les sections
         section_style = ParagraphStyle(
             name="Section",
             parent=base_style,
-            fontSize=16,
-            leading=18,
-            spaceBefore=12,
-            spaceAfter=6,
-            textColor=colors.darkblue,
+            fontSize=10,
+            leading=12,
+            spaceBefore=4,
+            spaceAfter=2,
+            textColor=colors.black,
             fontName="Helvetica-Bold",
         )
         styles.add(section_style)
-        
-        # Style pour les sous-sections
-        subsection_style = ParagraphStyle(
-            name="SubSection",
-            parent=base_style,
-            fontSize=12,
-            leading=14,
-            spaceBefore=6,
-            spaceAfter=3,
-            textColor=colors.darkgreen,
-            fontName="Helvetica-Bold",
-        )
-        styles.add(subsection_style)
-        
-        # Style pour les statistiques
-        stat_style = ParagraphStyle(
-            name="Stat",
-            parent=base_style,
-            fontSize=10,
-            leading=12,
-            fontName="Helvetica-Bold",
-        )
-        styles.add(stat_style)
         
         # Style pour les valeurs
         value_style = ParagraphStyle(
             name="Value",
             parent=base_style,
-            fontSize=10,
-            leading=12,
+            fontSize=9,
+            leading=10,
+            spaceAfter=0,
             fontName="Helvetica",
         )
         styles.add(value_style)
         
-        # Style pour les tables
-        table_header_style = ParagraphStyle(
-            name="TableHeader",
+        # Style pour les petites valeurs
+        small_value_style = ParagraphStyle(
+            name="SmallValue",
             parent=base_style,
-            fontSize=9,
-            leading=11,
-            fontName="Helvetica-Bold",
-            textColor=colors.white,
-            alignment=TA_CENTER,
-        )
-        styles.add(table_header_style)
-        
-        table_cell_style = ParagraphStyle(
-            name="TableCell",
-            parent=base_style,
-            fontSize=9,
-            leading=11,
+            fontSize=8,
+            leading=9,
+            spaceAfter=0,
             fontName="Helvetica",
         )
-        styles.add(table_cell_style)
+        styles.add(small_value_style)
+        
+        # Style pour les stats
+        stat_style = ParagraphStyle(
+            name="Stat",
+            parent=base_style,
+            fontSize=10,
+            leading=12,
+            alignment=TA_CENTER,
+            spaceAfter=0,
+            fontName="Helvetica-Bold",
+        )
+        styles.add(stat_style)
+        
+        # Style pour les modificateurs
+        mod_style = ParagraphStyle(
+            name="Mod",
+            parent=base_style,
+            fontSize=8,
+            leading=9,
+            alignment=TA_CENTER,
+            spaceAfter=0,
+            fontName="Helvetica",
+        )
+        styles.add(mod_style)
         
         return styles
     
@@ -155,7 +159,7 @@ class PDFExporter:
             return "—"
         
         mapping = {
-            Size.TINY: "M",
+            Size.TINY: "TP",
             Size.SMALL: "P",
             Size.MEDIUM: "M",
             Size.LARGE: "G",
@@ -164,170 +168,149 @@ class PDFExporter:
         }
         return mapping.get(size, "—")
     
+    def _get_ability_modifier(self, score: int) -> str:
+        """Calcule le modificateur pour une caractéristique."""
+        mod = (score - 10) // 2
+        if mod >= 0:
+            return f"+{mod}"
+        return str(mod)
+    
     def _create_header(self, monster: Monster) -> list:
         """Crée l'en-tête de la fiche."""
         elements = []
         
-        # Titre
-        elements.append(Paragraph(monster.name or "PNJ/Monstre", self.styles["Title"]))
+        # Nom du monstre
+        name_text = f"{monster.name or 'PNJ/Monstre'}"
+        elements.append(Paragraph(name_text, self.styles["MonsterName"]))
         
-        # Informations principales
-        info_table = Table([
-            [Paragraph("Race :", self.styles["Stat"]), Paragraph(monster.race or "—", self.styles["Value"])],
-            [Paragraph("Alignement :", self.styles["Stat"]), Paragraph(self._get_alignment_abbreviation(monster.alignment), self.styles["Value"])],
-            [Paragraph("Taille :", self.styles["Stat"]), Paragraph(self._get_size_abbreviation(monster.size), self.styles["Value"])],
-            [Paragraph("CR :", self.styles["Stat"]), Paragraph(str(monster.challenge_rating) if monster.challenge_rating else "—", self.styles["Value"])],
-        ], colWidths=[50, 100])
+        # Ligne de séparation
+        elements.append(Spacer(1, 2))
         
-        info_table.setStyle(TableStyle([
-            ('GRID', (0, 0), (-1, -1), 1, colors.lightgrey),
-            ('PADDING', (0, 0), (-1, -1), 2, 2),
-        ]))
+        # Informations principales (petite ligne)
+        info_parts = []
+        if monster.size:
+            info_parts.append(self._get_size_abbreviation(monster.size))
+        if monster.alignment:
+            info_parts.append(self._get_alignment_abbreviation(monster.alignment))
         
-        elements.append(info_table)
-        elements.append(Spacer(1, 10))
+        if info_parts:
+            info_text = ", ".join(info_parts)
+            elements.append(Paragraph(info_text, self.styles["SmallValue"]))
+            elements.append(Spacer(1, 4))
         
         return elements
     
     def _create_stats_block(self, monster: Monster) -> list:
-        """Crée le bloc des statistiques."""
+        """Crée le bloc des statistiques (CA, PV, Vitesse)."""
         elements = []
         
-        elements.append(Paragraph("Statistiques", self.styles["Section"]))
+        # Classe d'armure
+        ac_text = f"Classe d'armure {monster.armor_class or '—'}"
+        elements.append(Paragraph(ac_text, self.styles["Section"]))
         
-        # Classe d'armure et Points de vie
-        ac_hp_table = Table([
-            [Paragraph("Classe d'Armure", self.styles["Stat"]), Paragraph(str(monster.armor_class) if monster.armor_class else "—", self.styles["Value"])],
-            [Paragraph("Points de Vie", self.styles["Stat"]), Paragraph(f"{monster.hit_points or '—'} ({monster.hit_dice or '—'})", self.styles["Value"])],
-            [Paragraph("Vitesse", self.styles["Stat"]), Paragraph(monster.speed or "—", self.styles["Value"])],
-        ], colWidths=[100, 100])
+        # Points de vie
+        hp_text = f"Points de vie {monster.hit_points or '—'} ({monster.hit_dice or '—'})"
+        elements.append(Paragraph(hp_text, self.styles["Value"]))
         
-        ac_hp_table.setStyle(TableStyle([
-            ('GRID', (0, 0), (-1, -1), 1, colors.lightgrey),
-            ('PADDING', (0, 0), (-1, -1), 2, 2),
-        ]))
+        # Vitesse
+        speed_text = f"Vitesse {monster.speed or '—'}"
+        elements.append(Paragraph(speed_text, self.styles["Value"]))
         
-        elements.append(ac_hp_table)
-        elements.append(Spacer(1, 10))
+        elements.append(Spacer(1, 6))
         
         return elements
     
-    def _create_ability_scores(self, monster: Monster) -> list:
+    def _create_ability_scores_table(self, monster: Monster) -> Table:
         """Crée le tableau des caractéristiques."""
-        elements = []
-        
-        elements.append(Paragraph("Caractéristiques", self.styles["SubSection"]))
-        
         scores = monster.ability_scores
         
-        data = [
-            ["", "Score", "Modificateur"],
-            [Paragraph("Force (FOR)", self.styles["Stat"]), 
-             Paragraph(str(scores.strength), self.styles["Value"]),
-             Paragraph(f"{scores.get_modifier('strength'):+d}", self.styles["Value"])],
-            [Paragraph("Dextérité (DEX)", self.styles["Stat"]),
-             Paragraph(str(scores.dexterity), self.styles["Value"]),
-             Paragraph(f"{scores.get_modifier('dexterity'):+d}", self.styles["Value"])],
-            [Paragraph("Constitution (CON)", self.styles["Stat"]),
-             Paragraph(str(scores.constitution), self.styles["Value"]),
-             Paragraph(f"{scores.get_modifier('constitution'):+d}", self.styles["Value"])],
-            [Paragraph("Intelligence (INT)", self.styles["Stat"]),
-             Paragraph(str(scores.intelligence), self.styles["Value"]),
-             Paragraph(f"{scores.get_modifier('intelligence'):+d}", self.styles["Value"])],
-            [Paragraph("Sagesse (SAG)", self.styles["Stat"]),
-             Paragraph(str(scores.wisdom), self.styles["Value"]),
-             Paragraph(f"{scores.get_modifier('wisdom'):+d}", self.styles["Value"])],
-            [Paragraph("Charisme (CHA)", self.styles["Stat"]),
-             Paragraph(str(scores.charisma), self.styles["Value"]),
-             Paragraph(f"{scores.get_modifier('charisma'):+d}", self.styles["Value"])],
+        # En-tête
+        header = [
+            Paragraph("CARACTÉRISTIQUES", self.styles["Section"]),
+            Paragraph("Valeur", self.styles["Section"]),
+            Paragraph("Modificateur", self.styles["Section"])
         ]
         
-        table = Table(data, colWidths=[80, 40, 40])
+        # Données
+        data = [
+            header,
+            [
+                Paragraph("Force", self.styles["Value"]),
+                Paragraph(str(scores.strength), self.styles["Stat"]),
+                Paragraph(self._get_ability_modifier(scores.strength), self.styles["Mod"])
+            ],
+            [
+                Paragraph("Dextérité", self.styles["Value"]),
+                Paragraph(str(scores.dexterity), self.styles["Stat"]),
+                Paragraph(self._get_ability_modifier(scores.dexterity), self.styles["Mod"])
+            ],
+            [
+                Paragraph("Constitution", self.styles["Value"]),
+                Paragraph(str(scores.constitution), self.styles["Stat"]),
+                Paragraph(self._get_ability_modifier(scores.constitution), self.styles["Mod"])
+            ],
+            [
+                Paragraph("Intelligence", self.styles["Value"]),
+                Paragraph(str(scores.intelligence), self.styles["Stat"]),
+                Paragraph(self._get_ability_modifier(scores.intelligence), self.styles["Mod"])
+            ],
+            [
+                Paragraph("Sagesse", self.styles["Value"]),
+                Paragraph(str(scores.wisdom), self.styles["Stat"]),
+                Paragraph(self._get_ability_modifier(scores.wisdom), self.styles["Mod"])
+            ],
+            [
+                Paragraph("Charisme", self.styles["Value"]),
+                Paragraph(str(scores.charisma), self.styles["Stat"]),
+                Paragraph(self._get_ability_modifier(scores.charisma), self.styles["Mod"])
+            ],
+        ]
+        
+        table = Table(data, colWidths=[60, 30, 30])
         table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('PADDING', (0, 0), (-1, -1), 2, 2),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('GRID', (0, 0), (-1, 0), 1, colors.black),
+            ('GRID', (0, 1), (-1, -1), 0.5, colors.lightgrey),
+            ('PADDING', (0, 0), (-1, -1), 1, 1),
+            ('SPAN', (0, 0), (2, 0)),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
         ]))
         
-        elements.append(table)
-        elements.append(Spacer(1, 10))
-        
-        return elements
+        return table
     
-    def _create_defense_section(self, monster: Monster) -> list:
-        """Crée la section de défense."""
+    def _create_info_section(self, monster: Monster) -> list:
+        """Crée la section d'informations (Race, Langues, CR)."""
         elements = []
         
-        if (monster.damage_resistances or monster.damage_immunities or 
-            monster.damage_vulnerabilities or monster.condition_immunities):
-            
-            elements.append(Paragraph("Défense", self.styles["SubSection"]))
-            
-            defense_data = []
-            
-            if monster.damage_resistances:
-                defense_data.append([Paragraph("Résistances :", self.styles["Stat"]), 
-                                    Paragraph(", ".join(monster.damage_resistances), self.styles["Value"])])
-            if monster.damage_immunities:
-                defense_data.append([Paragraph("Immunités :", self.styles["Stat"]), 
-                                    Paragraph(", ".join(monster.damage_immunities), self.styles["Value"])])
-            if monster.damage_vulnerabilities:
-                defense_data.append([Paragraph("Vulnérabilités :", self.styles["Stat"]), 
-                                    Paragraph(", ".join(monster.damage_vulnerabilities), self.styles["Value"])])
-            if monster.condition_immunities:
-                defense_data.append([Paragraph("Immunités aux états :", self.styles["Stat"]), 
-                                    Paragraph(", ".join(monster.condition_immunities), self.styles["Value"])])
-            
-            if defense_data:
-                table = Table(defense_data, colWidths=[100, 200])
-                table.setStyle(TableStyle([
-                    ('GRID', (0, 0), (-1, -1), 1, colors.lightgrey),
-                    ('PADDING', (0, 0), (-1, -1), 2, 2),
-                ]))
-                elements.append(table)
-            
-            elements.append(Spacer(1, 10))
+        # Race
+        if monster.race:
+            elements.append(Paragraph(f"<b>Race.</b> {monster.race}", self.styles["Value"]))
         
-        return elements
-    
-    def _create_senses_section(self, monster: Monster) -> list:
-        """Crée la section des sens."""
-        elements = []
-        
-        if monster.senses or monster.passive_perception:
-            elements.append(Paragraph("Sens", self.styles["SubSection"]))
-            
-            senses_data = []
-            
-            if monster.senses:
-                senses_data.append([Paragraph("Sens :", self.styles["Stat"]), 
-                                  Paragraph(", ".join(monster.senses), self.styles["Value"])])
-            if monster.passive_perception:
-                senses_data.append([Paragraph("Perception passive :", self.styles["Stat"]), 
-                                  Paragraph(str(monster.passive_perception), self.styles["Value"])])
-            
-            if senses_data:
-                table = Table(senses_data, colWidths=[120, 180])
-                table.setStyle(TableStyle([
-                    ('GRID', (0, 0), (-1, -1), 1, colors.lightgrey),
-                    ('PADDING', (0, 0), (-1, -1), 2, 2),
-                ]))
-                elements.append(table)
-            
-            elements.append(Spacer(1, 10))
-        
-        return elements
-    
-    def _create_languages_section(self, monster: Monster) -> list:
-        """Crée la section des langues."""
-        elements = []
-        
+        # Langues
         if monster.languages:
-            elements.append(Paragraph("Langues", self.styles["SubSection"]))
-            elements.append(Paragraph(", ".join(monster.languages), self.styles["Normal"]))
-            elements.append(Spacer(1, 10))
+            languages_text = ", ".join(monster.languages)
+            elements.append(Paragraph(f"<b>Langues.</b> {languages_text}", self.styles["Value"]))
+        
+        # Challenge Rating
+        if monster.challenge_rating:
+            cr_text = f"{monster.challenge_rating:.1f} ({monster.challenge_rating * 200} PX)" if monster.challenge_rating else "—"
+            elements.append(Paragraph(f"<b>Dés de vie.</b> {monster.hit_dice or '—'}", self.styles["Value"]))
+            elements.append(Paragraph(f"<b>Défis.</b> {cr_text}", self.styles["Value"]))
+        
+        elements.append(Spacer(1, 6))
+        
+        return elements
+    
+    def _create_skills_section(self, monster: Monster) -> list:
+        """Crée la section des compétences maîtrisées."""
+        elements = []
+        
+        # Compétences maîtrisées
+        proficient_skills = [sk for sk in monster.skills if sk.proficiency]
+        if proficient_skills:
+            elements.append(Paragraph("Compétences maîtrisées", self.styles["Section"]))
+            skill_names = [sk.name for sk in proficient_skills]
+            elements.append(Paragraph(", ".join(skill_names), self.styles["Value"]))
+            elements.append(Spacer(1, 4))
         
         return elements
     
@@ -339,51 +322,46 @@ class PDFExporter:
             elements.append(Paragraph("Actions", self.styles["Section"]))
             
             for action in monster.actions:
-                elements.append(Paragraph(f"• {action.name}", self.styles["SubSection"]))
+                # Nom de l'action
+                elements.append(Paragraph(f"• {action.name}", self.styles["Value"]))
+                
+                # Description
                 if action.description:
-                    elements.append(Paragraph(action.description, self.styles["Normal"]))
-                if action.attack_bonus:
+                    elements.append(Paragraph(action.description, self.styles["SmallValue"]))
+                
+                # Bonus d'attaque et dégâts
+                if action.attack_bonus is not None:
                     attack_info = f"Attaque : +{action.attack_bonus}"
                     if action.damage:
                         attack_info += f", Dégâts : {action.damage} {action.damage_type or ''}"
-                    elements.append(Paragraph(attack_info, self.styles["Normal"]))
-                elements.append(Spacer(1, 5))
+                    elements.append(Paragraph(attack_info, self.styles["SmallValue"]))
+                
+                elements.append(Spacer(1, 2))
             
-            elements.append(Spacer(1, 10))
+            elements.append(Spacer(1, 4))
         
         return elements
     
-    def _create_legendary_actions_section(self, monster: Monster) -> list:
-        """Crée la section des actions légendaires."""
+    def _create_equipment_section(self, monster: Monster) -> list:
+        """Crée la section des armements."""
         elements = []
         
-        if monster.legendary_actions:
-            elements.append(Paragraph("Actions Légendaires", self.styles["Section"]))
-            
-            for action in monster.legendary_actions:
-                elements.append(Paragraph(f"• {action.name}", self.styles["SubSection"]))
-                if action.description:
-                    elements.append(Paragraph(action.description, self.styles["Normal"]))
-                elements.append(Spacer(1, 5))
-            
-            elements.append(Spacer(1, 10))
+        # Armements (extrait des actions ou notes)
+        weapons = []
+        for action in monster.actions:
+            if action.attack_bonus is not None:
+                weapons.append(action.name)
         
-        return elements
-    
-    def _create_reactions_section(self, monster: Monster) -> list:
-        """Crée la section des réactions."""
-        elements = []
-        
-        if monster.reactions:
-            elements.append(Paragraph("Réactions", self.styles["Section"]))
+        if weapons or monster.notes:
+            elements.append(Paragraph("Équipement", self.styles["Section"]))
             
-            for reaction in monster.reactions:
-                elements.append(Paragraph(f"• {reaction.name}", self.styles["SubSection"]))
-                if reaction.description:
-                    elements.append(Paragraph(reaction.description, self.styles["Normal"]))
-                elements.append(Spacer(1, 5))
+            if weapons:
+                elements.append(Paragraph(", ".join(weapons), self.styles["Value"]))
             
-            elements.append(Spacer(1, 10))
+            if monster.notes:
+                elements.append(Paragraph(monster.notes, self.styles["SmallValue"]))
+            
+            elements.append(Spacer(1, 4))
         
         return elements
     
@@ -392,41 +370,21 @@ class PDFExporter:
         elements = []
         
         if monster.description:
-            elements.append(Paragraph("Description", self.styles["Section"]))
-            elements.append(Paragraph(monster.description, self.styles["Normal"]))
-            elements.append(Spacer(1, 10))
-        
-        return elements
-    
-    def _create_notes_section(self, monster: Monster) -> list:
-        """Crée la section des notes."""
-        elements = []
-        
-        if monster.notes:
-            elements.append(Paragraph("Notes", self.styles["Section"]))
-            elements.append(Paragraph(monster.notes, self.styles["Normal"]))
-            elements.append(Spacer(1, 10))
-        
-        return elements
-    
-    def _create_footer(self) -> list:
-        """Crée le pied de page."""
-        elements = []
-        
-        elements.append(Spacer(1, 20))
-        elements.append(Paragraph("Fiche générée avec MonsterGen", self.styles["Normal"]))
-        elements.append(Paragraph(datetime.now().strftime("%d/%m/%Y %H:%M:%S"), self.styles["Normal"]))
+            elements.append(Paragraph(monster.description, self.styles["Value"]))
+            elements.append(Spacer(1, 6))
         
         return elements
     
     def export_to_pdf(self, monster: Monster, output_path: str) -> str:
-        """Exporte le monstre en PDF."""
+        """Exporte le monstre en PDF au format DnD 5e."""
         # Créer le chemin de sortie
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         
         # Créer le document
-        doc = SimpleDocTemplate(str(path), pagesize=self.page_size)
+        doc = SimpleDocTemplate(str(path), pagesize=self.page_size, 
+                               topMargin=10*mm, bottomMargin=10*mm, 
+                               leftMargin=10*mm, rightMargin=10*mm)
         
         # Construire les éléments
         elements = []
@@ -434,38 +392,27 @@ class PDFExporter:
         # En-tête
         elements.extend(self._create_header(monster))
         
-        # Description
-        elements.extend(self._create_description_section(monster))
-        
-        # Statistiques
+        # Statistiques (CA, PV, Vitesse)
         elements.extend(self._create_stats_block(monster))
         
-        # Caractéristiques
-        elements.extend(self._create_ability_scores(monster))
+        # Tableau des caractéristiques
+        elements.append(self._create_ability_scores_table(monster))
+        elements.append(Spacer(1, 8))
         
-        # Défense
-        elements.extend(self._create_defense_section(monster))
+        # Informations (Race, Langues, CR)
+        elements.extend(self._create_info_section(monster))
         
-        # Sens
-        elements.extend(self._create_senses_section(monster))
+        # Compétences maîtrisées
+        elements.extend(self._create_skills_section(monster))
         
-        # Langues
-        elements.extend(self._create_languages_section(monster))
+        # Description
+        elements.extend(self._create_description_section(monster))
         
         # Actions
         elements.extend(self._create_actions_section(monster))
         
-        # Actions légendaires
-        elements.extend(self._create_legendary_actions_section(monster))
-        
-        # Réactions
-        elements.extend(self._create_reactions_section(monster))
-        
-        # Notes
-        elements.extend(self._create_notes_section(monster))
-        
-        # Pied de page
-        elements.extend(self._create_footer())
+        # Équipement
+        elements.extend(self._create_equipment_section(monster))
         
         # Construire le PDF
         doc.build(elements)

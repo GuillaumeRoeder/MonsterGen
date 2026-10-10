@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal, QObject
 from PySide6.QtGui import QFont, QIcon
 
-from src.models.monster import Monster, Alignment, Size, AbilityScores, Action
+from src.models.monster import Monster, Alignment, Size, AbilityScores, Action, Skill
 from src.ai.ai_generator import ai_generator
 from src.export.pdf_exporter import pdf_exporter
 from config.config_manager import config_manager
@@ -32,7 +32,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("MonsterGen - Générateur de fiches DnD 5e")
-        self.setGeometry(100, 100, 1024, 768)
+        self.setGeometry(100, 100, 900, 700)
         
         self.monster = Monster()
         self.signal_emitter = SignalEmitter()
@@ -76,21 +76,9 @@ class MainWindow(QMainWindow):
         stats_tab = self.create_stats_tab()
         tab_widget.addTab(stats_tab, "Statistiques")
         
-        # Onglet Défense
-        defense_tab = self.create_defense_tab()
-        tab_widget.addTab(defense_tab, "Défense")
-        
-        # Onglet Sens et Langues
-        senses_tab = self.create_senses_tab()
-        tab_widget.addTab(senses_tab, "Sens et Langues")
-        
-        # Onglet Actions
+        # Onglet Actions et Équipement
         actions_tab = self.create_actions_tab()
-        tab_widget.addTab(actions_tab, "Actions")
-        
-        # Onglet Autres
-        other_tab = self.create_other_tab()
-        tab_widget.addTab(other_tab, "Autres")
+        tab_widget.addTab(actions_tab, "Actions et Équipement")
         
         layout.addWidget(tab_widget)
         
@@ -134,25 +122,17 @@ class MainWindow(QMainWindow):
         self.race_edit.setPlaceholderText("Race ou type de créature")
         layout.addRow("Race :", self.race_edit)
         
+        # Langues
+        self.languages_edit = QTextEdit()
+        self.languages_edit.setPlaceholderText("Ex: commun, elfique, nain")
+        self.languages_edit.setMaximumHeight(60)
+        layout.addRow("Langues :", self.languages_edit)
+        
         # Description
         self.description_edit = QTextEdit()
         self.description_edit.setPlaceholderText("Description du PNJ/Monstre")
         self.description_edit.setMaximumHeight(100)
         layout.addRow("Description :", self.description_edit)
-        
-        # Alignement
-        self.alignment_combo = QComboBox()
-        self.alignment_combo.addItem("", None)
-        for alignment in Alignment:
-            self.alignment_combo.addItem(alignment.value, alignment)
-        layout.addRow("Alignement :", self.alignment_combo)
-        
-        # Taille
-        self.size_combo = QComboBox()
-        self.size_combo.addItem("", None)
-        for size in Size:
-            self.size_combo.addItem(size.value, size)
-        layout.addRow("Taille :", self.size_combo)
         
         return tab
     
@@ -184,6 +164,14 @@ class MainWindow(QMainWindow):
         self.speed_edit = QLineEdit()
         self.speed_edit.setPlaceholderText("Ex: 30 pieds, vol 60 pieds")
         layout.addRow("Vitesse :", self.speed_edit)
+        
+        # Challenge Rating
+        self.cr_spin = QDoubleSpinBox()
+        self.cr_spin.setRange(0, 30)
+        self.cr_spin.setDecimals(1)
+        self.cr_spin.setSingleStep(0.5)
+        self.cr_spin.setSpecialValueText("")
+        layout.addRow("Défis (CR) :", self.cr_spin)
         
         # Caractéristiques
         layout.addRow(QLabel("Caractéristiques :"), QLabel(""))
@@ -238,86 +226,26 @@ class MainWindow(QMainWindow):
         
         layout.addRow(chars_layout2)
         
-        # Challenge Rating
-        self.cr_spin = QDoubleSpinBox()
-        self.cr_spin.setRange(0, 30)
-        self.cr_spin.setDecimals(1)
-        self.cr_spin.setSingleStep(0.5)
-        self.cr_spin.setSpecialValueText("")
-        layout.addRow("Challenge Rating (CR) :", self.cr_spin)
-        
-        return tab
-    
-    def create_defense_tab(self) -> QWidget:
-        """Crée l'onglet de défense."""
-        tab = QWidget()
-        layout = QFormLayout(tab)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
-        
-        # Résistances aux dégâts
-        self.resistances_edit = QTextEdit()
-        self.resistances_edit.setPlaceholderText("Ex: feu, froid, foudre")
-        self.resistances_edit.setMaximumHeight(60)
-        layout.addRow("Résistances aux dégâts :", self.resistances_edit)
-        
-        # Immunités aux dégâts
-        self.immunities_edit = QTextEdit()
-        self.immunities_edit.setPlaceholderText("Ex: poison, psychique")
-        self.immunities_edit.setMaximumHeight(60)
-        layout.addRow("Immunités aux dégâts :", self.immunities_edit)
-        
-        # Vulnérabilités aux dégâts
-        self.vulnerabilities_edit = QTextEdit()
-        self.vulnerabilities_edit.setPlaceholderText("Ex: feu, acide")
-        self.vulnerabilities_edit.setMaximumHeight(60)
-        layout.addRow("Vulnérabilités aux dégâts :", self.vulnerabilities_edit)
-        
-        # Immunités aux états
-        self.condition_immunities_edit = QTextEdit()
-        self.condition_immunities_edit.setPlaceholderText("Ex: empoisonné, paralysé")
-        self.condition_immunities_edit.setMaximumHeight(60)
-        layout.addRow("Immunités aux états :", self.condition_immunities_edit)
-        
-        return tab
-    
-    def create_senses_tab(self) -> QWidget:
-        """Crée l'onglet des sens et langues."""
-        tab = QWidget()
-        layout = QFormLayout(tab)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
-        
-        # Sens
-        self.senses_edit = QTextEdit()
-        self.senses_edit.setPlaceholderText("Ex: vision dans le noir 60 pieds, perception passive 12")
-        self.senses_edit.setMaximumHeight(60)
-        layout.addRow("Sens :", self.senses_edit)
-        
-        # Perception passive
-        self.passive_perception_spin = QSpinBox()
-        self.passive_perception_spin.setRange(0, 30)
-        self.passive_perception_spin.setSpecialValueText("")
-        layout.addRow("Perception passive :", self.passive_perception_spin)
-        
-        # Langues
-        self.languages_edit = QTextEdit()
-        self.languages_edit.setPlaceholderText("Ex: commun, elfique, nain")
-        self.languages_edit.setMaximumHeight(60)
-        layout.addRow("Langues :", self.languages_edit)
+        # Compétences maîtrisées
+        layout.addRow(QLabel("Compétences maîtrisées :"), QLabel(""))
+        self.skills_edit = QTextEdit()
+        self.skills_edit.setPlaceholderText("Ex: Athlétisme, Perspicacité, Persuasion")
+        self.skills_edit.setMaximumHeight(60)
+        layout.addRow("", self.skills_edit)
         
         return tab
     
     def create_actions_tab(self) -> QWidget:
-        """Crée l'onglet des actions."""
+        """Crée l'onglet des actions et équipements."""
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
         
-        # Liste des actions
+        # Actions
+        layout.addWidget(QLabel("Actions :"))
         self.actions_list = QListWidget()
-        self.actions_list.setMinimumHeight(200)
+        self.actions_list.setMinimumHeight(150)
         layout.addWidget(self.actions_list)
         
         # Boutons pour les actions
@@ -337,64 +265,12 @@ class MainWindow(QMainWindow):
         
         layout.addLayout(actions_control_layout)
         
-        # Actions légendaires
-        layout.addWidget(QLabel("Actions Légendaires :"))
-        self.legendary_actions_list = QListWidget()
-        self.legendary_actions_list.setMinimumHeight(100)
-        layout.addWidget(self.legendary_actions_list)
-        
-        legendary_control_layout = QHBoxLayout()
-        
-        self.add_legendary_btn = QPushButton("Ajouter")
-        legendary_control_layout.addWidget(self.add_legendary_btn)
-        
-        self.edit_legendary_btn = QPushButton("Modifier")
-        legendary_control_layout.addWidget(self.edit_legendary_btn)
-        
-        self.remove_legendary_btn = QPushButton("Supprimer")
-        legendary_control_layout.addWidget(self.remove_legendary_btn)
-        
-        layout.addLayout(legendary_control_layout)
-        
-        # Réactions
-        layout.addWidget(QLabel("Réactions :"))
-        self.reactions_list = QListWidget()
-        self.reactions_list.setMinimumHeight(100)
-        layout.addWidget(self.reactions_list)
-        
-        reactions_control_layout = QHBoxLayout()
-        
-        self.add_reaction_btn = QPushButton("Ajouter")
-        reactions_control_layout.addWidget(self.add_reaction_btn)
-        
-        self.edit_reaction_btn = QPushButton("Modifier")
-        reactions_control_layout.addWidget(self.edit_reaction_btn)
-        
-        self.remove_reaction_btn = QPushButton("Supprimer")
-        reactions_control_layout.addWidget(self.remove_reaction_btn)
-        
-        layout.addLayout(reactions_control_layout)
-        
-        return tab
-    
-    def create_other_tab(self) -> QWidget:
-        """Crée l'onglet des autres informations."""
-        tab = QWidget()
-        layout = QFormLayout(tab)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
-        
-        # Trésor
-        self.treasure_edit = QTextEdit()
-        self.treasure_edit.setPlaceholderText("Description du trésor ou butin")
-        self.treasure_edit.setMaximumHeight(60)
-        layout.addRow("Trésor :", self.treasure_edit)
-        
-        # Notes
-        self.notes_edit = QTextEdit()
-        self.notes_edit.setPlaceholderText("Notes supplémentaires")
-        self.notes_edit.setMaximumHeight(100)
-        layout.addRow("Notes :", self.notes_edit)
+        # Équipement/Armements
+        layout.addWidget(QLabel("Équipement/Armements :"))
+        self.equipment_edit = QTextEdit()
+        self.equipment_edit.setPlaceholderText("Ex: Épée longue, Arc court, Armure de cuir")
+        self.equipment_edit.setMinimumHeight(80)
+        layout.addWidget(self.equipment_edit)
         
         return tab
     
@@ -443,14 +319,6 @@ class MainWindow(QMainWindow):
         self.edit_action_btn.clicked.connect(self.edit_action)
         self.remove_action_btn.clicked.connect(self.remove_action)
         
-        self.add_legendary_btn.clicked.connect(lambda: self.add_legendary_action())
-        self.edit_legendary_btn.clicked.connect(lambda: self.edit_legendary_action())
-        self.remove_legendary_btn.clicked.connect(lambda: self.remove_legendary_action())
-        
-        self.add_reaction_btn.clicked.connect(lambda: self.add_reaction())
-        self.edit_reaction_btn.clicked.connect(lambda: self.edit_reaction())
-        self.remove_reaction_btn.clicked.connect(lambda: self.remove_reaction())
-        
         # Connexion des signaux de l'émetteur
         self.signal_emitter.show_options.connect(self.show_options_dialog)
         self.signal_emitter.generation_complete.connect(self.on_generation_complete)
@@ -470,44 +338,73 @@ class MainWindow(QMainWindow):
         # Créer un monstre temporaire avec les données du formulaire
         monster = self.get_monster_from_form()
         
-        # Ajouter les informations de base
+        # Ajouter le nom
         if monster.name:
-            name_label = QLabel(f"<b>Nom :</b> {monster.name}")
+            name_label = QLabel(f"<b>{monster.name}</b>")
+            name_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
             self.preview_layout.addWidget(name_label)
         
+        # Ajouter race et langues
         if monster.race:
-            race_label = QLabel(f"<b>Race :</b> {monster.race}")
-            self.preview_layout.addWidget(race_label)
+            self.preview_layout.addWidget(QLabel(f"<b>Race :</b> {monster.race}"))
         
-        if monster.alignment:
-            alignment_label = QLabel(f"<b>Alignement :</b> {monster.alignment.value}")
-            self.preview_layout.addWidget(alignment_label)
+        if monster.languages:
+            self.preview_layout.addWidget(QLabel(f"<b>Langues :</b> {", ".join(monster.languages)}"))
         
-        if monster.size:
-            size_label = QLabel(f"<b>Taille :</b> {monster.size.value}")
-            self.preview_layout.addWidget(size_label)
-        
+        # Ajouter les stats
         if monster.armor_class:
-            ac_label = QLabel(f"<b>CA :</b> {monster.armor_class}")
-            self.preview_layout.addWidget(ac_label)
-        
+            self.preview_layout.addWidget(QLabel(f"<b>CA :</b> {monster.armor_class}"))
         if monster.hit_points:
-            hp_label = QLabel(f"<b>PV :</b> {monster.hit_points}")
-            self.preview_layout.addWidget(hp_label)
-        
+            self.preview_layout.addWidget(QLabel(f"<b>PV :</b> {monster.hit_points} ({monster.hit_dice or '—'})"))
         if monster.speed:
-            speed_label = QLabel(f"<b>Vitesse :</b> {monster.speed}")
-            self.preview_layout.addWidget(speed_label)
+            self.preview_layout.addWidget(QLabel(f"<b>Vitesse :</b> {monster.speed}"))
+        if monster.challenge_rating:
+            self.preview_layout.addWidget(QLabel(f"<b>CR :</b> {monster.challenge_rating:.1f}"))
         
+        # Ajouter les caractéristiques
+        scores = monster.ability_scores
+        self.preview_layout.addWidget(QLabel("<b>Caractéristiques :</b>"))
+        self.preview_layout.addWidget(QLabel(
+            f"FOR {scores.strength} ({self._get_modifier(scores.strength):+d}), "
+            f"DEX {scores.dexterity} ({self._get_modifier(scores.dexterity):+d}), "
+            f"CON {scores.constitution} ({self._get_modifier(scores.constitution):+d})"
+        ))
+        self.preview_layout.addWidget(QLabel(
+            f"INT {scores.intelligence} ({self._get_modifier(scores.intelligence):+d}), "
+            f"SAG {scores.wisdom} ({self._get_modifier(scores.wisdom):+d}), "
+            f"CHA {scores.charisma} ({self._get_modifier(scores.charisma):+d})"
+        ))
+        
+        # Compétences maîtrisées
+        proficient_skills = [sk for sk in monster.skills if sk.proficiency]
+        if proficient_skills:
+            skill_names = [sk.name for sk in proficient_skills]
+            self.preview_layout.addWidget(QLabel(f"<b>Compétences maîtrisées :</b> {", ".join(skill_names)}"))
+        
+        # Description
         if monster.description:
-            desc_label = QLabel(f"<b>Description :</b>")
+            self.preview_layout.addWidget(QLabel("<b>Description :</b>"))
+            desc_label = QLabel(monster.description)
+            desc_label.setWordWrap(True)
             self.preview_layout.addWidget(desc_label)
-            desc_text = QLabel(monster.description)
-            desc_text.setWordWrap(True)
-            self.preview_layout.addWidget(desc_text)
+        
+        # Actions
+        if monster.actions:
+            self.preview_layout.addWidget(QLabel("<b>Actions :</b>"))
+            for action in monster.actions:
+                self.preview_layout.addWidget(QLabel(f"• {action.name}: {action.description}"))
+        
+        # Équipement
+        if monster.notes:
+            self.preview_layout.addWidget(QLabel("<b>Équipement :</b>"))
+            self.preview_layout.addWidget(QLabel(monster.notes))
         
         # Ajouter un espaceur
         self.preview_layout.addStretch()
+    
+    def _get_modifier(self, score: int) -> int:
+        """Calcule le modificateur pour une caractéristique."""
+        return (score - 10) // 2
     
     def get_monster_from_form(self) -> Monster:
         """Récupère les données du monstre depuis le formulaire."""
@@ -518,13 +415,10 @@ class MainWindow(QMainWindow):
         monster.race = self.race_edit.text().strip() or None
         monster.description = self.description_edit.toPlainText().strip() or None
         
-        alignment_index = self.alignment_combo.currentIndex()
-        if alignment_index > 0:
-            monster.alignment = self.alignment_combo.itemData(alignment_index)
-        
-        size_index = self.size_combo.currentIndex()
-        if size_index > 0:
-            monster.size = self.size_combo.itemData(size_index)
+        # Langues
+        languages_text = self.languages_edit.toPlainText().strip()
+        if languages_text:
+            monster.languages = [l.strip() for l in languages_text.split(",") if l.strip()]
         
         # Statistiques
         if self.ac_spin.value() > 0:
@@ -536,6 +430,9 @@ class MainWindow(QMainWindow):
         monster.hit_dice = self.hit_dice_edit.text().strip() or None
         monster.speed = self.speed_edit.text().strip() or None
         
+        if self.cr_spin.value() > 0:
+            monster.challenge_rating = self.cr_spin.value()
+        
         # Caractéristiques
         monster.ability_scores = AbilityScores(
             strength=self.str_spin.value() if self.str_spin.value() > 0 else 10,
@@ -546,39 +443,12 @@ class MainWindow(QMainWindow):
             charisma=self.cha_spin.value() if self.cha_spin.value() > 0 else 10,
         )
         
-        # Challenge Rating
-        if self.cr_spin.value() > 0:
-            monster.challenge_rating = self.cr_spin.value()
-        
-        # Défense
-        resistances_text = self.resistances_edit.toPlainText().strip()
-        if resistances_text:
-            monster.damage_resistances = [r.strip() for r in resistances_text.split(",") if r.strip()]
-        
-        immunities_text = self.immunities_edit.toPlainText().strip()
-        if immunities_text:
-            monster.damage_immunities = [i.strip() for i in immunities_text.split(",") if i.strip()]
-        
-        vulnerabilities_text = self.vulnerabilities_edit.toPlainText().strip()
-        if vulnerabilities_text:
-            monster.damage_vulnerabilities = [v.strip() for v in vulnerabilities_text.split(",") if v.strip()]
-        
-        condition_immunities_text = self.condition_immunities_edit.toPlainText().strip()
-        if condition_immunities_text:
-            monster.condition_immunities = [c.strip() for c in condition_immunities_text.split(",") if c.strip()]
-        
-        # Sens
-        senses_text = self.senses_edit.toPlainText().strip()
-        if senses_text:
-            monster.senses = [s.strip() for s in senses_text.split(",") if s.strip()]
-        
-        if self.passive_perception_spin.value() > 0:
-            monster.passive_perception = self.passive_perception_spin.value()
-        
-        # Langues
-        languages_text = self.languages_edit.toPlainText().strip()
-        if languages_text:
-            monster.languages = [l.strip() for l in languages_text.split(",") if l.strip()]
+        # Compétences maîtrisées
+        skills_text = self.skills_edit.toPlainText().strip()
+        if skills_text:
+            skill_names = [s.strip() for s in skills_text.split(",") if s.strip()]
+            for skill_name in skill_names:
+                monster.skills.append(Skill(name=skill_name, ability="", proficiency=True))
         
         # Actions
         for i in range(self.actions_list.count()):
@@ -588,25 +458,8 @@ class MainWindow(QMainWindow):
                 action = Action(**action_data)
                 monster.actions.append(action)
         
-        # Actions légendaires
-        for i in range(self.legendary_actions_list.count()):
-            item = self.legendary_actions_list.item(i)
-            action_data = item.data(Qt.ItemDataRole.UserRole)
-            if action_data:
-                action = Action(**action_data)
-                monster.legendary_actions.append(action)
-        
-        # Réactions
-        for i in range(self.reactions_list.count()):
-            item = self.reactions_list.item(i)
-            action_data = item.data(Qt.ItemDataRole.UserRole)
-            if action_data:
-                action = Action(**action_data)
-                monster.reactions.append(action)
-        
-        # Autres
-        monster.treasure = self.treasure_edit.toPlainText().strip() or None
-        monster.notes = self.notes_edit.toPlainText().strip() or None
+        # Équipement (stocké dans notes)
+        monster.notes = self.equipment_edit.toPlainText().strip() or None
         
         return monster
     
@@ -617,21 +470,15 @@ class MainWindow(QMainWindow):
         self.race_edit.setText(monster.race or "")
         self.description_edit.setPlainText(monster.description or "")
         
-        if monster.alignment:
-            index = self.alignment_combo.findData(monster.alignment)
-            if index >= 0:
-                self.alignment_combo.setCurrentIndex(index)
-        
-        if monster.size:
-            index = self.size_combo.findData(monster.size)
-            if index >= 0:
-                self.size_combo.setCurrentIndex(index)
+        # Langues
+        self.languages_edit.setPlainText(", ".join(monster.languages))
         
         # Statistiques
         self.ac_spin.setValue(monster.armor_class or 0)
         self.hp_spin.setValue(monster.hit_points or 0)
         self.hit_dice_edit.setText(monster.hit_dice or "")
         self.speed_edit.setText(monster.speed or "")
+        self.cr_spin.setValue(monster.challenge_rating or 0)
         
         # Caractéristiques
         self.str_spin.setValue(monster.ability_scores.strength)
@@ -641,40 +488,17 @@ class MainWindow(QMainWindow):
         self.wis_spin.setValue(monster.ability_scores.wisdom)
         self.cha_spin.setValue(monster.ability_scores.charisma)
         
-        # Challenge Rating
-        self.cr_spin.setValue(monster.challenge_rating or 0)
-        
-        # Défense
-        self.resistances_edit.setPlainText(", ".join(monster.damage_resistances))
-        self.immunities_edit.setPlainText(", ".join(monster.damage_immunities))
-        self.vulnerabilities_edit.setPlainText(", ".join(monster.damage_vulnerabilities))
-        self.condition_immunities_edit.setPlainText(", ".join(monster.condition_immunities))
-        
-        # Sens
-        self.senses_edit.setPlainText(", ".join(monster.senses))
-        self.passive_perception_spin.setValue(monster.passive_perception or 0)
-        
-        # Langues
-        self.languages_edit.setPlainText(", ".join(monster.languages))
+        # Compétences maîtrisées
+        proficient_skills = [sk.name for sk in monster.skills if sk.proficiency]
+        self.skills_edit.setPlainText(", ".join(proficient_skills))
         
         # Actions
         self.actions_list.clear()
         for action in monster.actions:
             self.add_action_to_list(self.actions_list, action)
         
-        # Actions légendaires
-        self.legendary_actions_list.clear()
-        for action in monster.legendary_actions:
-            self.add_action_to_list(self.legendary_actions_list, action)
-        
-        # Réactions
-        self.reactions_list.clear()
-        for action in monster.reactions:
-            self.add_action_to_list(self.reactions_list, action)
-        
-        # Autres
-        self.treasure_edit.setPlainText(monster.treasure or "")
-        self.notes_edit.setPlainText(monster.notes or "")
+        # Équipement
+        self.equipment_edit.setPlainText(monster.notes or "")
     
     def add_action_to_list(self, list_widget: QListWidget, action: Action):
         """Ajoute une action à une liste."""
@@ -723,72 +547,6 @@ class MainWindow(QMainWindow):
         if selected:
             self.actions_list.takeItem(self.actions_list.row(selected))
     
-    def add_legendary_action(self):
-        """Ajoute une nouvelle action légendaire."""
-        dialog = SimpleActionDialog(self, "Ajouter une action légendaire")
-        if dialog.exec() == QMessageBox.StandardButton.Ok:
-            action_data = dialog.get_action_data()
-            if action_data:
-                action = Action(**action_data)
-                self.add_action_to_list(self.legendary_actions_list, action)
-    
-    def edit_legendary_action(self):
-        """Modifie une action légendaire."""
-        selected = self.legendary_actions_list.currentItem()
-        if not selected:
-            return
-        
-        action_data = selected.data(Qt.ItemDataRole.UserRole)
-        if not action_data:
-            return
-        
-        dialog = SimpleActionDialog(self, "Modifier l'action légendaire")
-        dialog.set_action_data(action_data)
-        if dialog.exec() == QMessageBox.StandardButton.Ok:
-            new_action_data = dialog.get_action_data()
-            if new_action_data:
-                selected.setText(new_action_data["name"])
-                selected.setData(Qt.ItemDataRole.UserRole, new_action_data)
-    
-    def remove_legendary_action(self):
-        """Supprime une action légendaire."""
-        selected = self.legendary_actions_list.currentItem()
-        if selected:
-            self.legendary_actions_list.takeItem(self.legendary_actions_list.row(selected))
-    
-    def add_reaction(self):
-        """Ajoute une nouvelle réaction."""
-        dialog = SimpleActionDialog(self, "Ajouter une réaction")
-        if dialog.exec() == QMessageBox.StandardButton.Ok:
-            action_data = dialog.get_action_data()
-            if action_data:
-                action = Action(**action_data)
-                self.add_action_to_list(self.reactions_list, action)
-    
-    def edit_reaction(self):
-        """Modifie une réaction."""
-        selected = self.reactions_list.currentItem()
-        if not selected:
-            return
-        
-        action_data = selected.data(Qt.ItemDataRole.UserRole)
-        if not action_data:
-            return
-        
-        dialog = SimpleActionDialog(self, "Modifier la réaction")
-        dialog.set_action_data(action_data)
-        if dialog.exec() == QMessageBox.StandardButton.Ok:
-            new_action_data = dialog.get_action_data()
-            if new_action_data:
-                selected.setText(new_action_data["name"])
-                selected.setData(Qt.ItemDataRole.UserRole, new_action_data)
-    
-    def remove_reaction(self):
-        """Supprime une réaction."""
-        selected = self.reactions_list.currentItem()
-        if selected:
-            self.reactions_list.takeItem(self.reactions_list.row(selected))
-    
     def generate_missing_fields(self):
         """Génère les champs manquants avec l'IA."""
         # Vérifier que la clé API est configurée
@@ -815,18 +573,24 @@ class MainWindow(QMainWindow):
             missing_fields.append("race")
         if not monster.description:
             missing_fields.append("description")
-        if not monster.alignment:
-            missing_fields.append("alignment")
-        if not monster.size:
-            missing_fields.append("size")
         if not monster.armor_class:
             missing_fields.append("armor_class")
         if not monster.hit_points:
             missing_fields.append("hit_points")
+        if not monster.hit_dice:
+            missing_fields.append("hit_dice")
         if not monster.speed:
             missing_fields.append("speed")
         if not monster.challenge_rating:
             missing_fields.append("challenge_rating")
+        if not monster.languages:
+            missing_fields.append("languages")
+        
+        # Vérifier les caractéristiques
+        scores = monster.ability_scores
+        if scores.strength == 10 and scores.dexterity == 10 and scores.constitution == 10 and \
+           scores.intelligence == 10 and scores.wisdom == 10 and scores.charisma == 10:
+            missing_fields.append("ability_scores")
         
         if not missing_fields:
             QMessageBox.information(
@@ -909,6 +673,57 @@ class MainWindow(QMainWindow):
             if selected_option:
                 self.set_field_value(field_name, str(selected_option))
     
+    def show_all_options_dialog(self, all_options: Dict[str, List[str]]):
+        """Affiche une boîte de dialogue unique pour tous les champs manquants."""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QComboBox, QPushButton, QHBoxLayout
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Sélectionner les options générées")
+        dialog.setMinimumWidth(400)
+        
+        layout = QVBoxLayout(dialog)
+        
+        # Ajouter un label d'introduction
+        intro_label = QLabel("L'IA a généré des options pour les champs manquants.\nSélectionnez une option pour chaque champ :")
+        layout.addWidget(intro_label)
+        
+        # Créer un combo pour chaque champ
+        self.field_combos = {}
+        for field_name, options in all_options.items():
+            field_layout = QHBoxLayout()
+            
+            label = QLabel(f"{field_name}:")
+            field_layout.addWidget(label)
+            
+            combo = QComboBox()
+            combo.addItems(options)
+            self.field_combos[field_name] = combo
+            field_layout.addWidget(combo, stretch=1)
+            
+            layout.addLayout(field_layout)
+        
+        # Boutons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        apply_btn = QPushButton("Appliquer tout")
+        apply_btn.clicked.connect(dialog.accept)
+        button_layout.addWidget(apply_btn)
+        
+        cancel_btn = QPushButton("Annuler")
+        cancel_btn.clicked.connect(dialog.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        layout.addLayout(button_layout)
+        
+        # Exécuter la boîte de dialogue
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # Appliquer toutes les sélections
+            for field_name, combo in self.field_combos.items():
+                selected_option = combo.currentText()
+                if selected_option:
+                    self.set_field_value(field_name, selected_option)
+    
     def set_field_value(self, field_name: str, value: str):
         """Définit la valeur d'un champ dans le formulaire."""
         if field_name == "name":
@@ -917,14 +732,6 @@ class MainWindow(QMainWindow):
             self.race_edit.setText(value)
         elif field_name == "description":
             self.description_edit.setPlainText(value)
-        elif field_name == "alignment":
-            index = self.alignment_combo.findText(value)
-            if index >= 0:
-                self.alignment_combo.setCurrentIndex(index)
-        elif field_name == "size":
-            index = self.size_combo.findText(value)
-            if index >= 0:
-                self.size_combo.setCurrentIndex(index)
         elif field_name == "armor_class":
             try:
                 self.ac_spin.setValue(int(value))
@@ -935,12 +742,31 @@ class MainWindow(QMainWindow):
                 self.hp_spin.setValue(int(value))
             except ValueError:
                 pass
+        elif field_name == "hit_dice":
+            self.hit_dice_edit.setText(value)
         elif field_name == "speed":
             self.speed_edit.setText(value)
         elif field_name == "challenge_rating":
             try:
                 self.cr_spin.setValue(float(value))
             except ValueError:
+                pass
+        elif field_name == "languages":
+            self.languages_edit.setPlainText(value)
+        elif field_name == "ability_scores":
+            # Parsing des caractéristiques depuis un JSON ou format similaire
+            try:
+                import json
+                data = json.loads(value)
+                if isinstance(data, list) and len(data) > 0:
+                    scores = data[0]
+                    self.str_spin.setValue(scores.get("strength", 10))
+                    self.dex_spin.setValue(scores.get("dexterity", 10))
+                    self.con_spin.setValue(scores.get("constitution", 10))
+                    self.int_spin.setValue(scores.get("intelligence", 10))
+                    self.wis_spin.setValue(scores.get("wisdom", 10))
+                    self.cha_spin.setValue(scores.get("charisma", 10))
+            except:
                 pass
     
     def export_to_pdf(self):
@@ -1132,53 +958,4 @@ class ActionDialog(QMessageBox):
             "attack_bonus": self.attack_bonus_spin.value() if self.attack_bonus_spin.value() != 0 else None,
             "damage": self.damage_edit.text().strip() or None,
             "damage_type": self.damage_type_edit.text().strip() or None,
-        }
-
-
-class SimpleActionDialog(QMessageBox):
-    """Boîte de dialogue simplifiée pour les actions légendaires et réactions."""
-    
-    def __init__(self, parent=None, title=""):
-        super().__init__(parent)
-        self.setWindowTitle(title)
-        self.setup_ui()
-    
-    def setup_ui(self):
-        """Configure l'interface."""
-        layout = QFormLayout(self)
-        
-        # Nom
-        self.name_edit = QLineEdit()
-        layout.addRow("Nom :", self.name_edit)
-        
-        # Description
-        self.description_edit = QTextEdit()
-        self.description_edit.setMaximumHeight(60)
-        layout.addRow("Description :", self.description_edit)
-        
-        # Boutons
-        ok_btn = self.addButton(QMessageBox.StandardButton.Ok)
-        cancel_btn = self.addButton(QMessageBox.StandardButton.Cancel)
-        
-        # Connexions
-        ok_btn.clicked.connect(self.accept)
-        cancel_btn.clicked.connect(self.reject)
-    
-    def set_action_data(self, action_data: Dict):
-        """Remplit le formulaire avec les données d'une action."""
-        self.name_edit.setText(action_data.get("name", ""))
-        self.description_edit.setPlainText(action_data.get("description", ""))
-    
-    def get_action_data(self) -> Optional[Dict]:
-        """Récupère les données de l'action."""
-        name = self.name_edit.text().strip()
-        if not name:
-            return None
-        
-        return {
-            "name": name,
-            "description": self.description_edit.toPlainText().strip(),
-            "attack_bonus": None,
-            "damage": None,
-            "damage_type": None,
         }
