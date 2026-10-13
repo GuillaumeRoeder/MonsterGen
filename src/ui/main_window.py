@@ -349,7 +349,7 @@ class MainWindow(QMainWindow):
             self.preview_layout.addWidget(QLabel(f"<b>Race :</b> {monster.race}"))
         
         if monster.languages:
-            self.preview_layout.addWidget(QLabel(f"<b>Langues :</b> {", ".join(monster.languages)}"))
+            self.preview_layout.addWidget(QLabel(f"<b>Langues :</b> {', '.join(monster.languages)}"))
         
         # Ajouter les stats
         if monster.armor_class:
