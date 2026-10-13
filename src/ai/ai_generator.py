@@ -172,16 +172,28 @@ class AIGenerator:
                 
                 # Nettoyer la réponse pour extraire le JSON
                 content = content.strip()
+                print(f"[DEBUG] Raw AI response: {content[:500]}")  # Log pour débogage
                 
                 # Essayer de trouver le JSON dans la réponse
                 import re
                 json_match = re.search(r'\{.*\}', content, re.DOTALL)
                 if json_match:
                     json_str = json_match.group()
-                    return json.loads(json_str)
+                    try:
+                        return json.loads(json_str)
+                    except json.JSONDecodeError as e:
+                        print(f"[DEBUG] JSON parse error: {e}")
+                        # Essayer de nettoyer les backticks et autres caractères
+                        json_str = json_str.replace('```json', '').replace('```', '').strip()
+                        return json.loads(json_str)
                 
                 # Si pas de JSON trouvé, essayer de parser directement
-                return json.loads(content)
+                try:
+                    return json.loads(content)
+                except json.JSONDecodeError:
+                    # Retourner un format par défaut si le parsing échoue
+                    print(f"[DEBUG] Fallback: treating as plain text")
+                    return {"options": [content]}
             
             return None
             
