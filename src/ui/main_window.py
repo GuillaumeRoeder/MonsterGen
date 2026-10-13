@@ -555,13 +555,17 @@ class MainWindow(QMainWindow):
         list_widget.addItem(item)
     
     def add_action(self):
-        """Ajoute une nouvelle action."""
-        dialog = ActionDialog(self)
-        if dialog.exec() == QMessageBox.StandardButton.Ok:
-            action_data = dialog.get_action_data()
-            if action_data:
-                action = Action(**action_data)
-                self.add_action_to_list(self.actions_list, action)
+        """Ajoute une nouvelle action directement."""
+        name, ok = QInputDialog.getText(self, "Ajouter une action", "Nom de l'action:")
+        if not ok or not name:
+            return
+        
+        description, ok = QInputDialog.getText(self, "Ajouter une action", "Description:")
+        if not ok:
+            return
+        
+        action = Action(name=name, description=description)
+        self.add_action_to_list(self.actions_list, action)
     
     def edit_action(self):
         """Modifie une action existante."""
@@ -573,13 +577,23 @@ class MainWindow(QMainWindow):
         if not action_data:
             return
         
-        dialog = ActionDialog(self)
-        dialog.set_action_data(action_data)
-        if dialog.exec() == QMessageBox.StandardButton.Ok:
-            new_action_data = dialog.get_action_data()
-            if new_action_data:
-                selected.setText(new_action_data["name"])
-                selected.setData(Qt.ItemDataRole.UserRole, new_action_data)
+        name, ok = QInputDialog.getText(self, "Modifier l'action", "Nom:", text=action_data.get("name", ""))
+        if not ok or not name:
+            return
+        
+        description, ok = QInputDialog.getText(self, "Modifier l'action", "Description:", text=action_data.get("description", ""))
+        if not ok:
+            return
+        
+        new_action_data = {
+            "name": name,
+            "description": description,
+            "attack_bonus": action_data.get("attack_bonus"),
+            "damage": action_data.get("damage"),
+            "damage_type": action_data.get("damage_type"),
+        }
+        selected.setText(name)
+        selected.setData(Qt.ItemDataRole.UserRole, new_action_data)
     
     def remove_action(self):
         """Supprime une action."""
@@ -935,73 +949,4 @@ class MainWindow(QMainWindow):
         self.update_preview()
 
 
-class ActionDialog(QMessageBox):
-    """Boîte de dialogue pour ajouter/modifier une action."""
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Ajouter/Modifier une action")
-        self.setup_ui()
-    
-    def setup_ui(self):
-        """Configure l'interface."""
-        layout = QFormLayout(self)
-        
-        # Nom
-        self.name_edit = QLineEdit()
-        layout.addRow("Nom :", self.name_edit)
-        
-        # Description
-        self.description_edit = QTextEdit()
-        self.description_edit.setMaximumHeight(60)
-        layout.addRow("Description :", self.description_edit)
-        
-        # Bonus d'attaque
-        self.attack_bonus_spin = QSpinBox()
-        self.attack_bonus_spin.setRange(-10, 20)
-        self.attack_bonus_spin.setSpecialValueText("")
-        layout.addRow("Bonus d'attaque :", self.attack_bonus_spin)
-        
-        # Dégâts
-        self.damage_edit = QLineEdit()
-        self.damage_edit.setPlaceholderText("Ex: 1d8+3")
-        layout.addRow("Dégâts :", self.damage_edit)
-        
-        # Type de dégâts
-        self.damage_type_edit = QLineEdit()
-        self.damage_type_edit.setPlaceholderText("Ex: tranchant, perforant")
-        layout.addRow("Type de dégâts :", self.damage_type_edit)
-        
-        # Boutons
-        ok_btn = self.addButton(QMessageBox.StandardButton.Ok)
-        cancel_btn = self.addButton(QMessageBox.StandardButton.Cancel)
-        
-        # Connexions
-        ok_btn.clicked.connect(self.accept)
-        cancel_btn.clicked.connect(self.reject)
-    
-    def set_action_data(self, action_data: Dict):
-        """Remplit le formulaire avec les données d'une action."""
-        self.name_edit.setText(action_data.get("name", ""))
-        self.description_edit.setPlainText(action_data.get("description", ""))
-        
-        attack_bonus = action_data.get("attack_bonus")
-        if attack_bonus is not None:
-            self.attack_bonus_spin.setValue(attack_bonus)
-        
-        self.damage_edit.setText(action_data.get("damage", ""))
-        self.damage_type_edit.setText(action_data.get("damage_type", ""))
-    
-    def get_action_data(self) -> Optional[Dict]:
-        """Récupère les données de l'action."""
-        name = self.name_edit.text().strip()
-        if not name:
-            return None
-        
-        return {
-            "name": name,
-            "description": self.description_edit.toPlainText().strip(),
-            "attack_bonus": self.attack_bonus_spin.value() if self.attack_bonus_spin.value() != 0 else None,
-            "damage": self.damage_edit.text().strip() or None,
-            "damage_type": self.damage_type_edit.text().strip() or None,
-        }
+
