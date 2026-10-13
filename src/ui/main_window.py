@@ -327,6 +327,46 @@ class MainWindow(QMainWindow):
         """Rafraîchit l'aperçu de la fiche."""
         self.update_preview()
     
+
+    def _add_section_title(self, title: str):
+        """Ajoute un titre de section à l'aperçu."""
+        label = QLabel(f"<b>{title}</b>")
+        self.preview_layout.addWidget(label)
+        return label
+
+    def _add_preview_label(self, text: str, bold: bool = False, word_wrap: bool = False):
+        """Ajoute un label à l'aperçu avec des options de style."""
+        label = QLabel(text)
+        if bold:
+            label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        if word_wrap:
+            label.setWordWrap(True)
+        self.preview_layout.addWidget(label)
+        return label
+
+    def _format_ability_scores(self, scores: AbilityScores) -> str:
+        """Formate les caractéristiques avec leurs modificateurs."""
+        attrs = [
+            ("FOR", scores.strength),
+            ("DEX", scores.dexterity),
+            ("CON", scores.constitution),
+            ("INT", scores.intelligence),
+            ("SAG", scores.wisdom),
+            ("CHA", scores.charisma),
+        ]
+        parts = []
+        for name, score in attrs:
+            mod = self._get_modifier(score)
+            parts.append(f"{name} {score} ({mod:+d})")
+        return ", ".join(parts)
+
+    def _clear_preview(self):
+        """Efface l'aperçu actuel."""
+        for i in reversed(range(self.preview_layout.count())):
+            widget = self.preview_layout.itemAt(i).widget()
+            if widget:
+                widget.deleteLater()
+
     def update_preview(self):
         """Met à jour l'aperçu avec les données actuelles."""
         # Effacer l'aperçu actuel
@@ -379,7 +419,7 @@ class MainWindow(QMainWindow):
         proficient_skills = [sk for sk in monster.skills if sk.proficiency]
         if proficient_skills:
             skill_names = [sk.name for sk in proficient_skills]
-            self.preview_layout.addWidget(QLabel(f"<b>Compétences maîtrisées :</b> {", ".join(skill_names)}"))
+            self.preview_layout.addWidget(QLabel(f"<b>Compétences maîtrisées :</b> {', '.join(skill_names)}"))
         
         # Description
         if monster.description:
@@ -421,42 +461,37 @@ class MainWindow(QMainWindow):
             monster.languages = [l.strip() for l in languages_text.split(",") if l.strip()]
         
         # Statistiques
-        if self.ac_spin.value() > 0:
-            monster.armor_class = self.ac_spin.value()
-        
-        if self.hp_spin.value() > 0:
-            monster.hit_points = self.hp_spin.value()
-        
+        monster.armor_class = self.ac_spin.value() if self.ac_spin.value() > 0 else None
+        monster.hit_points = self.hp_spin.value() if self.hp_spin.value() > 0 else None
         monster.hit_dice = self.hit_dice_edit.text().strip() or None
         monster.speed = self.speed_edit.text().strip() or None
-        
-        if self.cr_spin.value() > 0:
-            monster.challenge_rating = self.cr_spin.value()
+        monster.challenge_rating = self.cr_spin.value() if self.cr_spin.value() > 0 else None
         
         # Caractéristiques
+        ability_map = {
+            "strength": self.str_spin,
+            "dexterity": self.dex_spin,
+            "constitution": self.con_spin,
+            "intelligence": self.int_spin,
+            "wisdom": self.wis_spin,
+            "charisma": self.cha_spin,
+        }
         monster.ability_scores = AbilityScores(
-            strength=self.str_spin.value() if self.str_spin.value() > 0 else 10,
-            dexterity=self.dex_spin.value() if self.dex_spin.value() > 0 else 10,
-            constitution=self.con_spin.value() if self.con_spin.value() > 0 else 10,
-            intelligence=self.int_spin.value() if self.int_spin.value() > 0 else 10,
-            wisdom=self.wis_spin.value() if self.wis_spin.value() > 0 else 10,
-            charisma=self.cha_spin.value() if self.cha_spin.value() > 0 else 10,
+            **{k: (w.value() if w.value() > 0 else 10) for k, w in ability_map.items()}
         )
         
         # Compétences maîtrisées
         skills_text = self.skills_edit.toPlainText().strip()
         if skills_text:
             skill_names = [s.strip() for s in skills_text.split(",") if s.strip()]
-            for skill_name in skill_names:
-                monster.skills.append(Skill(name=skill_name, ability="", proficiency=True))
+            monster.skills = [Skill(name=name, ability="", proficiency=True) for name in skill_names]
         
         # Actions
         for i in range(self.actions_list.count()):
             item = self.actions_list.item(i)
             action_data = item.data(Qt.ItemDataRole.UserRole)
             if action_data:
-                action = Action(**action_data)
-                monster.actions.append(action)
+                monster.actions.append(Action(**action_data))
         
         # Équipement (stocké dans notes)
         monster.notes = self.equipment_edit.toPlainText().strip() or None
@@ -481,12 +516,17 @@ class MainWindow(QMainWindow):
         self.cr_spin.setValue(monster.challenge_rating or 0)
         
         # Caractéristiques
-        self.str_spin.setValue(monster.ability_scores.strength)
-        self.dex_spin.setValue(monster.ability_scores.dexterity)
-        self.con_spin.setValue(monster.ability_scores.constitution)
-        self.int_spin.setValue(monster.ability_scores.intelligence)
-        self.wis_spin.setValue(monster.ability_scores.wisdom)
-        self.cha_spin.setValue(monster.ability_scores.charisma)
+        ability_map = {
+            "strength": self.str_spin,
+            "dexterity": self.dex_spin,
+            "constitution": self.con_spin,
+            "intelligence": self.int_spin,
+            "wisdom": self.wis_spin,
+            "charisma": self.cha_spin,
+        }
+        scores = monster.ability_scores
+        for attr, widget in ability_map.items():
+            widget.setValue(getattr(scores, attr))
         
         # Compétences maîtrisées
         proficient_skills = [sk.name for sk in monster.skills if sk.proficiency]
@@ -726,47 +766,53 @@ class MainWindow(QMainWindow):
     
     def set_field_value(self, field_name: str, value: str):
         """Définit la valeur d'un champ dans le formulaire."""
-        if field_name == "name":
-            self.name_edit.setText(value)
-        elif field_name == "race":
-            self.race_edit.setText(value)
-        elif field_name == "description":
-            self.description_edit.setPlainText(value)
-        elif field_name == "armor_class":
+        # Mapping des champs simples
+        field_mapping = {
+            "name": lambda v: self.name_edit.setText(v),
+            "race": lambda v: self.race_edit.setText(v),
+            "description": lambda v: self.description_edit.setPlainText(v),
+            "hit_dice": lambda v: self.hit_dice_edit.setText(v),
+            "speed": lambda v: self.speed_edit.setText(v),
+            "languages": lambda v: self.languages_edit.setPlainText(v),
+        }
+        
+        if field_name in field_mapping:
+            field_mapping[field_name](value)
+            return
+        
+        # Champs numériques
+        numeric_fields = {
+            "armor_class": (self.ac_spin, int),
+            "hit_points": (self.hp_spin, int),
+            "challenge_rating": (self.cr_spin, float),
+        }
+        
+        if field_name in numeric_fields:
+            widget, converter = numeric_fields[field_name]
             try:
-                self.ac_spin.setValue(int(value))
-            except ValueError:
+                widget.setValue(converter(value))
+            except (ValueError, TypeError):
                 pass
-        elif field_name == "hit_points":
-            try:
-                self.hp_spin.setValue(int(value))
-            except ValueError:
-                pass
-        elif field_name == "hit_dice":
-            self.hit_dice_edit.setText(value)
-        elif field_name == "speed":
-            self.speed_edit.setText(value)
-        elif field_name == "challenge_rating":
-            try:
-                self.cr_spin.setValue(float(value))
-            except ValueError:
-                pass
-        elif field_name == "languages":
-            self.languages_edit.setPlainText(value)
-        elif field_name == "ability_scores":
-            # Parsing des caractéristiques depuis un JSON ou format similaire
+            return
+        
+        # Caractéristiques
+        if field_name == "ability_scores":
             try:
                 import json
                 data = json.loads(value)
                 if isinstance(data, list) and len(data) > 0:
                     scores = data[0]
-                    self.str_spin.setValue(scores.get("strength", 10))
-                    self.dex_spin.setValue(scores.get("dexterity", 10))
-                    self.con_spin.setValue(scores.get("constitution", 10))
-                    self.int_spin.setValue(scores.get("intelligence", 10))
-                    self.wis_spin.setValue(scores.get("wisdom", 10))
-                    self.cha_spin.setValue(scores.get("charisma", 10))
-            except:
+                    ability_map = {
+                        "strength": self.str_spin,
+                        "dexterity": self.dex_spin,
+                        "constitution": self.con_spin,
+                        "intelligence": self.int_spin,
+                        "wisdom": self.wis_spin,
+                        "charisma": self.cha_spin,
+                    }
+                    for attr, widget in ability_map.items():
+                        widget.setValue(scores.get(attr, 10))
+            except Exception:
                 pass
     
     def export_to_pdf(self):
