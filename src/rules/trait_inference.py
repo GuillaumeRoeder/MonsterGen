@@ -22,6 +22,9 @@ class InferredTraits:
     speed: Optional[str] = None
     swim: bool = False
     fly: bool = False
+    skills: List[str] = field(default_factory=list)
+    resistances: List[str] = field(default_factory=list)
+    immunities: List[str] = field(default_factory=list)
 
 
 # Mots-clés (minuscules, sans accents pour le match) -> archétype.
@@ -100,6 +103,55 @@ SPEED_KEYWORDS: List[Tuple[List[str], str]] = [
     (["fouisse", "tunnel", "souterrain", "creuse", "sable", "terrier", "mine"], "fouisse 4,50 m (3 cases)"),
     (["grimpe", "escalade", "arbre", "forestier"], "grimpe 4,50 m (3 cases)"),
 ]
+
+# Compétences suggérées par archétype (compétences DnD 5e en français).
+ARCHETYPE_SKILLS = {
+    "brute": ["Athlétisme", "Intimidation"],
+    "sneaky": ["Discrétion", "Escamotage", "Perception"],
+    "caster": ["Arcanes", "Histoire", "Perspicacité"],
+    "divin": ["Perspicacité", "Religion", "Médecine"],
+    "charismatique": ["Persuasion", "Représentation", "Intimidation"],
+}
+
+# Mots-clés supplémentaires pour compétences spécifiques.
+SKILL_KEYWORDS: List[Tuple[List[str], str]] = [
+    (["chasse", "traque", "piege", "piège", "chasseur", "pistage"], "Survie"),
+    (["nature", "foret", "forêt", "sauvage", "bete", "bête", "animal"], "Nature"),
+    (["acrobate", "saut", "agile", "pirouette", "equilibre", "équilibre"], "Acrobaties"),
+    (["menti", "mensonge", "trompe", "bluff", "imposture", "dissimul"], "Tromperie"),
+    (["observe", "guette", "sentinelle", "vigilan", "surveille"], "Perception"),
+    (["negoci", "négoci", "marchand", "commerce", "barguign"], "Persuasion"),
+    (["cuisine", "forge", "artisan", "fabricat", "bricole"], "Artisanat"),
+    (["connais le terrain", "carte", "cartographe", "explorat"], "Histoire"),
+]
+
+# Types de dégâts DnD 5e et mots-clés associés pour résistances/immunités.
+DAMAGE_TYPES_KEYWORDS: List[Tuple[List[str], str]] = [
+    (["feu", "flamme", "brasier", "incendie", "brulant", "lave", "magma", "pyro"], "feu"),
+    (["glace", "gel", "froid", "givre", "neige", "hivernal", "congel"], "froid"),
+    (["foudre", "eclair", "éclair", "tonnerre", "orage", "electr"], "foudre"),
+    (["poison", "venin", "toxine", "toxique", "venimeux", "miasme"], "poison"),
+    (["acide", "corrosif", "bave", "digest", "dissolut"], "acide"),
+    (["tenebre", "ténèbre", "sombre", "negati", "négati", "spectral", "fantome",
+      "fantôme", "necro", "non-vie", "sang-drain"], "nécrotique"),
+    (["radiant", "lumiere", "lumière", "sacre", "sacré", "aube", "celeste", "céleste"], "radiant"),
+    (["psychique", "mental", "esprit", "cauchemar", "terreur", "effroi"], "psychique"),
+    (["tonnerre", "onde", "supersonique", "rugissement", "cri", "sonore", "vibration"], "tonnerre"),
+    (["perforant", "fleche", "flèche", "pointe", "piqu"], "perforant"),
+    (["tranchant", " lame", "epee", "épée", "griffe", "coupe"], "tranchant"),
+    (["contondant", "ecrase", "écrase", "masse", "choc", "impact"], "contondant"),
+    (["foudre", "eclair", "éclair", "paralys", "electr"], "paralysie"),
+]
+
+# Mots-clés signalant une IMMUNITÉ (plutôt qu'une résistance).
+IMMUNITY_SIGNALS = ["immunise", "immunisé", "immunis", "insensible", "indestructible",
+                   "ne subit aucun", "aucun degat", "aucun dégât", "epaisse peau",
+                   "épaisse peau", "carapace"]
+
+# Mots-clés signalant une RÉSISTANCE.
+RESISTANCE_SIGNALS = ["resiste", "résiste", "resistance", "résistance", "endurc",
+                      "peau dure", "ecaille", "écaille", "cuirasse", "protege", "protégé"]
+
 
 _SLOW = ["massif", "lourd", "pesant", "colossal", "golem", "pierre", "roc", "tank"]
 _FAST = ["rapide", "veloce", "fleche", "eclair", "felin",
@@ -180,5 +232,27 @@ def infer_traits(race: Optional[str], description: Optional[str]) -> InferredTra
             traits.speed = "12 m (8 cases)"
         elif any(kw in combined for kw in _SLOW):
             traits.speed = "6 m (4 cases)"
+
+    # Compétences maîtrisées : base par archétype + détection de mots-clés.
+    skills: List[str] = []
+    if traits.archetype:
+        skills.extend(ARCHETYPE_SKILLS.get(traits.archetype, []))
+    for keywords, skill in SKILL_KEYWORDS:
+        if any(kw in combined for kw in keywords) and skill not in skills:
+            skills.append(skill)
+    traits.skills = skills[:4]
+
+    # Résistances/immunités : signal (résiste/immunisé) + type de dégâts cité.
+    is_resistant = any(kw in combined for kw in RESISTANCE_SIGNALS)
+    is_immune = any(kw in combined for kw in IMMUNITY_SIGNALS)
+    if is_resistant or is_immune:
+        for keywords, damage_type in DAMAGE_TYPES_KEYWORDS:
+            if any(kw in combined for kw in keywords):
+                if is_immune:
+                    if damage_type not in traits.immunities:
+                        traits.immunities.append(damage_type)
+                elif is_resistant:
+                    if damage_type not in traits.resistances:
+                        traits.resistances.append(damage_type)
 
     return traits

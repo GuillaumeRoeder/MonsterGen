@@ -25,6 +25,21 @@ from src.rules.stat_builder import (
     build_armor_class, build_ability_scores, build_actions,
 )
 from src.ui.languages_editor import LanguagesEditor
+from src.ui.pill_editor import PillEditor
+
+# Compétences DnD 5e (suggestions pour l'éditeur en pills).
+DND5_SKILLS = [
+    "Acrobaties", "Arcanes", "Athlétisme", "Discrétion", "Escamotage",
+    "Histoire", "Intimidation", "Intuition", "Investigation", "Médecine",
+    "Nature", "Perception", "Perspicacité", "Persuasion", "Représentation",
+    "Religion", "Supercherie", "Survie",
+]
+
+# Types de dégâts DnD 5e (résistances/immunités).
+DND5_DAMAGE_TYPES = [
+    "contondant", "tranchant", "perforant", "feu", "froid", "foudre",
+    "poison", "acide", "psychique", "radiant", "nécrotique", "tonnerre",
+]
 from src.ui.action_editor import ActionEditorWidget
 from src.export.pdf_exporter import pdf_exporter
 from src.export.png_exporter import png_exporter
@@ -318,11 +333,17 @@ class MainWindow(QMainWindow):
         gen_chars_btn.clicked.connect(self._generate_ability_scores)
         layout.addRow(gen_chars_btn)
 
-        layout.addRow(QLabel("Compétences maîtrisées :"), QLabel(""))
-        self.skills_edit = QTextEdit()
-        self.skills_edit.setPlaceholderText("Ex: Athlétisme, Perspicacité, Persuasion")
-        self.skills_edit.setMaximumHeight(60)
-        layout.addRow("", self.skills_edit)
+        self.skills_edit = PillEditor(suggestions=DND5_SKILLS,
+                                      empty_text="Aucune compétence maîtrisée")
+        layout.addRow("Compétences maîtrisées :", self.skills_edit)
+
+        self.resistances_edit = PillEditor(suggestions=DND5_DAMAGE_TYPES,
+                                           empty_text="Aucune résistance")
+        layout.addRow("Résistances :", self.resistances_edit)
+
+        self.immunities_edit = PillEditor(suggestions=DND5_DAMAGE_TYPES,
+                                          empty_text="Aucune immunité")
+        layout.addRow("Immunités :", self.immunities_edit)
 
         return tab
 
@@ -495,6 +516,15 @@ class MainWindow(QMainWindow):
             skill_names = [sk.name for sk in proficient_skills]
             self._add_preview_label(f"<b>Compétences maîtrisées :</b> {', '.join(skill_names)}")
 
+        if monster.damage_resistances:
+            self._add_preview_label(
+                f"<b>Résistances :</b> {', '.join(monster.damage_resistances)}"
+            )
+        if monster.damage_immunities:
+            self._add_preview_label(
+                f"<b>Immunités :</b> {', '.join(monster.damage_immunities)}"
+            )
+
         if monster.description:
             self._add_section_title("Description :")
             self._add_preview_label(monster.description, word_wrap=True)
@@ -585,10 +615,12 @@ class MainWindow(QMainWindow):
             **{k: (w.value() if w.value() > 0 else 10) for k, w in ability_map.items()}
         )
 
-        skills_text = self.skills_edit.toPlainText().strip()
-        if skills_text:
-            skill_names = [s.strip() for s in skills_text.split(",") if s.strip()]
-            monster.skills = [Skill(name=name, ability="", proficiency=True) for name in skill_names]
+        monster.skills = [
+            Skill(name=name, ability="", proficiency=True)
+            for name in self.skills_edit.get_values()
+        ]
+        monster.damage_resistances = self.resistances_edit.get_values()
+        monster.damage_immunities = self.immunities_edit.get_values()
 
         for widget in self.get_action_widgets():
             action = widget.get_action()
@@ -625,8 +657,9 @@ class MainWindow(QMainWindow):
         for attr, widget in ability_map.items():
             widget.setValue(getattr(scores, attr))
 
-        proficient_skills = [sk.name for sk in monster.skills if sk.proficiency]
-        self.skills_edit.setPlainText(", ".join(proficient_skills))
+        self.skills_edit.set_values([sk.name for sk in monster.skills if sk.proficiency])
+        self.resistances_edit.set_values(monster.damage_resistances)
+        self.immunities_edit.set_values(monster.damage_immunities)
 
         self.clear_actions()
         for action in monster.actions:
@@ -876,7 +909,13 @@ class MainWindow(QMainWindow):
         rng = random.Random()
 
         from src.rules.trait_inference import infer_traits
-        traits = infer_traits(monster.race, monster.description)
+        actions_text = " ".join(
+            f"{a.name} {a.description}" for a in monster.actions
+        )
+        traits = infer_traits(
+            f"{monster.race or ''} {monster.description or ''} {actions_text}",
+            monster.description,
+        )
         scores, _ = build_ability_scores(cr, rng, archetype=traits.archetype)
         con_mod = scores.get_modifier("constitution")
         dex_mod = scores.get_modifier("dexterity")
@@ -898,8 +937,22 @@ class MainWindow(QMainWindow):
             self.hit_dice_edit.setText(monster.hit_dice)
 
         if not self.speed_edit.text().strip():
-            self.speed_edit.setText("9 m (6 cases)")
+            self.speed_edit.setText(traits.speed or "9 m (6 cases)")
             filled.append("Vitesse")
+
+        # Compétences maîtrisées, résistances et immunités inférées de la
+        # race/description si non déjà renseignées.
+        if not self.skills_edit.get_values() and traits.skills:
+            self.skills_edit.set_values(traits.skills)
+            filled.append("Compétences")
+
+        if not self.resistances_edit.get_values() and traits.resistances:
+            self.resistances_edit.set_values(traits.resistances)
+            filled.append("Résistances")
+
+        if not self.immunities_edit.get_values() and traits.immunities:
+            self.immunities_edit.set_values(traits.immunities)
+            filled.append("Immunités")
 
         current_scores = monster.ability_scores
         is_default = all(v == 10 for v in [
