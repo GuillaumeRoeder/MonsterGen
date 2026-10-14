@@ -1,6 +1,8 @@
 #!/bin/bash
 # MonsterGen - Script de lancement pour Linux/macOS
-# Ce script crée un environnement virtuel Python et lance l'application
+# Ce script crée un environnement virtuel Python et lance l'application.
+# Au démarrage, il propose : mode API (direct) ou tentative d'installation
+# du modèle local (llama-cpp-python + téléchargement GGUF).
 
 # Vérifier si Python est installé
 if ! command -v python3 &> /dev/null; then
@@ -39,7 +41,50 @@ if [ "$OSTYPE" = "linux-gnu" ] || [ "$OSTYPE" = "linux-musl" ]; then
     fi
 fi
 
+# Choix du mode IA
+echo ""
+echo "======================================"
+echo "   MonsterGen - Mode de lancement"
+echo "======================================"
+echo "  1) Mode API (lancement direct)"
+echo "     -> nécessite une clé API (Fichier > Configuration)"
+echo "  2) Mode local (tentative d'installation du modèle)"
+echo "     -> installe llama-cpp-python puis télécharge le modèle GGUF"
+echo ""
+read -rp "Votre choix [1/2] (défaut : 1) : " choice
+
+case "$choice" in
+    2)
+        echo "Tentative d'installation du modèle local..."
+        if python -c "import llama_cpp" 2>/dev/null; then
+            echo "llama-cpp-python est déjà installé."
+        else
+            pip install llama-cpp-python || {
+                echo ""
+                echo "Échec de l'installation de llama-cpp-python."
+                echo "Retour en mode API."
+                python - <<'PYEOF'
+from config.config_manager import config_manager
+config_manager.set_ai_mode("api")
+PYEOF
+            }
+        fi
+        if python -c "import llama_cpp" 2>/dev/null; then
+            echo "Vérification/téléchargement du modèle GGUF..."
+            python download_model.py
+        fi
+        ;;
+    *)
+        echo "Lancement en mode API..."
+        python - <<'PYEOF'
+from config.config_manager import config_manager
+config_manager.set_ai_mode("api")
+PYEOF
+        ;;
+esac
+
 # Lancer l'application
+echo ""
 echo "Lancement de MonsterGen..."
 python main.py
 
