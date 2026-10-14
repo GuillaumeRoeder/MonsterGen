@@ -310,6 +310,7 @@ def build_balanced_monster(cr: float, base: Optional[Monster] = None,
 
     scores, archetype = build_ability_scores(cr, rng, archetype=traits.archetype)
     monster.ability_scores = scores
+    monster.proficiency_bonus = proficiency_bonus(cr)
     con_mod = scores.get_modifier("constitution")
     dex_mod = scores.get_modifier("dexterity")
 
