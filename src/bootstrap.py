@@ -1,10 +1,10 @@
 """
 Vérification et installation automatique des dépendances de MonsterGen.
 
-Appelé au tout début de main.py : installe tout ce qui manque via pip
-(en utilisant l'interpréteur courant), sans que l'utilisateur ait à lancer
-de commandes manuellement. llama-cpp-python est d'abord installé depuis
-l'index de wheels précompilés pour éviter d'avoir besoin d'un compilateur C.
+Appelé au démarrage : installe ce qui manque via pip. Rien n'est bloquant
+pour le démarrage de l'UI — si llama-cpp-python ne peut pas être installé
+(compilation C impossible), l'application démarre quand même et bascule
+en mode API. Seul PySide6 est indispensable.
 """
 
 import importlib.util
@@ -26,6 +26,10 @@ DEPENDENCIES: List[Tuple[str, str]] = [
 LLAMA_CPP_MODULE = "llama_cpp"
 LLAMA_CPP_SPEC = "llama-cpp-python>=0.2.60"
 LLAMA_CPP_WHEEL_INDEX = "https://abetlen.github.io/llama-cpp-python/whl/stable"
+
+
+class BootstrapError(RuntimeError):
+    """Une dépendance indispensable n'a pas pu être installée."""
 
 
 def _log(message: str):
@@ -74,26 +78,23 @@ def install_llama_cpp() -> bool:
 
 
 def ensure_dependencies() -> None:
-    """Vérifie et installe toutes les dépendances manquantes."""
-    missing = [(module, spec) for module, spec in DEPENDENCIES
-               if not _is_installed(module)]
-    for module, spec in missing:
+    """Installe les dépendances indispensables ; lève BootstrapError sinon."""
+    for module, spec in DEPENDENCIES:
+        if _is_installed(module):
+            continue
         _log(f"Installation de {spec}…")
         if not _pip_install(spec):
-            raise RuntimeError(
+            raise BootstrapError(
                 f"Impossible d'installer {spec} automatiquement.\n"
                 f"Lancez manuellement : {sys.executable} -m pip install {spec}"
             )
 
-    if not install_llama_cpp():
-        raise RuntimeError(
-            "Impossible d'installer llama-cpp-python automatiquement.\n"
-            "Solutions :\n"
-            f"  1. {sys.executable} -m pip install llama-cpp-python "
-            f"--extra-index-url {LLAMA_CPP_WHEEL_INDEX}\n"
-            f"  2. Ou lancez : {sys.executable} -m pip install llama-cpp-python "
-            "(nécessite un compilateur C : Visual Studio Build Tools sous Windows)"
-        )
 
-    if missing:
-        _log("Dépendances installées avec succès.")
+def ensure_optional_llama_cpp() -> bool:
+    """Tente d'installer llama-cpp-python ; ne bloque jamais le démarrage."""
+    return install_llama_cpp()
+
+
+def llama_cpp_available() -> bool:
+    """llama-cpp-python est-il importable ?"""
+    return _is_installed(LLAMA_CPP_MODULE)

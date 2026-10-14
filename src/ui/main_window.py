@@ -15,6 +15,7 @@ from PySide6.QtGui import QFont, QIcon
 
 from src.models.monster import Monster, Alignment, Size, AbilityScores, Action, Skill
 from src.ai.ai_generator import ai_generator
+from src.ai.api_client import api_client
 from src.ai.local_model import local_model, ModelNotAvailableError
 from src.rules.stat_builder import CR_ENTRIES, cr_display, parse_cr, cr_xp, build_balanced_monster
 from src.export.pdf_exporter import pdf_exporter
@@ -651,6 +652,23 @@ class MainWindow(QMainWindow):
             pass
         if local_model.is_available():
             return True
+
+        from src.bootstrap import llama_cpp_available
+        if not llama_cpp_available():
+            switch = QMessageBox.question(
+                self,
+                "Modèle local indisponible",
+                "llama-cpp-python n'est pas installé : le modèle local ne peut pas "
+                "fonctionner.\n\n"
+                "Basculer maintenant en mode API ?\n"
+                "(Vous pourrez renseigner la clé API dans Fichier > Configuration.)",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if switch == QMessageBox.StandardButton.Yes:
+                from config.config_manager import config_manager as cm
+                cm.set_ai_mode("api")
+                return api_client.is_configured()
+            return False
 
         info = local_model.get_model_info()
         retry = QMessageBox.question(
