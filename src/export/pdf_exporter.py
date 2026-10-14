@@ -2,14 +2,12 @@
 Module d'export PDF pour les fiches de PNJ/Monstre au format DnD 5e officiel.
 """
 
-import os
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle, StyleSheet1
-from reportlab.lib.units import inch, mm
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, StyleSheet1
+from reportlab.lib.units import mm
 from reportlab.lib import colors
 from reportlab.platypus import (
     SimpleDocTemplate,
@@ -17,12 +15,8 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
-    Frame,
-    PageTemplate,
-    Image,
-    PageBreak,
 )
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER
 
 from src.models.monster import Monster, Alignment, Size
 

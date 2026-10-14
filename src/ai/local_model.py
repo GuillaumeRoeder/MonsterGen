@@ -7,7 +7,6 @@ Le modèle est téléchargé une seule fois par le script download_model.py
 (ou automatiquement au premier lancement si huggingface_hub est disponible).
 """
 
-import os
 import threading
 from pathlib import Path
 from typing import Optional

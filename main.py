@@ -13,7 +13,6 @@ except BootstrapError as e:
     sys.exit(1)
 
 from PySide6.QtWidgets import QApplication, QMessageBox
-from PySide6.QtGui import QIcon
 
 from src.ui.main_window import MainWindow
 from src.ui.config_dialog import ConfigDialog
