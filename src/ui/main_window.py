@@ -627,8 +627,24 @@ class MainWindow(QMainWindow):
         if selected:
             self.actions_list.takeItem(self.actions_list.row(selected))
 
-    def _check_local_model(self) -> bool:
-        """Vérifie que le modèle local est disponible, sinon guide l'utilisateur."""
+    def _check_backend(self) -> bool:
+        """Vérifie le backend IA actif (local ou API), sinon guide l'utilisateur."""
+        from config.config_manager import config_manager
+        mode = config_manager.get_ai_mode()
+
+        if mode == "api":
+            from src.ai.api_client import api_client
+            if api_client.is_configured():
+                return True
+            QMessageBox.warning(
+                self,
+                "Configuration API incomplète",
+                "Le mode API est sélectionné mais la clé API est manquante.\n\n"
+                "Fichier > Configuration : renseignez la clé API,\n"
+                "ou repassez sur le modèle local."
+            )
+            return False
+
         try:
             local_model.reload_config()
         except AttributeError:
@@ -642,7 +658,9 @@ class MainWindow(QMainWindow):
             "Modèle local manquant",
             "Le modèle IA local n'est pas encore prêt.\n\n"
             f"Modèle sélectionné : {info['label']}\n\n"
-            "Voulez-vous le télécharger maintenant ?",
+            "Voulez-vous le télécharger maintenant ?\n\n"
+            "(Astuce : Fichier > Configuration permet aussi de basculer\n"
+            "sur une API distante avec clé API.)",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if retry != QMessageBox.StandardButton.Yes:
@@ -659,7 +677,7 @@ class MainWindow(QMainWindow):
 
     def _generate_ability_scores(self):
         """Génère les caractéristiques du monstre."""
-        if not self._check_local_model():
+        if not self._check_backend():
             return
 
         monster = self.get_monster_from_form()
@@ -682,7 +700,7 @@ class MainWindow(QMainWindow):
 
     def _generate_actions(self):
         """Génère des actions complètes pour le monstre."""
-        if not self._check_local_model():
+        if not self._check_backend():
             return
 
         monster = self.get_monster_from_form()
@@ -698,7 +716,7 @@ class MainWindow(QMainWindow):
 
     def _generate_scenario(self):
         """Génère un scénario rapide basé sur les stats actuelles du monstre."""
-        if not self._check_local_model():
+        if not self._check_backend():
             return
 
         monster = self.get_monster_from_form()
@@ -712,7 +730,7 @@ class MainWindow(QMainWindow):
 
     def generate_missing_fields(self):
         """Génère les champs manquants avec le modèle local."""
-        if not self._check_local_model():
+        if not self._check_backend():
             return
 
         monster = self.get_monster_from_form()

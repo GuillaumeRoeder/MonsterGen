@@ -12,10 +12,14 @@ class ConfigManager:
     """Gère la configuration de l'application."""
 
     DEFAULT_CONFIG = {
+        "ai_mode": "local",
         "local_model_size": "2gb",
         "local_model_path": "",
         "local_context": 4096,
         "local_threads": 4,
+        "api_key": "",
+        "api_endpoint": "https://api.mistral.ai/v1/chat/completions",
+        "api_model": "mistral-small-latest",
         "default_save_path": "./fiches",
         "language": "fr"
     }
@@ -44,6 +48,42 @@ class ConfigManager:
         except IOError as e:
             raise RuntimeError(f"Impossible de sauvegarder la configuration: {e}")
 
+    def get_ai_mode(self) -> str:
+        """Récupère le mode IA : 'local' (modèle embarqué) ou 'api' (API distante)."""
+        return self.config.get("ai_mode", "local")
+    
+    def set_ai_mode(self, mode: str) -> None:
+        """Définit le mode IA ('local' ou 'api')."""
+        self.config["ai_mode"] = mode
+        self.save_config()
+    
+    def get_api_key(self) -> str:
+        """Récupère la clé API distante."""
+        return self.config.get("api_key", "")
+    
+    def set_api_key(self, api_key: str) -> None:
+        """Définit la clé API distante."""
+        self.config["api_key"] = api_key
+        self.save_config()
+    
+    def get_api_endpoint(self) -> str:
+        """Récupère l'endpoint de l'API distante."""
+        return self.config.get("api_endpoint", "https://api.mistral.ai/v1/chat/completions")
+    
+    def set_api_endpoint(self, endpoint: str) -> None:
+        """Définit l'endpoint de l'API distante."""
+        self.config["api_endpoint"] = endpoint
+        self.save_config()
+    
+    def get_api_model(self) -> str:
+        """Récupère le nom du modèle API."""
+        return self.config.get("api_model", "mistral-small-latest")
+    
+    def set_api_model(self, model: str) -> None:
+        """Définit le nom du modèle API."""
+        self.config["api_model"] = model
+        self.save_config()
+    
     def get_local_model_size(self) -> str:
         """Récupère la taille du modèle local ('2gb' ou '4gb')."""
         return self.config.get("local_model_size", "2gb")

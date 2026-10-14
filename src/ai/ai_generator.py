@@ -12,8 +12,24 @@ import re
 from typing import List, Optional
 
 from src.models.monster import Monster, Action
-from src.ai.local_model import local_model, ModelNotAvailableError
+from src.ai.local_model import local_model
+from src.ai.api_client import api_client, APIConfigError
+from config.config_manager import config_manager
 from src.rules.stat_builder import cr_display, cr_xp
+
+SYSTEM_PROMPT = (
+    "Tu es un assistant de création de contenu pour Donjons & Dragons 5e. "
+    "Tu réponds en français, de façon concise, dans le format exact demandé."
+)
+
+
+def _backend_generate(prompt: str, max_tokens: int, temperature: float = 0.7) -> str:
+    """Route la génération vers le modèle local ou l'API selon la config."""
+    if config_manager.get_ai_mode() == "api":
+        return api_client.generate(prompt, max_tokens=max_tokens,
+                                   temperature=temperature, system_prompt=SYSTEM_PROMPT)
+    return local_model.generate(prompt, max_tokens=max_tokens,
+                                 temperature=temperature, system_prompt=SYSTEM_PROMPT)
 
 # Liste fixe des langues DnD 5e
 DND5_LANGUAGES = [
@@ -37,12 +53,6 @@ DND5_LANGUAGES = [
     "Ignan",
     "Terran",
 ]
-
-SYSTEM_PROMPT = (
-    "Tu es un assistant de création de contenu pour Donjons & Dragons 5e. "
-    "Tu réponds en français, de façon concise, dans le format exact demandé."
-)
-
 
 def monster_stats_summary(monster: Monster) -> str:
     """Résumé texte des stats actuelles du monstre, pour les prompts."""
@@ -104,7 +114,7 @@ class AIGenerator:
         )
 
         try:
-            raw = local_model.generate(prompt, max_tokens=200, system_prompt=SYSTEM_PROMPT)
+            raw = _backend_generate(prompt, max_tokens=200)
         except ModelNotAvailableError:
             raise
 
@@ -123,7 +133,7 @@ class AIGenerator:
             "Pas de texte en dehors du JSON."
         )
 
-        raw = local_model.generate(prompt, max_tokens=600, system_prompt=SYSTEM_PROMPT)
+        raw = _backend_generate(prompt, max_tokens=600)
         data = self._parse_json(raw)
 
         actions: List[Action] = []
@@ -157,8 +167,7 @@ class AIGenerator:
             "Réponds UNIQUEMENT avec le texte du scénario, sans titre ni préambule."
         )
 
-        raw = local_model.generate(prompt, max_tokens=350, temperature=0.8,
-                                   system_prompt=SYSTEM_PROMPT)
+        raw = _backend_generate(prompt, max_tokens=350, temperature=0.8)
         cleaned = raw.replace('```', '').strip()
         if not cleaned:
             raise RuntimeError("Le modèle n'a pas produit de scénario.")
