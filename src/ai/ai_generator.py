@@ -230,23 +230,32 @@ class AIGenerator:
             if not action.description:
                 action.description = "Description non fournie par le modèle."
 
-    def correct_description(self, monster: Monster) -> str:
-        """Corrige l'orthographe et le style de la description existante.
+    def correct_text(self, monster: Monster, field_name: str, text: str) -> str:
+        """Corrige l'orthographe et le style d'un champ textuel existant.
 
-        Le fond (contenu, concept du monstre) est conservé ; seule la forme
-        est améliorée. Retourne la description corrigée.
+        Le fond (contenu, concept) est conservé ; seule la forme est
+        améliorée. Retourne le texte corrigé, ou le texte original en cas
+        d'échec.
         """
+        labels = {
+            "name": "Nom du monstre",
+            "race": "Race",
+            "description": "Description",
+            "scenario": "Scénario de rencontre",
+        }
+        label = labels.get(field_name, field_name)
+
         prompt = (
             f"Fiche de PNJ/Monstre DnD 5e. {monster_stats_summary(monster)}\n"
-            f"Description actuelle :\n{monster.description}\n\n"
-            "Corrige l'orthographe, la grammaire et la ponctuation de cette "
-            "description. Garde exactement le même contenu, le même concept "
-            "et la même longueur approximative — ne rajoute pas d'inventaire "
-            "de stats, ne supprime rien.\n"
-            "Réponds UNIQUEMENT avec la description corrigée, sans préambule."
+            f"{label} actuel :\n{text}\n\n"
+            f"Corrige l'orthographe, la grammaire et la ponctuation de ce texte. "
+            "Garde exactement le même contenu, le même concept et la même "
+            "longueur approximative — ne rajoute rien, ne supprime rien, "
+            "conserve le formatage markdown (gras **) s'il est présent.\n"
+            "Réponds UNIQUEMENT avec le texte corrigé, sans préambule."
         )
 
-        raw = _backend_generate(prompt, max_tokens=400, temperature=0.3)
+        raw = _backend_generate(prompt, max_tokens=500, temperature=0.3)
         cleaned = raw.replace('```', '').strip()
         if not cleaned:
             raise RuntimeError("Le modèle n'a pas produit de correction.")

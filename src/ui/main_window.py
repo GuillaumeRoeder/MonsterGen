@@ -804,15 +804,28 @@ class MainWindow(QMainWindow):
         """
         monster = self.get_monster_from_form()
 
-        # --- Correction orthographique de la description existante ---
-        if monster.description and self._check_backend():
-            try:
-                corrected = ai_generator.correct_description(monster)
-                if corrected and corrected != monster.description:
-                    self.description_edit.setPlainText(corrected)
-                    monster.description = corrected
-            except Exception:
-                pass
+        # --- Passe de correction orthographique sur les champs remplis ---
+        if self._check_backend():
+            # (champ, texte actuel, application du corrigé)
+            correctable = [
+                ("name", monster.name or "",
+                 lambda v: self.name_edit.setText(v)),
+                ("race", monster.race or "",
+                 lambda v: self.race_edit.setText(v)),
+                ("description", monster.description or "",
+                 lambda v: self.description_edit.setPlainText(v)),
+                ("scenario", monster.scenario or "",
+                 lambda v: self.scenario_edit.setPlainText(v)),
+            ]
+            for field, current, apply_correction in correctable:
+                if not current:
+                    continue
+                try:
+                    corrected = ai_generator.correct_text(monster, field, current)
+                    if corrected and corrected != current:
+                        apply_correction(corrected)
+                except Exception:
+                    continue
 
         # --- Champs IA : uniquement s'il en manque, et backend disponible ---
         missing_fields = []
