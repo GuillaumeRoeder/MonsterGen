@@ -292,7 +292,8 @@ class PDFExporter:
         
         # Challenge Rating
         if monster.challenge_rating:
-            cr_text = f"{monster.challenge_rating:.1f} ({monster.challenge_rating * 200} PX)" if monster.challenge_rating else "—"
+            from src.rules.stat_builder import cr_display, cr_xp
+            cr_text = f"{cr_display(monster.challenge_rating)} ({cr_xp(monster.challenge_rating)} PX)" if monster.challenge_rating else "—"
             elements.append(Paragraph(f"<b>Dés de vie.</b> {monster.hit_dice or '—'}", self.styles["Value"]))
             elements.append(Paragraph(f"<b>Défis.</b> {cr_text}", self.styles["Value"]))
         
@@ -325,16 +326,9 @@ class PDFExporter:
                 # Nom de l'action
                 elements.append(Paragraph(f"• {action.name}", self.styles["Value"]))
                 
-                # Description
+                # Description (contient déjà bonus, dégâts, DD)
                 if action.description:
                     elements.append(Paragraph(action.description, self.styles["SmallValue"]))
-                
-                # Bonus d'attaque et dégâts
-                if action.attack_bonus is not None:
-                    attack_info = f"Attaque : +{action.attack_bonus}"
-                    if action.damage:
-                        attack_info += f", Dégâts : {action.damage} {action.damage_type or ''}"
-                    elements.append(Paragraph(attack_info, self.styles["SmallValue"]))
                 
                 elements.append(Spacer(1, 2))
             
@@ -362,6 +356,17 @@ class PDFExporter:
                 elements.append(Paragraph(monster.notes, self.styles["SmallValue"]))
             
             elements.append(Spacer(1, 4))
+        
+        return elements
+    
+    def _create_scenario_section(self, monster: Monster) -> list:
+        """Crée la section du scénario de rencontre."""
+        elements = []
+        
+        if monster.scenario:
+            elements.append(Paragraph("Scénario de rencontre", self.styles["Section"]))
+            elements.append(Paragraph(monster.scenario, self.styles["Value"]))
+            elements.append(Spacer(1, 6))
         
         return elements
     
@@ -407,6 +412,9 @@ class PDFExporter:
         
         # Description
         elements.extend(self._create_description_section(monster))
+        
+        # Scénario
+        elements.extend(self._create_scenario_section(monster))
         
         # Actions
         elements.extend(self._create_actions_section(monster))

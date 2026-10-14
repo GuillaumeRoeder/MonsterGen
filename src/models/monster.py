@@ -113,6 +113,7 @@ class Monster:
     # Autres
     treasure: Optional[str] = None
     notes: str = ""
+    scenario: str = ""
     
     def to_dict(self) -> Dict:
         """Convertit le monstre en dictionnaire."""
@@ -165,6 +166,7 @@ class Monster:
             ],
             "treasure": self.treasure,
             "notes": self.notes,
+            "scenario": self.scenario,
         }
     
     @classmethod
@@ -259,4 +261,5 @@ class Monster:
             reactions=reactions,
             treasure=data.get("treasure"),
             notes=data.get("notes", ""),
+            scenario=data.get("scenario", ""),
         )

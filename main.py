@@ -3,7 +3,16 @@ Point d'entrée principal de l'application MonsterGen.
 """
 
 import sys
-from PySide6.QtWidgets import QApplication
+
+from src.bootstrap import BootstrapError, ensure_dependencies, ensure_optional_llama_cpp, llama_cpp_available
+
+try:
+    ensure_dependencies()
+except BootstrapError as e:
+    print(f"[MonsterGen] {e}", flush=True)
+    sys.exit(1)
+
+from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtGui import QIcon
 
 from src.ui.main_window import MainWindow
@@ -30,6 +39,21 @@ def main():
     
     # Afficher la fenêtre
     main_window.show()
+    
+    # llama-cpp-python est optionnel : en cas d'échec d'installation, on
+    # prévient l'utilisateur et on bascule la config en mode API.
+    if config_manager.get_ai_mode() == "local" and not llama_cpp_available():
+        ok = ensure_optional_llama_cpp()
+        if not ok:
+            config_manager.set_ai_mode("api")
+            QMessageBox.warning(
+                main_window,
+                "Modèle local indisponible",
+                "llama-cpp-python n'a pas pu être installé automatiquement.\n\n"
+                "L'application passe en mode API par défaut.\n"
+                "Renseignez votre clé API dans Fichier > Configuration, ou installez "
+                "llama-cpp-python manuellement pour revenir au modèle local."
+            )
     
     # Exécuter l'application
     sys.exit(app.exec())
@@ -266,6 +290,11 @@ def create_menus(window: MainWindow):
     # Menu Fichier
     file_menu = window.menuBar().addMenu("Fichier")
     
+    # Menu Bibliothèque (sauvegarder/charger/supprimer des monstres)
+    library_menu = window.menuBar().addMenu("Bibliothèque")
+    library_action = library_menu.addAction("Gérer les monstres sauvegardés")
+    library_action.triggered.connect(lambda: window.open_library())
+    
     # Menu Configuration
     config_action = file_menu.addAction("Configuration")
     config_action.triggered.connect(lambda: show_config_dialog(window))
@@ -284,6 +313,7 @@ def show_config_dialog(parent: MainWindow):
     """Affiche la boîte de dialogue de configuration."""
     dialog = ConfigDialog(parent)
     dialog.exec()
+    parent.update_backend_status()
 
 
 def show_about_dialog(parent: MainWindow):
