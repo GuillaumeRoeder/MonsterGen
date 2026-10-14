@@ -8,6 +8,7 @@ d'après les tables officielles du Guide du Maître (aucune IA requise).
 """
 
 import json
+import random
 import re
 from typing import List, Optional
 
@@ -133,7 +134,7 @@ class AIGenerator:
             "Pas de texte en dehors du JSON."
         )
 
-        raw = _backend_generate(prompt, max_tokens=600)
+        raw = _backend_generate(prompt, max_tokens=700)
         data = self._parse_json(raw)
 
         actions: List[Action] = []
@@ -152,7 +153,61 @@ class AIGenerator:
 
         if not actions:
             raise RuntimeError("Le modèle n'a pas produit d'actions exploitables.")
+
+        self._complete_action_stats(actions, monster)
         return actions
+
+    def _complete_action_stats(self, actions: List[Action], monster: Monster) -> None:
+        """Complète les actions IA avec les valeurs des tables DMG.
+
+        Pour chaque attaque sans bonus d'attaque ni dégâts, ajoute le bonus
+        et les dégâts équilibrés pour le CR du monstre ; pour une action à
+        jet de sauvegarde (mentionne un DD), ajoute le DD officiel si
+        manquant. La description est enrichie avec ces valeurs.
+        """
+        cr = monster.challenge_rating
+        if cr is None:
+            return
+
+        from src.rules.stat_builder import DMG_TABLE, _cr_key
+        _, _, _, _, _, dmg_min, dmg_max, save_dc = DMG_TABLE[_cr_key(cr)]
+
+        import re
+        for action in actions:
+            text = f"{action.name} {action.description}".lower()
+            # Action à jet de sauvegarde : mentionne un DD/sauvegarde/recharge,
+            # ou ressemble à un effet (souffle, hurlement, regard, gaz...).
+            is_save = bool(re.search(
+                r"\bdd\b|sauvegarde|recharge|souffle|hurlement|regard|gaz|"
+                r"aura|nuage|explosion|cri|siphon",
+                text,
+            ))
+            is_attack = (
+                action.attack_bonus is not None
+                or action.damage is not None
+                or "au toucher" in text
+            )
+
+            desc = action.description
+
+            if is_save and not is_attack:
+                if "sauvegarde" not in text:
+                    prefix = f"Jet de sauvegarde DD {save_dc}."
+                elif f"dd {save_dc}" not in text and "dd" in text:
+                    prefix = f"DD {save_dc}."
+                else:
+                    prefix = None
+                if prefix:
+                    action.description = f"{prefix} {desc}" if desc else prefix
+            elif not is_attack:
+                target = random.randint(dmg_min, max(dmg_min, dmg_max))
+                action.attack_bonus = DMG_TABLE[_cr_key(cr)][4]
+                action.damage = f"{max(1, target // 8)}d8 + {max(0, target % 8)}" if target % 8 else f"{max(1, target // 8)}d8"
+                line = f"+{action.attack_bonus} au toucher, {action.damage} dégâts"
+                action.description = f"{desc} {line}." if desc else f"Attaque : {line}."
+
+            if not action.description:
+                action.description = "Description non fournie par le modèle."
 
     def generate_scenario(self, monster: Monster,
                          party_size: Optional[int] = None,

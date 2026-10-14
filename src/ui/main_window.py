@@ -835,7 +835,9 @@ class MainWindow(QMainWindow):
         import random
         rng = random.Random()
 
-        scores, _ = build_ability_scores(cr, rng)
+        from src.rules.trait_inference import infer_traits
+        traits = infer_traits(monster.race, monster.description)
+        scores, _ = build_ability_scores(cr, rng, archetype=traits.archetype)
         con_mod = scores.get_modifier("constitution")
         dex_mod = scores.get_modifier("dexterity")
 
@@ -875,7 +877,7 @@ class MainWindow(QMainWindow):
             filled.append("Caractéristiques")
 
         if self.actions_list.count() == 0:
-            for action in build_actions(cr, scores, rng):
+            for action in build_actions(cr, scores, rng, traits=traits):
                 self.add_action_to_list(self.actions_list, action)
             filled.append("Actions")
 
