@@ -459,17 +459,7 @@ class MainWindow(QMainWindow):
         if monster.actions:
             self._add_section_title("Actions :")
             for action in monster.actions:
-                stats = []
-                if action.attack_bonus is not None:
-                    stats.append(f"+{action.attack_bonus} au toucher")
-                if action.damage:
-                    stats.append(f"{action.damage} {action.damage_type or ''}".strip())
-                import re as _re
-                dd_match = _re.search(r"DD\s*(\d+)", action.description or "")
-                if dd_match:
-                    stats.append(f"DD {dd_match.group(1)}")
-                stats_str = f" [{'; '.join(stats)}]" if stats else ""
-                self._add_preview_label(f"• {action.name}{stats_str}")
+                self._add_preview_label(f"• {action.name}", word_wrap=True)
                 if action.description:
                     self._add_preview_label(f"  {action.description}", word_wrap=True)
 

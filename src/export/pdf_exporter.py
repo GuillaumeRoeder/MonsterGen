@@ -326,16 +326,9 @@ class PDFExporter:
                 # Nom de l'action
                 elements.append(Paragraph(f"• {action.name}", self.styles["Value"]))
                 
-                # Description
+                # Description (contient déjà bonus, dégâts, DD)
                 if action.description:
                     elements.append(Paragraph(action.description, self.styles["SmallValue"]))
-                
-                # Bonus d'attaque et dégâts
-                if action.attack_bonus is not None:
-                    attack_info = f"Attaque : +{action.attack_bonus}"
-                    if action.damage:
-                        attack_info += f", Dégâts : {action.damage} {action.damage_type or ''}"
-                    elements.append(Paragraph(attack_info, self.styles["SmallValue"]))
                 
                 elements.append(Spacer(1, 2))
             
