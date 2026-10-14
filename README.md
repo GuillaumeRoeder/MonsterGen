@@ -59,6 +59,13 @@ MonsterGen est une application Python qui permet de générer des fiches PDF pou
 
 ### Installation des dépendances
 
+Rien à faire manuellement : au premier lancement (`python main.py` ou
+`python download_model.py`), l'application vérifie et installe
+automatiquement toutes les dépendances manquantes, y compris
+`llama-cpp-python` (wheel précompilé priorisé, pas besoin de compilateur C).
+
+Installation manuelle si vous préférez :
+
 ```bash
 pip install -r requirements.txt
 ```

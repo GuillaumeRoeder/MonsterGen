@@ -3,6 +3,11 @@ Point d'entrée principal de l'application MonsterGen.
 """
 
 import sys
+
+from src.bootstrap import ensure_dependencies
+
+ensure_dependencies()
+
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon
 
