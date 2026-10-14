@@ -154,20 +154,47 @@ class AIGenerator:
             raise RuntimeError("Le modèle n'a pas produit d'actions exploitables.")
         return actions
 
-    def generate_scenario(self, monster: Monster) -> str:
-        """Génère un scénario de rencontre rapide basé sur les stats actuelles."""
+    def generate_scenario(self, monster: Monster,
+                         party_size: Optional[int] = None,
+                         avg_level: Optional[int] = None,
+                         difficulty: Optional[str] = None) -> str:
+        """Génère un scénario de rencontre de combat basé sur les stats actuelles.
+
+        Le scénario décrit la rencontre ET la manière de jouer le monstre :
+        tactique d'ouverture, ciblage, utilisation des actions, réactions aux
+        dégâts et conditions de repli ou de mort.
+        """
+        party_line = ""
+        if party_size and avg_level:
+            party_line = f" Groupe adversaire : {party_size} joueurs de niveau moyen {avg_level}"
+            if difficulty:
+                party_line += f" (difficulté visée : {difficulty})."
+
+        actions_detail = "; ".join(
+            f"{a.name} ({a.description})" if a.description else a.name
+            for a in monster.actions
+        ) if monster.actions else "aucune action connue"
+
         prompt = (
             f"Fiche de PNJ/Monstre DnD 5e. {monster_stats_summary(monster)}\n"
-            "Actions connues : "
-            + ("; ".join(a.name for a in monster.actions) if monster.actions else "aucune")
-            + ".\n"
-            "Écris un scénario de rencontre rapide (4 à 6 phrases) pour un groupe "
-            "d'aventuriers affrontant cette créature : contexte, environnement, "
-            "déroulement suggéré et récompense possible. "
-            "Réponds UNIQUEMENT avec le texte du scénario, sans titre ni préambule."
+            f"Actions du monstre : {actions_detail}\n"
+            f"{party_line}\n"
+            "Écris, en français, un scénario de RENCONTRE DE COMBAT pour le MJ, "
+            "structuré ainsi, avec ces titres exacts en gras :\n"
+            "**Contexte** : 1 à 2 phrases (lieu, circonstances, pourquoi le combat éclate).\n"
+            "**Déroulement** : 1 à 2 phrases (déclencheur, disposition initiale des forces en présence).\n"
+            "**Tactique du monstre** : 3 à 5 phrases détaillant comment jouer le monstre : "
+            "comment il ouvre le combat et avec quelle action, qui il cible en priorité "
+            "(soigneurs, lanceurs de sorts, personnages fragiles...) et pourquoi, "
+            "comment il réagit quand il perd la moitié de ses PV, quand il utilise son "
+            "action spéciale ou sa recharge, et dans quelle condition il fuit, se rend "
+            "ou se bat jusqu'à la mort.\n"
+            "**Récompense** : 1 phrase (butin, information ou objet récupéré après le combat).\n"
+            "N'invente pas de stats nouvelles : appuie-toi uniquement sur la fiche ci-dessus. "
+            "Réponds UNIQUEMENT avec le texte du scénario, sans préambule ni conclusion."
         )
 
-        raw = _backend_generate(prompt, max_tokens=350, temperature=0.8)
+        raw = _backend_generate(prompt, max_tokens=600, temperature=0.8)
         cleaned = raw.replace('```', '').strip()
         if not cleaned:
             raise RuntimeError("Le modèle n'a pas produit de scénario.")

@@ -9,6 +9,7 @@ from fractions import Fraction
 from typing import Dict, List, Optional, Tuple
 
 from src.models.monster import Monster, AbilityScores, Action, Size
+from src.rules.trait_inference import InferredTraits, infer_traits
 
 # Panel hardcodé des CR disponibles (affichés en fraction).
 CR_ENTRIES: List[Tuple[Fraction, str]] = [
@@ -146,7 +147,11 @@ def build_ability_scores(cr: float, rng: random.Random,
     """Génère 6 caractéristiques équilibrées pour le CR donné."""
     prof, _, _, _, atk_bonus, _, _, _ = DMG_TABLE[_cr_key(cr)]
 
-    name, priorities = rng.choice(ARCHETYPES if archetype is None else ARCHETYPES)
+    valid = [a for a in ARCHETYPES if a[0] == archetype]
+    if archetype is not None and valid:
+        name, priorities = valid[0]
+    else:
+        name, priorities = rng.choice(ARCHETYPES)
 
     # Le bonus d'attaque cible = mod de caractéristique + maîtrise.
     # La stat principale découle donc directement du tableau DMG.
@@ -200,15 +205,24 @@ def build_armor_class(cr: float, dex_mod: int, rng: random.Random) -> int:
     return 10 + dex_mod + armor_bonus
 
 
-def build_actions(cr: float, scores: AbilityScores, rng: random.Random) -> List[Action]:
-    """Génère 2-3 actions de mélée/attaque équilibrées pour le CR."""
+def build_actions(cr: float, scores: AbilityScores, rng: random.Random,
+                  traits: Optional[InferredTraits] = None) -> List[Action]:
+    """Génère 2-3 actions de mélée/attaque équilibrées pour le CR.
+
+    Si des traits inférés (race/description) sont fournis, les armes
+    détectées sont utilisées à la place du tirage aléatoire.
+    """
     prof, _, _, _, atk_bonus, dmg_min, dmg_max, save_dc = DMG_TABLE[_cr_key(cr)]
 
     num_attacks = 3 if cr >= 10 else (2 if cr >= 5 else 1)
     actions: List[Action] = []
 
+    weapon_pool = list(traits.weapons) if traits and traits.weapons else []
     for i in range(min(num_attacks, len(WEAPONS))):
-        weapon_name, damage_type, base_die = rng.choice(WEAPONS)
+        if weapon_pool:
+            weapon_name, damage_type, base_die = weapon_pool.pop(0)
+        else:
+            weapon_name, damage_type, base_die = rng.choice(WEAPONS)
         target_damage = rng.randint(dmg_min, max(dmg_min, dmg_max))
 
         num_dice = max(1, target_damage // (base_die + 1))
@@ -226,11 +240,17 @@ def build_actions(cr: float, scores: AbilityScores, rng: random.Random) -> List[
 
     # Une action spéciale avec jet de sauvegarde pour les CR >= 2.
     if cr >= 2:
+        special_name = "Souffle affaiblissant"
+        if traits and traits.special_name:
+            special_name = traits.special_name
+        special_damage = "nécrotique"
+        if traits and traits.special_damage_type:
+            special_damage = traits.special_damage_type
         actions.append(Action(
-            name="Souffle affaiblissant (Recharge 5-6)",
+            name=f"{special_name} (Recharge 5-6)",
             description=f"Chaque créature dans un cône de 4,50 m doit réussir un "
                         f"jet de sauvegarde de DD {save_dc} ou subir {max(2, dmg_min // 2)}d6 "
-                        f"dégâts et être neutralisée jusqu'à la fin de son prochain tour.",
+                        f"dégâts {special_damage} et être neutralisée jusqu'à la fin de son prochain tour.",
         ))
 
     return actions
@@ -250,7 +270,10 @@ def build_balanced_monster(cr: float, base: Optional[Monster] = None,
 
     monster.challenge_rating = cr
 
-    scores, archetype = build_ability_scores(cr, rng)
+    # Traits inférés de la race et de la description pour des stats crédibles.
+    traits = infer_traits(monster.race, monster.description)
+
+    scores, archetype = build_ability_scores(cr, rng, archetype=traits.archetype)
     monster.ability_scores = scores
     con_mod = scores.get_modifier("constitution")
     dex_mod = scores.get_modifier("dexterity")
@@ -259,12 +282,12 @@ def build_balanced_monster(cr: float, base: Optional[Monster] = None,
     monster.hit_points, monster.hit_dice = build_hit_points(cr, con_mod, monster.size, rng)
 
     if not monster.speed:
-        monster.speed = "9 m (6 cases)"
+        monster.speed = traits.speed or "9 m (6 cases)"
 
     if not monster.passive_perception:
         monster.passive_perception = 10 + scores.get_modifier("wisdom")
 
-    monster.actions = build_actions(cr, scores, rng)
+    monster.actions = build_actions(cr, scores, rng, traits=traits)
     return monster
 
 

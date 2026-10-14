@@ -757,7 +757,12 @@ class MainWindow(QMainWindow):
         monster = self.get_monster_from_form()
 
         try:
-            scenario = ai_generator.generate_scenario(monster)
+            scenario = ai_generator.generate_scenario(
+                monster,
+                party_size=self.party_size_spin.value(),
+                avg_level=self.party_level_spin.value(),
+                difficulty=self.difficulty_combo.currentText(),
+            )
             self.scenario_edit.setPlainText(scenario)
             self.update_preview()
         except Exception as e:
