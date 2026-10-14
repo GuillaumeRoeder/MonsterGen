@@ -820,8 +820,6 @@ class MainWindow(QMainWindow):
         if self._check_backend():
             # (champ, texte actuel, application du corrigé)
             correctable = [
-                ("name", monster.name or "",
-                 lambda v: self.name_edit.setText(v)),
                 ("race", monster.race or "",
                  lambda v: self.race_edit.setText(v)),
                 ("description", monster.description or "",
@@ -953,7 +951,9 @@ class MainWindow(QMainWindow):
         for field_name, options in all_options.items():
             field_layout = QHBoxLayout()
 
-            label = QLabel(f"{field_name} :")
+            label = QLabel({
+                "name": "Nom", "race": "Race", "description": "Description",
+            }.get(field_name, field_name) + " :")
             field_layout.addWidget(label)
 
             combo = QComboBox()

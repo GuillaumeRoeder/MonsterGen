@@ -97,7 +97,7 @@ class AIGenerator:
             return DND5_LANGUAGES
 
         prompts = {
-            "name": "Propose 3 noms de fantaisie adaptés, séparés par des points-virgules.",
+            "name": "Propose 3 noms de fantaisie adaptés, un seul nom par proposition, sans guillemets ni numérotation, séparés par des points-virgules.",
             "race": "Propose 3 races DnD 5e (ex: Gobelin, Orc, Elfe Noir, Tiefling), séparées par des points-virgules.",
             "description": (
                 "Propose 3 descriptions courtes (1 phrase chacune) pour cette créature, "
@@ -259,7 +259,20 @@ class AIGenerator:
         cleaned = raw.replace('```', '').strip()
         if not cleaned:
             raise RuntimeError("Le modèle n'a pas produit de correction.")
-        return cleaned
+        return _sanitize_short_text(cleaned)
+
+    @staticmethod
+    def _sanitize_short_text(text: str) -> str:
+        """Nettoie une reponse IA courte (nom, race) : guillemets englobants,
+        prefixes du type "Nom corrige : ..." et lignes parasites."""
+        text = text.strip()
+        first_line = text.splitlines()[0].strip() if text else ""
+        text = first_line.strip("\u00ab\u00bb\u201c\u201d\u2018\u2019\"' ")
+        m = re.match(r"^\s*(?:le\s+|la\s+)?(?:nom|race|description|texte)\s*(?:corrig\u00e9e?|corrigee?|final|finale)?\s*:\s*(.+)$",
+                     text, flags=re.IGNORECASE)
+        if m:
+            text = m.group(1).strip("\u00ab\u00bb\u201c\u201d\u2018\u2019\"' ")
+        return text
 
     def generate_scenario(self, monster: Monster,
                          party_size: Optional[int] = None,
