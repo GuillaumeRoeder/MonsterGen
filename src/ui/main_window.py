@@ -766,6 +766,16 @@ class MainWindow(QMainWindow):
         """
         monster = self.get_monster_from_form()
 
+        # --- Correction orthographique de la description existante ---
+        if monster.description and self._check_backend():
+            try:
+                corrected = ai_generator.correct_description(monster)
+                if corrected and corrected != monster.description:
+                    self.description_edit.setPlainText(corrected)
+                    monster.description = corrected
+            except Exception:
+                pass
+
         # --- Champs IA : uniquement s'il en manque, et backend disponible ---
         missing_fields = []
         if not monster.name:
@@ -863,10 +873,12 @@ class MainWindow(QMainWindow):
             self.cha_spin.setValue(scores.charisma)
             filled.append("Caractéristiques")
 
-        if not self.get_action_widgets():
-            for action in build_actions(cr, scores, rng, traits=traits):
-                self.add_action_to_list(action)
-            filled.append("Actions")
+        # Les actions sont toujours régénérées pour s'accorder avec la
+        # race, la description et le CR actuels — même si déjà remplies.
+        self.clear_actions()
+        for action in build_actions(cr, scores, rng, traits=traits):
+            self.add_action_to_list(action)
+        filled.append("Actions")
 
         if filled:
             self.statusBar().showMessage(

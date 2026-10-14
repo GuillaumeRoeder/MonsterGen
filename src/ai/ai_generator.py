@@ -128,6 +128,13 @@ class AIGenerator:
             f"Fiche de PNJ/Monstre DnD 5e. {monster_stats_summary(monster)}\n"
             "Génère 3 actions de combat cohérentes avec ces statistiques "
             "(bonus d'attaque et dégâts équilibrés pour ce CR).\n"
+            "OBLIGATOIRE : la description de chaque action doit contenir les "
+            "chiffres du jeu — pour une attaque, écris par exemple : 'Attaque "
+            "d'arme au corps à corps : +6 au toucher, 2d8+4 (11) dégâts "
+            "tranchants, portée 1,50 m.' ; pour un effet à jet de sauvegarde, "
+            "écris le DD : 'DD 13 des jets de sauvegarde de Constitution'. "
+            "Aucune action sans bonus au toucher et dégâts, ni sans DD si c'est "
+            "un effet de sauvegarde.\n"
             'Réponds UNIQUEMENT en JSON valide, format strict :\n'
             '{"actions": [{"name": "...", "description": "...", '
             '"attack_bonus": 0, "damage": "...", "damage_type": "..."}]}\n'
@@ -172,7 +179,6 @@ class AIGenerator:
         from src.rules.stat_builder import DMG_TABLE, _cr_key
         _, _, _, _, _, dmg_min, dmg_max, save_dc = DMG_TABLE[_cr_key(cr)]
 
-        import re
         for action in actions:
             text = f"{action.name} {action.description}".lower()
             # Action à jet de sauvegarde : mentionne un DD/sauvegarde/recharge,
@@ -191,23 +197,60 @@ class AIGenerator:
             desc = action.description
 
             if is_save and not is_attack:
-                if "sauvegarde" not in text:
+                has_dc = bool(re.search(r"dd\s*\d+", text))
+                if not has_dc:
                     prefix = f"Jet de sauvegarde DD {save_dc}."
-                elif f"dd {save_dc}" not in text and "dd" in text:
-                    prefix = f"DD {save_dc}."
-                else:
-                    prefix = None
-                if prefix:
                     action.description = f"{prefix} {desc}" if desc else prefix
+                elif f"dd {save_dc}" not in text:
+                    # Un DD est cité mais différent de la valeur équilibrée :
+                    # on remplace par le DD officiel du CR.
+                    action.description = re.sub(
+                        r"dd\s*\d+", f"DD {save_dc}", action.description, flags=re.IGNORECASE
+                    )
             elif not is_attack:
                 target = random.randint(dmg_min, max(dmg_min, dmg_max))
                 action.attack_bonus = DMG_TABLE[_cr_key(cr)][4]
                 action.damage = f"{max(1, target // 8)}d8 + {max(0, target % 8)}" if target % 8 else f"{max(1, target // 8)}d8"
                 line = f"+{action.attack_bonus} au toucher, {action.damage} dégâts"
                 action.description = f"{desc} {line}." if desc else f"Attaque : {line}."
+            else:
+                # Attaque déjà décrite : garantir la présence des dégâts
+                if "au toucher" in text and "dégât" not in text:
+                    target = random.randint(dmg_min, max(dmg_min, dmg_max))
+                    action.damage = f"{max(1, target // 8)}d8 + {max(0, target % 8)}" if target % 8 else f"{max(1, target // 8)}d8"
+                    suffix = f" Dégâts : {action.damage}."
+                    action.description = f"{action.description.rstrip('.')} {suffix.strip()}"
+                # Garantir le DD pour un effet de sauvegarde déjà décrit
+                if "sauvegarde" in text and not re.search(r"dd\s*\d+", text):
+                    action.description = (
+                        f"{action.description.rstrip('.')} "
+                        f"(Jet de sauvegarde DD {save_dc})."
+                    )
 
             if not action.description:
                 action.description = "Description non fournie par le modèle."
+
+    def correct_description(self, monster: Monster) -> str:
+        """Corrige l'orthographe et le style de la description existante.
+
+        Le fond (contenu, concept du monstre) est conservé ; seule la forme
+        est améliorée. Retourne la description corrigée.
+        """
+        prompt = (
+            f"Fiche de PNJ/Monstre DnD 5e. {monster_stats_summary(monster)}\n"
+            f"Description actuelle :\n{monster.description}\n\n"
+            "Corrige l'orthographe, la grammaire et la ponctuation de cette "
+            "description. Garde exactement le même contenu, le même concept "
+            "et la même longueur approximative — ne rajoute pas d'inventaire "
+            "de stats, ne supprime rien.\n"
+            "Réponds UNIQUEMENT avec la description corrigée, sans préambule."
+        )
+
+        raw = _backend_generate(prompt, max_tokens=400, temperature=0.3)
+        cleaned = raw.replace('```', '').strip()
+        if not cleaned:
+            raise RuntimeError("Le modèle n'a pas produit de correction.")
+        return cleaned
 
     def generate_scenario(self, monster: Monster,
                          party_size: Optional[int] = None,
