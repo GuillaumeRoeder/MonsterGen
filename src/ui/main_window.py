@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QGroupBox, QFormLayout, QMessageBox, QFileDialog, QTabWidget,
     QScrollArea, QListWidget, QListWidgetItem, QInputDialog
 )
-from PySide6.QtCore import Qt, Signal, QObject
+from PySide6.QtCore import Qt, Signal, QObject, QTimer
 from PySide6.QtGui import QFont, QIcon
 
 from src.models.monster import Monster, Alignment, Size, AbilityScores, Action, Skill
@@ -49,6 +49,10 @@ class MainWindow(QMainWindow):
 
         self.monster = Monster()
         self.signal_emitter = SignalEmitter()
+        self._preview_timer = QTimer(self)
+        self._preview_timer.setSingleShot(True)
+        self._preview_timer.setInterval(250)
+        self._preview_timer.timeout.connect(self.update_preview)
         self.setup_ui()
         self.setup_connections()
 
@@ -305,10 +309,6 @@ class MainWindow(QMainWindow):
         self.add_action_btn.setIcon(QIcon.fromTheme("list-add"))
         actions_control_layout.addWidget(self.add_action_btn)
 
-        self.remove_action_btn = QPushButton("Supprimer l'action")
-        self.remove_action_btn.setIcon(QIcon.fromTheme("list-remove"))
-        actions_control_layout.addWidget(self.remove_action_btn)
-
         layout.addLayout(actions_control_layout)
 
         layout.addWidget(QLabel("Équipement/Armements :"))
@@ -357,7 +357,6 @@ class MainWindow(QMainWindow):
         self.load_btn.clicked.connect(self.load_monster)
 
         self.add_action_btn.clicked.connect(self.add_action)
-        self.remove_action_btn.clicked.connect(self.remove_action)
 
         self.signal_emitter.show_options.connect(self.show_options_dialog)
         self.signal_emitter.generation_complete.connect(self.on_generation_complete)
@@ -603,7 +602,13 @@ class MainWindow(QMainWindow):
         """Ajoute un widget d'action éditable à la liste."""
         widget = ActionEditorWidget(action)
         widget.changed.connect(self.on_action_changed)
+        widget.removeRequested.connect(self._on_remove_action)
         self.actions_layout.insertWidget(self.actions_layout.count() - 1, widget)
+
+    def _on_remove_action(self, widget: ActionEditorWidget):
+        """Supprime l'action dont la croix a été cliquée."""
+        self.remove_action_widget(widget)
+        self._schedule_preview()
 
     def remove_action_widget(self, widget: ActionEditorWidget):
         """Retire un widget d'action de la liste."""
@@ -620,8 +625,12 @@ class MainWindow(QMainWindow):
         ]
 
     def on_action_changed(self):
-        """Une action a été modifiée dans un widget."""
-        self.update_preview()
+        """Une action a été modifiée : aperçu rafraîchi (avec délai anti-spam)."""
+        self._schedule_preview()
+
+    def _schedule_preview(self):
+        """Programme un rafraîchissement de l'aperçu (250 ms de délai)."""
+        self._preview_timer.start()
 
     def clear_actions(self):
         """Retire tous les widgets d'action."""
@@ -631,12 +640,6 @@ class MainWindow(QMainWindow):
     def add_action(self):
         """Ajoute une nouvelle action (widget vide éditable)."""
         self.add_action_to_list(Action(name="", description=""))
-
-    def remove_action(self):
-        """Supprime le dernier widget d'action sélectionné (ou le dernier)."""
-        widgets = self.get_action_widgets()
-        if widgets:
-            self.remove_action_widget(widgets[-1])
 
     def _check_backend(self) -> bool:
         """Vérifie le backend IA actif (local ou API), sinon guide l'utilisateur."""

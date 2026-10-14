@@ -1,48 +1,117 @@
 """
-Widget d'action pour la liste des actions : affiche le nom, la description
-complète et des badges de stats de combat (bonus d'attaque, dégâts, DD).
+Widget d'action pour la liste des actions : carte visuelle avec nom,
+description complète, badges de stats de combat (bonus d'attaque, dégâts,
+DD) et une croix pour supprimer l'action directement.
 """
 
 import re
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QHBoxLayout, QLabel, QLineEdit, QSpinBox, QTextEdit, QVBoxLayout, QWidget
+    QHBoxLayout, QLabel, QLineEdit, QPushButton, QSpinBox, QTextEdit,
+    QVBoxLayout, QWidget,
 )
 
 from src.models.monster import Action
 
+ACTION_CARD_STYLE = """
+    ActionEditorWidget#ActionCard {
+        background-color: #3f4149;
+        border: 1px solid #5a5a6a;
+        border-radius: 8px;
+    }
+    ActionEditorWidget#ActionCard:hover {
+        border: 1px solid #00aaff;
+    }
+    QLabel#ActionHeader {
+        color: #e8e8f0;
+        font-size: 12px;
+    }
+    QLabel#StatCaption {
+        color: #9aa0b4;
+        font-size: 11px;
+    }
+    QLabel#ActionBadge {
+        background-color: #005f8a;
+        color: #ffffff;
+        border-radius: 9px;
+        padding: 2px 10px;
+        font-size: 11px;
+        font-weight: bold;
+    }
+    QLabel#ActionBadgeDamage {
+        background-color: #8a2f45;
+        color: #ffffff;
+        border-radius: 9px;
+        padding: 2px 10px;
+        font-size: 11px;
+        font-weight: bold;
+    }
+    QLabel#ActionBadgeDC {
+        background-color: #6a4f8a;
+        color: #ffffff;
+        border-radius: 9px;
+        padding: 2px 10px;
+        font-size: 11px;
+        font-weight: bold;
+    }
+    QPushButton#RemoveButton {
+        background-color: transparent;
+        border: none;
+        color: #888899;
+        font-size: 14px;
+        font-weight: bold;
+        padding: 2px;
+    }
+    QPushButton#RemoveButton:hover {
+        color: #ff6666;
+    }
+"""
+
 
 class ActionEditorWidget(QWidget):
-    """Widget d'édition d'une action : nom, stats structurées, description."""
+    """Carte d'édition d'une action : nom, stats structurées, description."""
 
     changed = Signal()
+    removeRequested = Signal(object)
 
     def __init__(self, action: Action, parent=None):
         super().__init__(parent)
+        self.setObjectName("ActionCard")
+        self.setStyleSheet(ACTION_CARD_STYLE)
         self._updating = False
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(6, 6, 6, 6)
-        layout.setSpacing(4)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(6)
 
-        # --- Ligne 1 : nom + badges de stats ---
+        # --- Ligne 1 : nom + badges + croix ---
         top_layout = QHBoxLayout()
         top_layout.setSpacing(6)
 
         self.name_edit = QLineEdit(action.name or "")
         self.name_edit.setPlaceholderText("Nom de l'action")
-        self.name_edit.setStyleSheet("font-weight: bold; font-size: 13px;")
+        self.name_edit.setStyleSheet(
+            "font-weight: bold; font-size: 13px; background: transparent; border: none;"
+        )
         top_layout.addWidget(self.name_edit, stretch=1)
 
-        self.bonus_label = self._make_badge()
+        self.bonus_label = self._make_badge("ActionBadge")
         top_layout.addWidget(self.bonus_label)
 
-        self.damage_label = self._make_badge()
+        self.damage_label = self._make_badge("ActionBadgeDamage")
         top_layout.addWidget(self.damage_label)
 
-        self.dc_label = self._make_badge()
+        self.dc_label = self._make_badge("ActionBadgeDC")
         top_layout.addWidget(self.dc_label)
+
+        self.remove_btn = QPushButton("✕")
+        self.remove_btn.setObjectName("RemoveButton")
+        self.remove_btn.setFixedSize(22, 22)
+        self.remove_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.remove_btn.setToolTip("Supprimer cette action")
+        self.remove_btn.clicked.connect(lambda *args: self.removeRequested.emit(self))
+        top_layout.addWidget(self.remove_btn)
 
         layout.addLayout(top_layout)
 
@@ -50,24 +119,24 @@ class ActionEditorWidget(QWidget):
         stats_layout = QHBoxLayout()
         stats_layout.setSpacing(6)
 
-        stats_layout.addWidget(QLabel("Bonus :"))
+        stats_layout.addWidget(self._caption("Bonus :"))
         self.bonus_spin = self._make_spin(-20, 30)
         self.bonus_spin.setValue(action.attack_bonus or 0)
         stats_layout.addWidget(self.bonus_spin)
 
-        stats_layout.addWidget(QLabel("Dégâts :"))
+        stats_layout.addWidget(self._caption("Dégâts :"))
         self.damage_edit = QLineEdit(action.damage or "")
         self.damage_edit.setPlaceholderText("2d6+3")
-        self.damage_edit.setMaximumWidth(90)
+        self.damage_edit.setMaximumWidth(80)
         stats_layout.addWidget(self.damage_edit)
 
-        stats_layout.addWidget(QLabel("Type :"))
+        stats_layout.addWidget(self._caption("Type :"))
         self.type_edit = QLineEdit(action.damage_type or "")
         self.type_edit.setPlaceholderText("tranchant")
-        self.type_edit.setMaximumWidth(110)
+        self.type_edit.setMaximumWidth(100)
         stats_layout.addWidget(self.type_edit)
 
-        stats_layout.addWidget(QLabel("DD :"))
+        stats_layout.addWidget(self._caption("DD :"))
         self.dd_spin = self._make_spin(0, 30)
         self.dd_spin.setToolTip("DD de sauvegarde (0 = aucun)")
         stats_layout.addWidget(self.dd_spin)
@@ -81,7 +150,7 @@ class ActionEditorWidget(QWidget):
             "Description de l'action (exportée dans le PDF)"
         )
         self.description_edit.setPlainText(action.description or "")
-        self.description_edit.setMaximumHeight(72)
+        self.description_edit.setMaximumHeight(64)
         self.description_edit.setAcceptRichText(False)
         layout.addWidget(self.description_edit)
 
@@ -101,18 +170,14 @@ class ActionEditorWidget(QWidget):
         self.dd_spin.valueChanged.connect(self._on_changed)
         self.description_edit.textChanged.connect(self._on_changed)
 
-    def _make_badge(self) -> QLabel:
+    def _caption(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setObjectName("StatCaption")
+        return label
+
+    def _make_badge(self, object_name: str) -> QLabel:
         label = QLabel("")
-        label.setStyleSheet("""
-            QLabel {
-                background-color: #005f8a;
-                color: #ffffff;
-                border-radius: 8px;
-                padding: 2px 8px;
-                font-size: 11px;
-                font-weight: bold;
-            }
-        """)
+        label.setObjectName(object_name)
         label.hide()
         return label
 
@@ -120,7 +185,7 @@ class ActionEditorWidget(QWidget):
         spin = QSpinBox()
         spin.setRange(minimum, maximum)
         spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
-        spin.setFixedWidth(50)
+        spin.setFixedWidth(46)
         return spin
 
     def _on_changed(self):
