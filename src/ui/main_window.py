@@ -14,10 +14,14 @@ from PySide6.QtCore import Qt, Signal, QObject
 from PySide6.QtGui import QFont, QIcon
 
 from src.models.monster import Monster, Alignment, Size, AbilityScores, Action, Skill
-from src.ai.ai_generator import ai_generator
+from src.ai.ai_generator import ai_generator, DND5_LANGUAGES
 from src.ai.api_client import api_client
 from src.ai.local_model import local_model, ModelNotAvailableError
-from src.rules.stat_builder import CR_ENTRIES, cr_display, parse_cr, cr_xp, build_balanced_monster
+from src.rules.stat_builder import (
+    CR_ENTRIES, cr_display, parse_cr, cr_xp, build_balanced_monster, build_hit_points,
+    build_armor_class, build_ability_scores, build_actions,
+)
+from src.ui.languages_editor import LanguagesEditor
 from src.export.pdf_exporter import pdf_exporter
 from config.config_manager import config_manager
 
@@ -116,9 +120,7 @@ class MainWindow(QMainWindow):
         self.race_edit.setPlaceholderText("Race ou type de créature")
         layout.addRow("Race :", self.race_edit)
 
-        self.languages_edit = QTextEdit()
-        self.languages_edit.setPlaceholderText("Ex: commun, elfique, nain")
-        self.languages_edit.setMaximumHeight(60)
+        self.languages_edit = LanguagesEditor()
         layout.addRow("Langues :", self.languages_edit)
 
         self.description_edit = QTextEdit()
@@ -746,12 +748,17 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Erreur", f"Erreur lors de la génération : {str(e)}")
 
     def generate_missing_fields(self):
-        """Génère les champs manquants avec le modèle local."""
-        if not self._check_backend():
-            return
+        """Génère les champs manquants avec le modèle local/API.
 
+        Remplit aussi la tab Statistiques : les champs vides (CA, PV, dés de
+        vie, vitesse, caractéristiques, actions) sont complétés avec des
+        valeurs équilibrées pour le CR courant, sans toucher aux champs que
+        l'utilisateur a déjà remplis. Les langues sont proposées depuis la
+        liste hardcodée DnD 5e.
+        """
         monster = self.get_monster_from_form()
 
+        # --- Champs IA : uniquement s'il en manque, et backend disponible ---
         missing_fields = []
         if not monster.name:
             missing_fields.append("name")
@@ -760,32 +767,100 @@ class MainWindow(QMainWindow):
         if not monster.description:
             missing_fields.append("description")
 
-        if not missing_fields:
-            QMessageBox.information(
-                self,
-                "Aucun champ manquant",
-                "Tous les champs principaux sont déjà remplis."
-            )
+        if missing_fields:
+            if self._check_backend():
+                all_options = {}
+                error_messages = []
+                for field in missing_fields:
+                    try:
+                        options = ai_generator.generate_options(monster, field)
+                        if options:
+                            all_options[field] = options
+                    except Exception as e:
+                        error_messages.append(f"{field} : {str(e)}")
+                        continue
+
+                if all_options:
+                    self.show_all_options_dialog(all_options)
+                elif error_messages:
+                    QMessageBox.warning(
+                        self,
+                        "Erreurs de génération",
+                        "Impossible de générer les champs textuels :\n\n"
+                        + "\n".join(error_messages)
+                    )
+
+        # --- Langues : liste hardcodée, aucune IA nécessaire ---
+        if not monster.languages:
+            default_languages = ["Commun"]
+            monster.languages = default_languages
+            self.languages_edit.set_languages(default_languages)
+
+        # --- Statistiques : remplir les champs vides uniquement ---
+        self._fill_missing_stats(monster)
+
+        self.update_preview()
+
+    def _fill_missing_stats(self, monster: Monster):
+        """Complète les stats vides avec des valeurs équilibrées pour le CR.
+
+        Ne modifie jamais un champ déjà rempli. Le CR utilisé est celui du
+        panneau de difficulté ; s'il est absent, un dialogue le demande.
+        """
+        cr = self._ensure_difficulty()
+        if cr is None:
             return
 
-        all_options = {}
-        error_messages = []
-        for field in missing_fields:
-            try:
-                options = ai_generator.generate_options(monster, field)
-                if options:
-                    all_options[field] = options
-            except Exception as e:
-                error_messages.append(f"{field} : {str(e)}")
-                continue
+        import random
+        rng = random.Random()
 
-        if all_options:
-            self.show_all_options_dialog(all_options)
-        elif error_messages:
-            QMessageBox.critical(
-                self,
-                "Erreurs de génération",
-                "Impossible de générer des options :\n\n" + "\n".join(error_messages)
+        scores, _ = build_ability_scores(cr, rng)
+        con_mod = scores.get_modifier("constitution")
+        dex_mod = scores.get_modifier("dexterity")
+
+        filled = []
+
+        if monster.armor_class is None:
+            self.ac_spin.setValue(build_armor_class(cr, dex_mod, rng))
+            filled.append("CA")
+
+        if monster.hit_points is None:
+            hp, hit_dice = build_hit_points(cr, con_mod, monster.size, rng)
+            self.hp_spin.setValue(hp)
+            if not self.hit_dice_edit.text().strip():
+                self.hit_dice_edit.setText(hit_dice)
+            filled.append("PV")
+
+        if not self.hit_dice_edit.text().strip() and monster.hit_dice:
+            self.hit_dice_edit.setText(monster.hit_dice)
+
+        if not self.speed_edit.text().strip():
+            self.speed_edit.setText("9 m (6 cases)")
+            filled.append("Vitesse")
+
+        current_scores = monster.ability_scores
+        is_default = all(v == 10 for v in [
+            current_scores.strength, current_scores.dexterity,
+            current_scores.constitution, current_scores.intelligence,
+            current_scores.wisdom, current_scores.charisma,
+        ])
+        if is_default:
+            self.str_spin.setValue(scores.strength)
+            self.dex_spin.setValue(scores.dexterity)
+            self.con_spin.setValue(scores.constitution)
+            self.int_spin.setValue(scores.intelligence)
+            self.wis_spin.setValue(scores.wisdom)
+            self.cha_spin.setValue(scores.charisma)
+            filled.append("Caractéristiques")
+
+        if self.actions_list.count() == 0:
+            for action in build_actions(cr, scores, rng):
+                self.add_action_to_list(self.actions_list, action)
+            filled.append("Actions")
+
+        if filled:
+            self.statusBar().showMessage(
+                f"Stats générées pour CR {cr_display(cr)} : {', '.join(filled)}", 8000
             )
 
     def show_options_dialog(self, field_name: str, options: List[str]):
