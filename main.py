@@ -290,6 +290,11 @@ def create_menus(window: MainWindow):
     # Menu Fichier
     file_menu = window.menuBar().addMenu("Fichier")
     
+    # Menu Bibliothèque (sauvegarder/charger/supprimer des monstres)
+    library_menu = window.menuBar().addMenu("Bibliothèque")
+    library_action = library_menu.addAction("Gérer les monstres sauvegardés")
+    library_action.triggered.connect(lambda: window.open_library())
+    
     # Menu Configuration
     config_action = file_menu.addAction("Configuration")
     config_action.triggered.connect(lambda: show_config_dialog(window))

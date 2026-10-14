@@ -164,14 +164,6 @@ class MainWindow(QMainWindow):
         self.export_png_btn.setIcon(QIcon.fromTheme("image-x-generic"))
         control_layout.addWidget(self.export_png_btn)
 
-        self.save_btn = QPushButton("Sauvegarder")
-        self.save_btn.setIcon(QIcon.fromTheme("document-save"))
-        control_layout.addWidget(self.save_btn)
-
-        self.load_btn = QPushButton("Charger")
-        self.load_btn.setIcon(QIcon.fromTheme("document-open"))
-        control_layout.addWidget(self.load_btn)
-
         layout.addLayout(control_layout)
 
         return panel
@@ -418,8 +410,6 @@ class MainWindow(QMainWindow):
         self.generate_btn.clicked.connect(self.generate_missing_fields)
         self.export_btn.clicked.connect(self.export_to_pdf)
         self.export_png_btn.clicked.connect(self.export_to_png)
-        self.save_btn.clicked.connect(self.save_monster)
-        self.load_btn.clicked.connect(self.load_monster)
 
         self.add_action_btn.clicked.connect(self.add_action)
 
@@ -1094,79 +1084,20 @@ class MainWindow(QMainWindow):
                 f"Erreur lors de l'export PNG : {str(e)}"
             )
 
-    def save_monster(self):
-        """Sauvegarde le monstre dans un fichier."""
-        monster = self.get_monster_from_form()
-
-        if not monster.name:
-            QMessageBox.warning(
-                self,
-                "Nom manquant",
-                "Veuillez fournir un nom pour le PNJ/Monstre avant la sauvegarde."
-            )
-            return
-
-        save_path = config_manager.get_save_path()
-        default_filename = f"{monster.name.replace(' ', '_')}.json"
-        file_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Sauvegarder le monstre",
-            f"{save_path}/{default_filename}",
-            "Fichiers JSON (*.json)"
+    def open_library(self):
+        """Ouvre la bibliothèque de monstres (sauvegarder/charger/supprimer)."""
+        from src.ui.monster_library import MonsterLibraryDialog
+        dialog = MonsterLibraryDialog(
+            get_current_monster=self.get_monster_from_form,
+            load_monster_callback=self._load_monster_from_library,
+            parent=self,
         )
+        dialog.exec()
 
-        if not file_path:
-            return
-
-        try:
-            import json
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(monster.to_dict(), f, indent=4, ensure_ascii=False)
-
-            QMessageBox.information(
-                self,
-                "Sauvegarde réussie",
-                f"Le monstre a été sauvegardé avec succès vers :\n{file_path}"
-            )
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Erreur de sauvegarde",
-                f"Erreur lors de la sauvegarde : {str(e)}"
-            )
-
-    def load_monster(self):
-        """Charge un monstre depuis un fichier."""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Charger un monstre",
-            config_manager.get_save_path(),
-            "Fichiers JSON (*.json)"
-        )
-
-        if not file_path:
-            return
-
-        try:
-            import json
-            with open(file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-
-            monster = Monster.from_dict(data)
-            self.set_monster_to_form(monster)
-            self.update_preview()
-
-            QMessageBox.information(
-                self,
-                "Chargement réussi",
-                f"Le monstre a été chargé avec succès depuis :\n{file_path}"
-            )
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Erreur de chargement",
-                f"Erreur lors du chargement : {str(e)}"
-            )
+    def _load_monster_from_library(self, monster: Monster):
+        """Charge un monstre depuis la bibliothèque."""
+        self.set_monster_to_form(monster)
+        self.update_preview()
 
     def on_generation_complete(self, monster: Monster):
         """Appelé lorsque la génération complète est terminée."""
