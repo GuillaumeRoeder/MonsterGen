@@ -247,7 +247,7 @@ class MainWindow(QMainWindow):
         party_layout.addWidget(QLabel("Difficulté :"))
         party_layout.addWidget(self.difficulty_combo)
 
-        self.gen_stats_btn = QPushButton("Remplir les stats équilibrées")
+        self.gen_stats_btn = QPushButton("Équilibrer les stats")
         self.gen_stats_btn.setIcon(QIcon.fromTheme("system-run"))
         self.gen_stats_btn.clicked.connect(self._fill_balanced_stats)
         party_layout.addWidget(self.gen_stats_btn)
@@ -327,11 +327,6 @@ class MainWindow(QMainWindow):
         chars_layout2.addWidget(self.cha_spin)
 
         layout.addRow(chars_layout2)
-
-        gen_chars_btn = QPushButton("Générer les caractéristiques")
-        gen_chars_btn.setIcon(QIcon.fromTheme("system-run"))
-        gen_chars_btn.clicked.connect(self._generate_ability_scores)
-        layout.addRow(gen_chars_btn)
 
         self.skills_edit = PillEditor(suggestions=DND5_SKILLS,
                                       empty_text="Aucune compétence maîtrisée")
@@ -772,29 +767,6 @@ class MainWindow(QMainWindow):
         except ModelNotAvailableError as e:
             QMessageBox.critical(self, "Erreur de téléchargement", str(e))
             return False
-
-    def _generate_ability_scores(self):
-        """Génère les caractéristiques du monstre."""
-        if not self._check_backend():
-            return
-
-        monster = self.get_monster_from_form()
-
-        try:
-            options = ai_generator.generate_options(monster, "ability_scores")
-            if options:
-                scores_str = options[0]
-                parts = scores_str.replace('"', '').strip().split(',')
-                if len(parts) == 6:
-                    self.str_spin.setValue(int(parts[0].strip()))
-                    self.dex_spin.setValue(int(parts[1].strip()))
-                    self.con_spin.setValue(int(parts[2].strip()))
-                    self.int_spin.setValue(int(parts[3].strip()))
-                    self.wis_spin.setValue(int(parts[4].strip()))
-                    self.cha_spin.setValue(int(parts[5].strip()))
-                    self.update_preview()
-        except Exception as e:
-            QMessageBox.critical(self, "Erreur", f"Erreur lors de la génération : {str(e)}")
 
     def _generate_actions(self):
         """Génère des actions complètes pour le monstre."""

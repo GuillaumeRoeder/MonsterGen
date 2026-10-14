@@ -107,6 +107,13 @@ class PNGExporter:
                 wrapped = self._wrap_text(draw, f"{name}. {desc}", self.font_text,
                                            self.width - 2 * MARGIN_X)
                 height += len(wrapped) * 21 + 10
+            elif kind == "scenario_subtitle":
+                height += 26
+            elif kind == "scenario_text":
+                text = rest[0]
+                wrapped = self._wrap_text(draw, text, self.font_text,
+                                           self.width - 2 * MARGIN_X)
+                height += len(wrapped) * 21 + 6
             elif kind == "gap":
                 height += 14
             elif kind == "rule":
@@ -192,9 +199,49 @@ class PNGExporter:
 
         if monster.scenario:
             content.append(("section", "Scénario de rencontre"))
-            content.append(("line", monster.scenario, False))
+            for item in self._scenario_items(monster.scenario):
+                content.append(item)
 
         return content
+
+    def _scenario_items(self, scenario: str) -> list:
+        """Découpe le scénario en sous-éléments formatés.
+
+        Les sections en gras (**Contexte**, **Tactique du monstre**...)
+        deviennent des sous-titres suivis de leur texte ; les paragraphes
+        vides créent un espacement. Le texte brut sans format est rendu
+        tel quel.
+        """
+        import re as _re
+        items = []
+        # Séparer sur les titres en gras
+        parts = _re.split(r"(\*\*[^*]+\*\*)", scenario)
+        current_title = None
+        buffer = []
+
+        for part in parts:
+            bold_match = _re.fullmatch(r"\*\*([^*]+)\*\*", part.strip())
+            if bold_match:
+                # flush du buffer précédent
+                if buffer:
+                    text = " ".join(" ".join(buffer).split())
+                    if text:
+                        items.append(("scenario_text", text))
+                    buffer = []
+                current_title = bold_match.group(1).strip().rstrip(":")
+                items.append(("scenario_subtitle", current_title))
+            else:
+                if part.strip():
+                    buffer.append(part.strip())
+        if buffer:
+            text = " ".join(" ".join(buffer).split())
+            if text:
+                items.append(("scenario_text", text))
+
+        # Scénario sans aucun format gras : texte simple
+        if not items:
+            items.append(("scenario_text", scenario.strip()))
+        return items
 
     def export_to_png(self, monster: Monster, output_path: str) -> str:
         """Exporte la fiche en PNG au style officiel DnD 5e."""
@@ -280,6 +327,14 @@ class PNGExporter:
                         draw.text((x, y), wline, font=self.font_text, fill=TEXT_DARK)
                     y += 21
                 y += 10
+            elif kind == "scenario_subtitle":
+                draw.text((x, y), item[1], font=self.font_bold, fill=TEXT_DARK)
+                y += 24
+            elif kind == "scenario_text":
+                for line in self._wrap_text(draw, item[1], self.font_text, text_width):
+                    draw.text((x, y), line, font=self.font_text, fill=TEXT_DARK)
+                    y += 21
+                y += 6
             elif kind == "gap":
                 y += 14
 
