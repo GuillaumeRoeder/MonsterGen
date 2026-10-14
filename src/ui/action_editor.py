@@ -14,12 +14,26 @@ from src.models.monster import Action
 
 ACTION_CARD_STYLE = """
     ActionEditorWidget#ActionCard {
-        background-color: #3f4149;
-        border: 1px solid #5a5a6a;
+        background-color: #4a4d58;
+        border: 1px solid #666a78;
+        border-left: 4px solid #00aaff;
         border-radius: 8px;
     }
     ActionEditorWidget#ActionCard:hover {
         border: 1px solid #00aaff;
+        border-left: 4px solid #00ccff;
+        background-color: #50545f;
+    }
+    QLineEdit#ActionName {
+        background: transparent;
+        border: none;
+        color: #ffffff;
+    }
+    QTextEdit#ActionDescription {
+        background-color: #3d4048;
+        color: #e8e8f0;
+        border: 1px solid #5a5a6a;
+        border-radius: 4px;
     }
     QPushButton#RemoveButton {
         background-color: transparent;
@@ -57,9 +71,8 @@ class ActionEditorWidget(QWidget):
 
         self.name_edit = QLineEdit(action.name or "")
         self.name_edit.setPlaceholderText("Nom de l'action")
-        self.name_edit.setStyleSheet(
-            "font-weight: bold; font-size: 13px; background: transparent; border: none;"
-        )
+        self.name_edit.setObjectName("ActionName")
+        self.name_edit.setStyleSheet("font-weight: bold; font-size: 13px;")
         top_layout.addWidget(self.name_edit, stretch=1)
 
         self.remove_btn = QPushButton("✕")
@@ -74,6 +87,7 @@ class ActionEditorWidget(QWidget):
 
         # --- Description : tout (bonus, dégâts, DD) y est écrit ---
         self.description_edit = QTextEdit()
+        self.description_edit.setObjectName("ActionDescription")
         self.description_edit.setPlaceholderText(
             "Description complète : bonus au toucher, dégâts, DD de sauvegarde…\n"
             "Ex : Attaque d'arme au corps à corps : +6 au toucher, 2d8+4 dégâts "
