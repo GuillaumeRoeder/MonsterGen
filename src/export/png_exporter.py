@@ -169,8 +169,6 @@ class PNGExporter:
                 content.append(("line", f"Sens {', '.join(senses)}", False))
         if monster.languages:
             content.append(("line", f"Langues {', '.join(monster.languages)}", False))
-        else:
-            content.append(("line", "Langues —", False))
         if monster.challenge_rating is not None:
             xp = cr_xp(monster.challenge_rating)
             content.append(("line", f"Degré de difficulté {cr_display(monster.challenge_rating)} ({xp} PX)", True))

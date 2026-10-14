@@ -846,12 +846,6 @@ class MainWindow(QMainWindow):
                         + "\n".join(error_messages)
                     )
 
-        # --- Langues : liste hardcodée, aucune IA nécessaire ---
-        if not monster.languages:
-            default_languages = ["Commun"]
-            monster.languages = default_languages
-            self.languages_edit.set_languages(default_languages)
-
         # --- Équilibrage complet des stats pour le CR courant ---
         self._fill_balanced_stats()
 
