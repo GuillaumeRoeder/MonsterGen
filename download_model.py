@@ -6,10 +6,13 @@ Usage :
     python download_model.py 4gb       # télécharge le modèle 4 Go
 """
 
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
 
 from src.ai.local_model import LOCAL_MODELS, local_model, ModelNotAvailableError
 
