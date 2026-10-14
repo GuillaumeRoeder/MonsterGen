@@ -18,6 +18,7 @@ DEPENDENCIES: List[Tuple[str, str]] = [
     ("requests", "requests>=2.31.0"),
     ("reportlab", "reportlab>=4.0.4"),
     ("dotenv", "python-dotenv>=1.0.0"),
+    ("PIL", "Pillow>=10.0.0"),
     ("huggingface_hub", "huggingface_hub>=0.23.0"),
     ("tqdm", "tqdm>=4.66.0"),
     ("hf_transfer", "hf-transfer>=0.1.6"),

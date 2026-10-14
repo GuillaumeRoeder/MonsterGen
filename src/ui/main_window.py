@@ -27,6 +27,7 @@ from src.rules.stat_builder import (
 from src.ui.languages_editor import LanguagesEditor
 from src.ui.action_editor import ActionEditorWidget
 from src.export.pdf_exporter import pdf_exporter
+from src.export.png_exporter import png_exporter
 from config.config_manager import config_manager
 
 
@@ -100,6 +101,10 @@ class MainWindow(QMainWindow):
         self.export_btn = QPushButton("Exporter en PDF")
         self.export_btn.setIcon(QIcon.fromTheme("document-export"))
         control_layout.addWidget(self.export_btn)
+
+        self.export_png_btn = QPushButton("Exporter en PNG")
+        self.export_png_btn.setIcon(QIcon.fromTheme("image-x-generic"))
+        control_layout.addWidget(self.export_png_btn)
 
         self.save_btn = QPushButton("Sauvegarder")
         self.save_btn.setIcon(QIcon.fromTheme("document-save"))
@@ -353,6 +358,7 @@ class MainWindow(QMainWindow):
         """Configure les connexions des signaux."""
         self.generate_btn.clicked.connect(self.generate_missing_fields)
         self.export_btn.clicked.connect(self.export_to_pdf)
+        self.export_png_btn.clicked.connect(self.export_to_png)
         self.save_btn.clicked.connect(self.save_monster)
         self.load_btn.clicked.connect(self.load_monster)
 
@@ -1052,6 +1058,44 @@ class MainWindow(QMainWindow):
                 self,
                 "Erreur d'export",
                 f"Erreur lors de l'export PDF : {str(e)}"
+            )
+
+    def export_to_png(self):
+        """Exporte la fiche en PNG au style officiel DnD 5e."""
+        monster = self.get_monster_from_form()
+
+        if not monster.name:
+            QMessageBox.warning(
+                self,
+                "Nom manquant",
+                "Veuillez fournir un nom pour le PNJ/Monstre avant l'export."
+            )
+            return
+
+        save_path = config_manager.get_save_path()
+        default_filename = f"{monster.name.replace(' ', '_')}_fiche_DnD.png"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Exporter en PNG",
+            f"{save_path}/{default_filename}",
+            "Images PNG (*.png)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            png_exporter.export_to_png(monster, file_path)
+            QMessageBox.information(
+                self,
+                "Export réussi",
+                f"La fiche a été exportée avec succès vers :\n{file_path}"
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Erreur d'export",
+                f"Erreur lors de l'export PNG : {str(e)}"
             )
 
     def save_monster(self):
