@@ -102,7 +102,7 @@ class ConfigDialog(QDialog):
         self.ctx_spin.setRange(1024, 32768)
         self.ctx_spin.setSingleStep(1024)
         ctx_layout.addWidget(ctx_label)
-        ctx_layout.addWidget(ctx_spin)
+        ctx_layout.addWidget(self.ctx_spin)
         local_layout.addLayout(ctx_layout)
 
         threads_layout = QHBoxLayout()

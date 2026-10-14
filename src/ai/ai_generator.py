@@ -12,7 +12,7 @@ import re
 from typing import List, Optional
 
 from src.models.monster import Monster, Action
-from src.ai.local_model import local_model
+from src.ai.local_model import local_model, ModelNotAvailableError
 from src.ai.api_client import api_client, APIConfigError
 from config.config_manager import config_manager
 from src.rules.stat_builder import cr_display, cr_xp

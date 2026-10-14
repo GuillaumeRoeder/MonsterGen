@@ -634,7 +634,6 @@ class MainWindow(QMainWindow):
         mode = config_manager.get_ai_mode()
 
         if mode == "api":
-            from src.ai.api_client import api_client
             if api_client.is_configured():
                 return True
             QMessageBox.warning(

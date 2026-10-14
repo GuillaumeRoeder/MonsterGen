@@ -248,7 +248,6 @@ def build_balanced_monster(cr: float, base: Optional[Monster] = None,
     if seed is None:
         rng = random.Random()
 
-    prof = DMG_TABLE[_cr_key(cr)][0]
     monster.challenge_rating = cr
 
     scores, archetype = build_ability_scores(cr, rng)
