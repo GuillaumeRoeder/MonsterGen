@@ -62,15 +62,58 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        main_layout = QHBoxLayout(central_widget)
+        root_layout = QVBoxLayout(central_widget)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
+
+        self.backend_status_label = QLabel("")
+        self.backend_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.backend_status_label.setFixedHeight(26)
+        root_layout.addWidget(self.backend_status_label)
+
+        main_layout = QHBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(10)
+        root_layout.addLayout(main_layout, stretch=1)
 
         self.form_panel = self.create_form_panel()
         main_layout.addWidget(self.form_panel, stretch=1)
 
         self.preview_panel = self.create_preview_panel()
         main_layout.addWidget(self.preview_panel, stretch=1)
+
+        self.update_backend_status()
+
+    def update_backend_status(self):
+        """Met à jour l'étiquette du mode IA (API ou modèle local)."""
+        mode = config_manager.get_ai_mode()
+        if mode == "api":
+            model = config_manager.get_api_model() or "API"
+            self.backend_status_label.setText(f"● Mode API — {model}")
+            self.backend_status_label.setStyleSheet(
+                "background-color: #4a3f14; color: #ffd54a; "
+                "font-weight: bold; padding: 3px; "
+                "border-bottom: 1px solid #5a5a6a;"
+            )
+        else:
+            from src.ai.local_model import local_model
+            info = local_model.get_model_info()
+            if local_model.is_available():
+                status = "prêt"
+                bg = "#1e3a24"
+                fg = "#66bb6a"
+            else:
+                status = "non téléchargé"
+                bg = "#3a2a1a"
+                fg = "#ffab40"
+            self.backend_status_label.setText(
+                f"● Modèle local — {info['label']} ({status})"
+            )
+            self.backend_status_label.setStyleSheet(
+                f"background-color: {bg}; color: {fg}; "
+                "font-weight: bold; padding: 3px; "
+                "border-bottom: 1px solid #5a5a6a;"
+            )
 
     def create_form_panel(self) -> QWidget:
         """Crée le panneau de formulaire."""

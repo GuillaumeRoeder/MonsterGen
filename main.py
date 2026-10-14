@@ -308,6 +308,7 @@ def show_config_dialog(parent: MainWindow):
     """Affiche la boîte de dialogue de configuration."""
     dialog = ConfigDialog(parent)
     dialog.exec()
+    parent.update_backend_status()
 
 
 def show_about_dialog(parent: MainWindow):
