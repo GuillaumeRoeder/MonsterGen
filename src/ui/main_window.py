@@ -664,10 +664,6 @@ class MainWindow(QMainWindow):
             )
             return False
 
-        try:
-            local_model.reload_config()
-        except AttributeError:
-            pass
         if local_model.is_available():
             return True
 

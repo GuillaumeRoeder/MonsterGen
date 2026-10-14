@@ -132,7 +132,22 @@ DAMAGE_DICE = [4, 6, 8, 10, 12]
 
 
 def _cr_key(cr: float) -> float:
-    return float(Fraction(cr).limit_denominator(8))
+    """Ramène n'importe quel CR à l'entrée de table la plus proche.
+
+    Un CR imprévu (0.3, 7.5, 45...) ne doit jamais faire KeyError :
+    on borne à la table officielle (0 à 30).
+    """
+    frac = Fraction(cr).limit_denominator(8)
+    known = sorted(DMG_TABLE.keys())
+    if frac in DMG_TABLE:
+        return float(frac)
+    value = float(frac)
+    if value <= known[0]:
+        return known[0]
+    if value >= known[-1]:
+        return known[-1]
+    lower = max(k for k in known if k < value)
+    return lower
 
 
 def _score_from_modifier(mod: int) -> int:
@@ -181,19 +196,39 @@ def build_ability_scores(cr: float, rng: random.Random,
 
 
 def build_hit_points(cr: float, con_mod: int, size: Optional[Size], rng: random.Random) -> Tuple[int, str]:
-    """Génère les PV et les dés de vie cohérents avec le CR et la taille."""
+    """Génère les PV et les dés de vie cohérents avec le CR et la taille.
+
+    Robuste quel que soit le modificateur de Constitution : on augmente le
+    nombre de dés seulement si la moyenne par dé reste positive, sinon on
+    ajuste le nombre de dés sans laisser la formule diverger.
+    """
     _, _, hp_min, hp_max, _, _, _, _ = DMG_TABLE[_cr_key(cr)]
     target_hp = rng.randint(hp_min, hp_max)
 
     die = HIT_DIE_BY_SIZE.get(size or Size.MEDIUM, 8)
-    per_die = die / 2 + 0.5 + con_mod
-    num_dice = max(1, round(target_hp / per_die))
-    hp = round(num_dice * (die / 2 + 0.5) + num_dice * con_mod)
+    avg_face = die / 2 + 0.5
 
-    if con_mod >= 0:
-        hit_dice = f"{num_dice}d{die} + {num_dice * con_mod}" if con_mod else f"{num_dice}d{die}"
+    # Le modificateur appliqué aux dés est borné pour que la moyenne par dé
+    # reste >= 1 : une CON très basse influe sur le nombre de dés, pas sur
+    # un modificateur qui rendrait les dés incohérents avec les PV.
+    dice_mod = max(con_mod, -(die // 2 - 1))
+    per_die = avg_face + dice_mod
+
+    num_dice = max(1, round(target_hp / per_die))
+    hp = round(num_dice * per_die)
+
+    # Garde-fou : les PV ne doivent pas diverger de la cible DMG.
+    if not (target_hp * 0.5 <= hp <= target_hp * 2):
+        num_dice = max(1, round(target_hp / avg_face))
+        hp = target_hp
+        dice_mod = 0
+
+    if dice_mod > 0:
+        hit_dice = f"{num_dice}d{die} + {num_dice * dice_mod}"
+    elif dice_mod == 0:
+        hit_dice = f"{num_dice}d{die}"
     else:
-        hit_dice = f"{num_dice}d{die} {num_dice * con_mod}"
+        hit_dice = f"{num_dice}d{die} {num_dice * dice_mod}"
 
     return max(1, hp), hit_dice
 

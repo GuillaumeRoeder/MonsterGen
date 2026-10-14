@@ -24,7 +24,10 @@ class ConfigManager:
         "language": "fr"
     }
 
-    def __init__(self, config_path: str = "config/config.json"):
+    def __init__(self, config_path: str = None):
+        if config_path is None:
+            base = Path(__file__).resolve().parent
+            config_path = base / "config.json"
         self.config_path = Path(config_path)
         self.config: Dict[str, Any] = self.DEFAULT_CONFIG.copy()
         self.load_config()
