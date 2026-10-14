@@ -168,7 +168,7 @@ class PillEditor(QWidget):
             pill_layout.addWidget(label)
 
             remove_btn = QPushButton("✕")
-            remove_btn.setFixedSize(16, 16)
+            remove_btn.setFixedSize(18, 18)
             remove_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             remove_btn.setToolTip(f"Retirer {value}")
             remove_btn.setStyleSheet("""
@@ -176,7 +176,11 @@ class PillEditor(QWidget):
                     background: transparent;
                     border: none;
                     color: #ffffff;
-                    font-size: 9px;
+                    font-size: 11px;
+                    font-weight: bold;
+                    padding: 0px;
+                    min-height: 0px;
+                    min-width: 0px;
                 }
                 QPushButton:hover {
                     color: #ff8888;
