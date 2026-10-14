@@ -84,9 +84,10 @@ sudo dnf install mesa-libGL
 
 ## Configuration
 
-1. **Modèle IA local** : Choisissez la taille du modèle embarqué (2 Go ou 4,4 Go maximum)
-2. **Télchargement du modèle** : Lancez `python download_model.py` (une seule fois, ou automatiquement depuis l'application)
-3. **Aucune clé API** : toute la génération IA fonctionne hors ligne, en locale
+Deux modes IA au choix (menu "Fichier > Configuration") :
+
+1. **Modèle local** (défaut) : modèle GGUF embarqué (2 Go ou 4,4 Go), fonctionne hors ligne, aucune clé API. Téléchargez-le avec `python download_model.py` (ou automatiquement depuis l'application)
+2. **API distante** : renseignez clé API, modèle et endpoint (compatible OpenAI/Mistral — défaut : Mistral AI). Utile si votre machine est peu puissante
 
 La configuration se fait via le menu "Fichier > Configuration" dans l'application.
 
