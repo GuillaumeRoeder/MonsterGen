@@ -25,6 +25,7 @@ from src.rules.stat_builder import (
     build_armor_class, build_ability_scores, build_actions,
 )
 from src.ui.languages_editor import LanguagesEditor
+from src.ui.action_editor import ActionEditorWidget
 from src.export.pdf_exporter import pdf_exporter
 from config.config_manager import config_manager
 
@@ -287,19 +288,22 @@ class MainWindow(QMainWindow):
         gen_actions_btn.clicked.connect(self._generate_actions)
         layout.addWidget(gen_actions_btn)
 
-        self.actions_list = QListWidget()
-        self.actions_list.setMinimumHeight(150)
-        layout.addWidget(self.actions_list)
+        self.actions_scroll = QScrollArea()
+        self.actions_scroll.setWidgetResizable(True)
+        self.actions_scroll.setMinimumHeight(200)
+        self.actions_container = QWidget()
+        self.actions_layout = QVBoxLayout(self.actions_container)
+        self.actions_layout.setContentsMargins(4, 4, 4, 4)
+        self.actions_layout.setSpacing(8)
+        self.actions_layout.addStretch()
+        self.actions_scroll.setWidget(self.actions_container)
+        layout.addWidget(self.actions_scroll)
 
         actions_control_layout = QHBoxLayout()
 
         self.add_action_btn = QPushButton("Ajouter une action")
         self.add_action_btn.setIcon(QIcon.fromTheme("list-add"))
         actions_control_layout.addWidget(self.add_action_btn)
-
-        self.edit_action_btn = QPushButton("Modifier l'action")
-        self.edit_action_btn.setIcon(QIcon.fromTheme("document-edit"))
-        actions_control_layout.addWidget(self.edit_action_btn)
 
         self.remove_action_btn = QPushButton("Supprimer l'action")
         self.remove_action_btn.setIcon(QIcon.fromTheme("list-remove"))
@@ -353,7 +357,6 @@ class MainWindow(QMainWindow):
         self.load_btn.clicked.connect(self.load_monster)
 
         self.add_action_btn.clicked.connect(self.add_action)
-        self.edit_action_btn.clicked.connect(self.edit_action)
         self.remove_action_btn.clicked.connect(self.remove_action)
 
         self.signal_emitter.show_options.connect(self.show_options_dialog)
@@ -451,7 +454,19 @@ class MainWindow(QMainWindow):
         if monster.actions:
             self._add_section_title("Actions :")
             for action in monster.actions:
-                self._add_preview_label(f"• {action.name}: {action.description}")
+                stats = []
+                if action.attack_bonus is not None:
+                    stats.append(f"+{action.attack_bonus} au toucher")
+                if action.damage:
+                    stats.append(f"{action.damage} {action.damage_type or ''}".strip())
+                import re as _re
+                dd_match = _re.search(r"DD\s*(\d+)", action.description or "")
+                if dd_match:
+                    stats.append(f"DD {dd_match.group(1)}")
+                stats_str = f" [{'; '.join(stats)}]" if stats else ""
+                self._add_preview_label(f"• {action.name}{stats_str}")
+                if action.description:
+                    self._add_preview_label(f"  {action.description}", word_wrap=True)
 
         if monster.scenario:
             self._add_section_title("Scénario :")
@@ -537,11 +552,10 @@ class MainWindow(QMainWindow):
             skill_names = [s.strip() for s in skills_text.split(",") if s.strip()]
             monster.skills = [Skill(name=name, ability="", proficiency=True) for name in skill_names]
 
-        for i in range(self.actions_list.count()):
-            item = self.actions_list.item(i)
-            action_data = item.data(Qt.ItemDataRole.UserRole)
-            if action_data:
-                monster.actions.append(Action(**action_data))
+        for widget in self.get_action_widgets():
+            action = widget.get_action()
+            if action.name:
+                monster.actions.append(action)
 
         monster.notes = self.equipment_edit.toPlainText().strip() or None
 
@@ -576,75 +590,53 @@ class MainWindow(QMainWindow):
         proficient_skills = [sk.name for sk in monster.skills if sk.proficiency]
         self.skills_edit.setPlainText(", ".join(proficient_skills))
 
-        self.actions_list.clear()
+        self.clear_actions()
         for action in monster.actions:
-            self.add_action_to_list(self.actions_list, action)
+            self.add_action_to_list(action)
 
         self.equipment_edit.setPlainText(monster.notes or "")
 
         if not keep_scenario:
             self.scenario_edit.setPlainText(monster.scenario or "")
 
-    def add_action_to_list(self, list_widget: QListWidget, action: Action):
-        """Ajoute une action à une liste."""
-        action_data = {
-            "name": action.name,
-            "description": action.description,
-            "attack_bonus": action.attack_bonus,
-            "damage": action.damage,
-            "damage_type": action.damage_type
-        }
+    def add_action_to_list(self, action: Action):
+        """Ajoute un widget d'action éditable à la liste."""
+        widget = ActionEditorWidget(action)
+        widget.changed.connect(self.on_action_changed)
+        self.actions_layout.insertWidget(self.actions_layout.count() - 1, widget)
 
-        item = QListWidgetItem(action.name)
-        item.setData(Qt.ItemDataRole.UserRole, action_data)
-        list_widget.addItem(item)
+    def remove_action_widget(self, widget: ActionEditorWidget):
+        """Retire un widget d'action de la liste."""
+        self.actions_layout.removeWidget(widget)
+        widget.deleteLater()
+
+    def get_action_widgets(self) -> list:
+        """Liste des widgets d'action présents dans la liste."""
+        return [
+            self.actions_layout.itemAt(i).widget()
+            for i in range(self.actions_layout.count())
+            if self.actions_layout.itemAt(i).widget() is not None
+            and isinstance(self.actions_layout.itemAt(i).widget(), ActionEditorWidget)
+        ]
+
+    def on_action_changed(self):
+        """Une action a été modifiée dans un widget."""
+        self.update_preview()
+
+    def clear_actions(self):
+        """Retire tous les widgets d'action."""
+        for widget in self.get_action_widgets():
+            self.remove_action_widget(widget)
 
     def add_action(self):
-        """Ajoute une nouvelle action directement."""
-        name, ok = QInputDialog.getText(self, "Ajouter une action", "Nom de l'action :")
-        if not ok or not name:
-            return
-
-        description, ok = QInputDialog.getText(self, "Ajouter une action", "Description :")
-        if not ok:
-            return
-
-        action = Action(name=name, description=description)
-        self.add_action_to_list(self.actions_list, action)
-
-    def edit_action(self):
-        """Modifie une action existante."""
-        selected = self.actions_list.currentItem()
-        if not selected:
-            return
-
-        action_data = selected.data(Qt.ItemDataRole.UserRole)
-        if not action_data:
-            return
-
-        name, ok = QInputDialog.getText(self, "Modifier l'action", "Nom :", text=action_data.get("name", ""))
-        if not ok or not name:
-            return
-
-        description, ok = QInputDialog.getText(self, "Modifier l'action", "Description :", text=action_data.get("description", ""))
-        if not ok:
-            return
-
-        new_action_data = {
-            "name": name,
-            "description": description,
-            "attack_bonus": action_data.get("attack_bonus"),
-            "damage": action_data.get("damage"),
-            "damage_type": action_data.get("damage_type"),
-        }
-        selected.setText(name)
-        selected.setData(Qt.ItemDataRole.UserRole, new_action_data)
+        """Ajoute une nouvelle action (widget vide éditable)."""
+        self.add_action_to_list(Action(name="", description=""))
 
     def remove_action(self):
-        """Supprime une action."""
-        selected = self.actions_list.currentItem()
-        if selected:
-            self.actions_list.takeItem(self.actions_list.row(selected))
+        """Supprime le dernier widget d'action sélectionné (ou le dernier)."""
+        widgets = self.get_action_widgets()
+        if widgets:
+            self.remove_action_widget(widgets[-1])
 
     def _check_backend(self) -> bool:
         """Vérifie le backend IA actif (local ou API), sinon guide l'utilisateur."""
@@ -742,9 +734,9 @@ class MainWindow(QMainWindow):
 
         try:
             actions = ai_generator.generate_actions(monster)
-            self.actions_list.clear()
+            self.clear_actions()
             for action in actions:
-                self.add_action_to_list(self.actions_list, action)
+                self.add_action_to_list(action)
             self.update_preview()
         except Exception as e:
             QMessageBox.critical(self, "Erreur", f"Erreur lors de la génération : {str(e)}")
@@ -876,9 +868,9 @@ class MainWindow(QMainWindow):
             self.cha_spin.setValue(scores.charisma)
             filled.append("Caractéristiques")
 
-        if self.actions_list.count() == 0:
+        if not self.get_action_widgets():
             for action in build_actions(cr, scores, rng, traits=traits):
-                self.add_action_to_list(self.actions_list, action)
+                self.add_action_to_list(action)
             filled.append("Actions")
 
         if filled:
