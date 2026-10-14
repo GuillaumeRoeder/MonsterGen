@@ -862,96 +862,26 @@ class MainWindow(QMainWindow):
             monster.languages = default_languages
             self.languages_edit.set_languages(default_languages)
 
-        # --- Statistiques : remplir les champs vides uniquement ---
-        self._fill_missing_stats(monster)
+        # --- Équilibrage complet des stats pour le CR courant ---
+        self._fill_balanced_stats()
+
+        # --- Actions : toujours régénérées via l'IA selon le contexte ---
+        if self._check_backend():
+            try:
+                fresh = self.get_monster_from_form()
+                actions = ai_generator.generate_actions(fresh)
+                self.clear_actions()
+                for action in actions:
+                    self.add_action_to_list(action)
+            except Exception as e:
+                QMessageBox.warning(
+                    self,
+                    "Génération des actions",
+                    f"Les actions n'ont pas pu être régénérées :\n{e}\n\n"
+                    "Les actions issues des tables DMG sont conservées."
+                )
 
         self.update_preview()
-
-    def _fill_missing_stats(self, monster: Monster):
-        """Complète les stats vides avec des valeurs équilibrées pour le CR.
-
-        Ne modifie jamais un champ déjà rempli. Le CR utilisé est celui du
-        panneau de difficulté ; s'il est absent, un dialogue le demande.
-        """
-        cr = self._ensure_difficulty()
-        if cr is None:
-            return
-
-        import random
-        rng = random.Random()
-
-        from src.rules.trait_inference import infer_traits
-        actions_text = " ".join(
-            f"{a.name} {a.description}" for a in monster.actions
-        )
-        traits = infer_traits(
-            f"{monster.race or ''} {monster.description or ''} {actions_text}",
-            monster.description,
-        )
-        scores, _ = build_ability_scores(cr, rng, archetype=traits.archetype)
-        con_mod = scores.get_modifier("constitution")
-        dex_mod = scores.get_modifier("dexterity")
-
-        filled = []
-
-        if monster.armor_class is None:
-            self.ac_spin.setValue(build_armor_class(cr, dex_mod, rng))
-            filled.append("CA")
-
-        if monster.hit_points is None:
-            hp, hit_dice = build_hit_points(cr, con_mod, monster.size, rng)
-            self.hp_spin.setValue(hp)
-            if not self.hit_dice_edit.text().strip():
-                self.hit_dice_edit.setText(hit_dice)
-            filled.append("PV")
-
-        if not self.hit_dice_edit.text().strip() and monster.hit_dice:
-            self.hit_dice_edit.setText(monster.hit_dice)
-
-        if not self.speed_edit.text().strip():
-            self.speed_edit.setText(traits.speed or "9 m (6 cases)")
-            filled.append("Vitesse")
-
-        # Compétences maîtrisées, résistances et immunités inférées de la
-        # race/description si non déjà renseignées.
-        if not self.skills_edit.get_values() and traits.skills:
-            self.skills_edit.set_values(traits.skills)
-            filled.append("Compétences")
-
-        if not self.resistances_edit.get_values() and traits.resistances:
-            self.resistances_edit.set_values(traits.resistances)
-            filled.append("Résistances")
-
-        if not self.immunities_edit.get_values() and traits.immunities:
-            self.immunities_edit.set_values(traits.immunities)
-            filled.append("Immunités")
-
-        current_scores = monster.ability_scores
-        is_default = all(v == 10 for v in [
-            current_scores.strength, current_scores.dexterity,
-            current_scores.constitution, current_scores.intelligence,
-            current_scores.wisdom, current_scores.charisma,
-        ])
-        if is_default:
-            self.str_spin.setValue(scores.strength)
-            self.dex_spin.setValue(scores.dexterity)
-            self.con_spin.setValue(scores.constitution)
-            self.int_spin.setValue(scores.intelligence)
-            self.wis_spin.setValue(scores.wisdom)
-            self.cha_spin.setValue(scores.charisma)
-            filled.append("Caractéristiques")
-
-        # Les actions sont toujours régénérées pour s'accorder avec la
-        # race, la description et le CR actuels — même si déjà remplies.
-        self.clear_actions()
-        for action in build_actions(cr, scores, rng, traits=traits):
-            self.add_action_to_list(action)
-        filled.append("Actions")
-
-        if filled:
-            self.statusBar().showMessage(
-                f"Stats générées pour CR {cr_display(cr)} : {', '.join(filled)}", 8000
-            )
 
     def show_options_dialog(self, field_name: str, options: List[str]):
         """Affiche une boîte de dialogue pour sélectionner une option."""
