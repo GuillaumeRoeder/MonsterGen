@@ -171,7 +171,7 @@ class LanguagesEditor(QWidget):
                     color: #ff8888;
                 }
             """)
-            remove_btn.clicked.connect(lambda _, lang=language: self._remove_language(lang))
+            remove_btn.clicked.connect(lambda *args, lang=language: self._remove_language(lang))
             pill_layout.addWidget(remove_btn)
 
             self._pills_layout.addWidget(pill)
