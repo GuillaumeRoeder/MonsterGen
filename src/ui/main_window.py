@@ -274,6 +274,15 @@ class MainWindow(QMainWindow):
         self.speed_edit.setPlaceholderText("Ex: 30 pieds, vol 60 pieds")
         layout.addRow("Vitesse :", self.speed_edit)
 
+        self.proficiency_spin = QSpinBox()
+        self.proficiency_spin.setRange(0, 15)
+        self.proficiency_spin.setSpecialValueText("")
+        self.proficiency_spin.setToolTip(
+            "Bonus de maîtrise (non affiché sur la fiche finale). "
+            "Sert uniquement à calculer le bonus des compétences maîtrisées."
+        )
+        layout.addRow("Bonus de maîtrise :", self.proficiency_spin)
+
         layout.addRow(QLabel("Caractéristiques :"), QLabel(""))
 
         chars_layout = QHBoxLayout()
@@ -498,8 +507,8 @@ class MainWindow(QMainWindow):
 
         proficient_skills = [sk for sk in monster.skills if sk.proficiency]
         if proficient_skills:
-            skill_names = [sk.name for sk in proficient_skills]
-            self._add_preview_label(f"<b>Compétences maîtrisées :</b> {', '.join(skill_names)}")
+            skill_parts = [f"{sk.name} {monster.skill_modifier(sk):+d}" for sk in proficient_skills]
+            self._add_preview_label(f"<b>Compétences maîtrisées :</b> {', '.join(skill_parts)}")
 
         if monster.damage_resistances:
             self._add_preview_label(
@@ -587,6 +596,8 @@ class MainWindow(QMainWindow):
 
         selected_cr = self._get_selected_cr()
         monster.challenge_rating = selected_cr
+        prof_value = self.proficiency_spin.value()
+        monster.proficiency_bonus = prof_value if prof_value > 0 else None
 
         ability_map = {
             "strength": self.str_spin,
@@ -628,6 +639,7 @@ class MainWindow(QMainWindow):
         self.hp_spin.setValue(monster.hit_points or 0)
         self.hit_dice_edit.setText(monster.hit_dice or "")
         self.speed_edit.setText(monster.speed or "")
+        self.proficiency_spin.setValue(monster.proficiency_bonus or 0)
 
 
         ability_map = {

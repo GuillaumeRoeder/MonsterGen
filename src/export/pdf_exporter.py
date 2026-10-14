@@ -305,12 +305,12 @@ class PDFExporter:
         """Crée la section des compétences maîtrisées."""
         elements = []
         
-        # Compétences maîtrisées
+        # Compétences maîtrisées (avec bonus incluant la maîtrise)
         proficient_skills = [sk for sk in monster.skills if sk.proficiency]
         if proficient_skills:
             elements.append(Paragraph("Compétences maîtrisées", self.styles["Section"]))
-            skill_names = [sk.name for sk in proficient_skills]
-            elements.append(Paragraph(", ".join(skill_names), self.styles["Value"]))
+            skill_parts = [f"{sk.name} {monster.skill_modifier(sk):+d}" for sk in proficient_skills]
+            elements.append(Paragraph(", ".join(skill_parts), self.styles["Value"]))
             elements.append(Spacer(1, 4))
         
         return elements

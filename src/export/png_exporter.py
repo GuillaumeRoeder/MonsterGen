@@ -151,9 +151,10 @@ class PNGExporter:
                 f"{st.ability[:3].upper()} {st.modifier:+d}" for st in monster.saving_throws
             )
             content.append(("line", f"Jets de sauvegarde {st_text}", True))
-        if monster.skills:
-            sk_text = ", ".join(f"{sk.name} {sk.modifier:+d}" if sk.modifier else sk.name
-                                for sk in monster.skills)
+        proficient_skills = [sk for sk in monster.skills if sk.proficiency]
+        if proficient_skills:
+            sk_text = ", ".join(f"{sk.name} {monster.skill_modifier(sk):+d}"
+                                for sk in proficient_skills)
             content.append(("line", f"Compétences {sk_text}", False))
         if monster.damage_resistances:
             content.append(("line", f"Résistances {', '.join(monster.damage_resistances)}", False))

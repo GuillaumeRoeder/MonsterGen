@@ -6,6 +6,28 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 from enum import Enum
 
+# Compétence DnD 5e -> caractéristique associée.
+SKILL_ABILITIES = {
+    "acrobaties": "dexterity",
+    "arcanes": "intelligence",
+    "athlétisme": "strength",
+    "discrétion": "dexterity",
+    "escamotage": "dexterity",
+    "histoire": "intelligence",
+    "intimidation": "charisma",
+    "intuition": "wisdom",
+    "investigation": "intelligence",
+    "médecine": "wisdom",
+    "nature": "intelligence",
+    "perception": "wisdom",
+    "perspicacité": "wisdom",
+    "persuasion": "charisma",
+    "représentation": "charisma",
+    "religion": "intelligence",
+    "supercherie": "charisma",
+    "survie": "wisdom",
+}
+
 
 class Alignment(Enum):
     """Alignements possibles pour DnD 5e."""
@@ -90,8 +112,19 @@ class Monster:
     
     # Caractéristiques
     ability_scores: AbilityScores = field(default_factory=AbilityScores)
+    proficiency_bonus: Optional[int] = None
     saving_throws: List[SavingThrow] = field(default_factory=list)
     skills: List[Skill] = field(default_factory=list)
+    
+    def skill_modifier(self, skill: Skill) -> int:
+        """Bonus d'une compétence maîtrisée : mod de caractéristique + maîtrise."""
+        if skill.modifier:
+            return skill.modifier
+        ability = skill.ability or SKILL_ABILITIES.get(skill.name.lower(), "")
+        modifier = self.ability_scores.get_modifier(ability) if ability else 0
+        if skill.proficiency and self.proficiency_bonus:
+            modifier += self.proficiency_bonus
+        return modifier
     
     # Défense
     damage_resistances: List[str] = field(default_factory=list)
@@ -151,6 +184,7 @@ class Monster:
             "passive_perception": self.passive_perception,
             "languages": self.languages,
             "challenge_rating": self.challenge_rating,
+            "proficiency_bonus": self.proficiency_bonus,
             "actions": [
                 {"name": a.name, "description": a.description, "attack_bonus": a.attack_bonus, 
                  "damage": a.damage, "damage_type": a.damage_type}
@@ -256,6 +290,7 @@ class Monster:
             passive_perception=data.get("passive_perception"),
             languages=data.get("languages", []),
             challenge_rating=data.get("challenge_rating"),
+            proficiency_bonus=data.get("proficiency_bonus"),
             actions=actions,
             legendary_actions=legendary_actions,
             reactions=reactions,
