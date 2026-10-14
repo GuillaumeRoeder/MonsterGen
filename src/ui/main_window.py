@@ -2,27 +2,25 @@
 Fenêtre principale de l'application MonsterGen.
 """
 
-import sys
 from typing import Optional, List, Dict
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QTextEdit, QComboBox, QPushButton, QSpinBox,
-    QGroupBox, QFormLayout, QMessageBox, QFileDialog, QTabWidget,
-    QScrollArea, QListWidget, QListWidgetItem, QInputDialog
+    QFormLayout, QMessageBox, QFileDialog, QTabWidget,
+    QScrollArea, QInputDialog
 )
 from PySide6.QtCore import Qt, Signal, QObject, QTimer
 from PySide6.QtGui import QFont, QIcon
 
-from src.models.monster import Monster, Alignment, Size, AbilityScores, Action, Skill
-from src.ai.ai_generator import ai_generator, DND5_LANGUAGES
+from src.models.monster import Monster, AbilityScores, Action, Skill
+from src.ai.ai_generator import ai_generator
 from src.ai.api_client import api_client
 from src.ai.local_model import local_model, ModelNotAvailableError
 from src.rules.encounter import (
-    DIFFICULTIES, DIFFICULTY_COLORS, DIFFICULTY_KEYS, encounter_cr, difficulty_summary,
+    DIFFICULTIES, DIFFICULTY_COLORS, encounter_cr, difficulty_summary,
 )
 from src.rules.stat_builder import (
-    CR_ENTRIES, cr_display, parse_cr, cr_xp, build_balanced_monster, build_hit_points,
-    build_armor_class, build_ability_scores, build_actions,
+    cr_display, cr_xp, build_balanced_monster,
 )
 from src.ui.languages_editor import LanguagesEditor
 from src.ui.pill_editor import PillEditor

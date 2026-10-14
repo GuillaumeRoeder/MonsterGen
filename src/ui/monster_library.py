@@ -9,12 +9,12 @@ de fichier éditable), de charger ou de supprimer une sauvegarde.
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QDialog, QHBoxLayout, QInputDialog, QLabel, QLineEdit, QListWidget,
-    QListWidgetItem, QMessageBox, QPushButton, QVBoxLayout, QWidget
+    QDialog, QHBoxLayout, QInputDialog, QLabel, QListWidget,
+    QListWidgetItem, QMessageBox, QPushButton, QVBoxLayout
 )
 
 from config.config_manager import config_manager
