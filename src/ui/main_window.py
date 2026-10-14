@@ -5,8 +5,8 @@ Fenêtre principale de l'application MonsterGen.
 import sys
 from typing import Optional, List, Dict
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget,
-    QLabel, QLineEdit, QTextEdit, QComboBox, QPushButton, QSpinBox, QDoubleSpinBox,
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QLabel, QLineEdit, QTextEdit, QComboBox, QPushButton, QSpinBox,
     QGroupBox, QFormLayout, QMessageBox, QFileDialog, QTabWidget,
     QScrollArea, QListWidget, QListWidgetItem, QInputDialog
 )
@@ -15,12 +15,16 @@ from PySide6.QtGui import QFont, QIcon
 
 from src.models.monster import Monster, Alignment, Size, AbilityScores, Action, Skill
 from src.ai.ai_generator import ai_generator
+from src.ai.local_model import local_model, ModelNotAvailableError
+from src.rules.stat_builder import CR_ENTRIES, cr_display, parse_cr, cr_xp, build_balanced_monster
 from src.export.pdf_exporter import pdf_exporter
 from config.config_manager import config_manager
 
 
 class SignalEmitter(QObject):
-    """Émetteur de signaux pour la communication entre threads."""
+    """
+    Émetteur de signaux pour la communication entre threads.
+    """
     update_status = Signal(str)
     show_options = Signal(str, List[str])
     generation_complete = Signal(Monster)
@@ -121,10 +125,21 @@ class MainWindow(QMainWindow):
         self.description_edit.setMaximumHeight(100)
         layout.addRow("Description :", self.description_edit)
 
-        gen_scenario_btn = QPushButton("Générer un scénario")
-        gen_scenario_btn.setIcon(QIcon.fromTheme("system-run"))
-        gen_scenario_btn.clicked.connect(self._generate_scenario)
-        layout.addRow(gen_scenario_btn)
+        scenario_layout = QHBoxLayout()
+        self.scenario_edit = QTextEdit()
+        self.scenario_edit.setPlaceholderText(
+            "Scénario de rencontre — cliquez sur le bouton pour le générer "
+            "à partir des stats actuelles du monstre."
+        )
+        scenario_layout.addWidget(self.scenario_edit, stretch=1)
+
+        self.gen_scenario_btn = QPushButton("Générer\nscénario")
+        self.gen_scenario_btn.setIcon(QIcon.fromTheme("system-run"))
+        self.gen_scenario_btn.setMaximumWidth(110)
+        self.gen_scenario_btn.clicked.connect(self._generate_scenario)
+        scenario_layout.addWidget(self.gen_scenario_btn)
+
+        layout.addRow("Scénario :", scenario_layout)
 
         return tab
 
@@ -134,6 +149,18 @@ class MainWindow(QMainWindow):
         layout = QFormLayout(tab)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
+
+        difficulty_layout = QHBoxLayout()
+        self.cr_combo = QComboBox()
+        self.cr_combo.addItems([label for _, label in CR_ENTRIES])
+        difficulty_layout.addWidget(self.cr_combo, stretch=1)
+
+        self.gen_stats_btn = QPushButton("Remplir les stats équilibrées")
+        self.gen_stats_btn.setIcon(QIcon.fromTheme("system-run"))
+        self.gen_stats_btn.clicked.connect(self._fill_balanced_stats)
+        difficulty_layout.addWidget(self.gen_stats_btn)
+
+        layout.addRow("Niveau de difficulté (CR) :", difficulty_layout)
 
         self.ac_spin = QSpinBox()
         self.ac_spin.setRange(0, 50)
@@ -152,13 +179,6 @@ class MainWindow(QMainWindow):
         self.speed_edit = QLineEdit()
         self.speed_edit.setPlaceholderText("Ex: 30 pieds, vol 60 pieds")
         layout.addRow("Vitesse :", self.speed_edit)
-
-        self.cr_spin = QDoubleSpinBox()
-        self.cr_spin.setRange(0, 30)
-        self.cr_spin.setDecimals(1)
-        self.cr_spin.setSingleStep(0.5)
-        self.cr_spin.setSpecialValueText("")
-        layout.addRow("Défi (CR) :", self.cr_spin)
 
         layout.addRow(QLabel("Caractéristiques :"), QLabel(""))
 
@@ -206,10 +226,10 @@ class MainWindow(QMainWindow):
 
         layout.addRow(chars_layout2)
 
-        gen_stats_btn = QPushButton("Générer les caractéristiques")
-        gen_stats_btn.setIcon(QIcon.fromTheme("system-run"))
-        gen_stats_btn.clicked.connect(self._generate_ability_scores)
-        layout.addRow(gen_stats_btn)
+        gen_chars_btn = QPushButton("Générer les caractéristiques")
+        gen_chars_btn.setIcon(QIcon.fromTheme("system-run"))
+        gen_chars_btn.clicked.connect(self._generate_ability_scores)
+        layout.addRow(gen_chars_btn)
 
         layout.addRow(QLabel("Compétences maîtrisées :"), QLabel(""))
         self.skills_edit = QTextEdit()
@@ -372,7 +392,9 @@ class MainWindow(QMainWindow):
         if monster.speed:
             self._add_preview_label(f"<b>Vitesse :</b> {monster.speed}")
         if monster.challenge_rating:
-            self._add_preview_label(f"<b>CR :</b> {monster.challenge_rating:.1f}")
+            self._add_preview_label(
+                f"<b>CR :</b> {cr_display(monster.challenge_rating)} ({cr_xp(monster.challenge_rating)} PX)"
+            )
 
         scores = monster.ability_scores
         has_non_default = any(v != 10 for v in [
@@ -397,11 +419,64 @@ class MainWindow(QMainWindow):
             for action in monster.actions:
                 self._add_preview_label(f"• {action.name}: {action.description}")
 
+        if monster.scenario:
+            self._add_section_title("Scénario :")
+            self._add_preview_label(monster.scenario, word_wrap=True)
+
         if monster.notes:
             self._add_section_title("Équipement :")
             self._add_preview_label(monster.notes)
 
         self.preview_layout.addStretch()
+
+    def _get_selected_cr(self) -> Optional[float]:
+        """Récupère le CR sélectionné dans le panneau de difficulté."""
+        return parse_cr(self.cr_combo.currentText())
+
+    def _ensure_difficulty(self) -> Optional[float]:
+        """Récupère le CR : depuis le panneau, sinon demande à l'utilisateur."""
+        cr = self._get_selected_cr()
+        if cr is not None:
+            return cr
+
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QComboBox, QPushButton, QHBoxLayout
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Niveau de difficulté")
+        dialog.setMinimumWidth(300)
+
+        dialog_layout = QVBoxLayout(dialog)
+        dialog_layout.addWidget(QLabel("Aucun niveau de difficulté (CR) n'est défini.\nChoisissez un CR pour équilibrer les stats :"))
+
+        combo = QComboBox()
+        combo.addItems([label for _, label in CR_ENTRIES])
+        combo.setCurrentText("1")
+        dialog_layout.addWidget(combo)
+
+        buttons = QHBoxLayout()
+        ok_btn = QPushButton("Valider")
+        ok_btn.clicked.connect(dialog.accept)
+        buttons.addStretch()
+        buttons.addWidget(ok_btn)
+        dialog_layout.addLayout(buttons)
+
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return None
+
+        selected = parse_cr(combo.currentText())
+        if selected is not None:
+            self.cr_combo.setCurrentText(combo.currentText())
+        return selected
+
+    def _fill_balanced_stats(self):
+        """Remplit directement un monstre équilibré pour le CR choisi."""
+        cr = self._ensure_difficulty()
+        if cr is None:
+            return
+
+        monster = build_balanced_monster(cr, base=self.get_monster_from_form())
+        self.set_monster_to_form(monster, keep_scenario=True)
+        self.update_preview()
 
     def get_monster_from_form(self) -> Monster:
         """Récupère les données du monstre depuis le formulaire."""
@@ -410,6 +485,7 @@ class MainWindow(QMainWindow):
         monster.name = self.name_edit.text().strip() or None
         monster.race = self.race_edit.text().strip() or None
         monster.description = self.description_edit.toPlainText().strip() or None
+        monster.scenario = self.scenario_edit.toPlainText().strip()
 
         languages_text = self.languages_edit.toPlainText().strip()
         if languages_text:
@@ -419,7 +495,9 @@ class MainWindow(QMainWindow):
         monster.hit_points = self.hp_spin.value() if self.hp_spin.value() > 0 else None
         monster.hit_dice = self.hit_dice_edit.text().strip() or None
         monster.speed = self.speed_edit.text().strip() or None
-        monster.challenge_rating = self.cr_spin.value() if self.cr_spin.value() > 0 else None
+
+        selected_cr = self._get_selected_cr()
+        monster.challenge_rating = selected_cr
 
         ability_map = {
             "strength": self.str_spin,
@@ -448,7 +526,7 @@ class MainWindow(QMainWindow):
 
         return monster
 
-    def set_monster_to_form(self, monster: Monster):
+    def set_monster_to_form(self, monster: Monster, keep_scenario: bool = False):
         """Remplit le formulaire avec les données du monstre."""
         self.name_edit.setText(monster.name or "")
         self.race_edit.setText(monster.race or "")
@@ -460,7 +538,9 @@ class MainWindow(QMainWindow):
         self.hp_spin.setValue(monster.hit_points or 0)
         self.hit_dice_edit.setText(monster.hit_dice or "")
         self.speed_edit.setText(monster.speed or "")
-        self.cr_spin.setValue(monster.challenge_rating or 0)
+
+        if monster.challenge_rating is not None:
+            self.cr_combo.setCurrentText(cr_display(monster.challenge_rating))
 
         ability_map = {
             "strength": self.str_spin,
@@ -483,6 +563,9 @@ class MainWindow(QMainWindow):
 
         self.equipment_edit.setPlainText(monster.notes or "")
 
+        if not keep_scenario:
+            self.scenario_edit.setPlainText(monster.scenario or "")
+
     def add_action_to_list(self, list_widget: QListWidget, action: Action):
         """Ajoute une action à une liste."""
         action_data = {
@@ -499,11 +582,11 @@ class MainWindow(QMainWindow):
 
     def add_action(self):
         """Ajoute une nouvelle action directement."""
-        name, ok = QInputDialog.getText(self, "Ajouter une action", "Nom de l'action:")
+        name, ok = QInputDialog.getText(self, "Ajouter une action", "Nom de l'action :")
         if not ok or not name:
             return
 
-        description, ok = QInputDialog.getText(self, "Ajouter une action", "Description:")
+        description, ok = QInputDialog.getText(self, "Ajouter une action", "Description :")
         if not ok:
             return
 
@@ -520,11 +603,11 @@ class MainWindow(QMainWindow):
         if not action_data:
             return
 
-        name, ok = QInputDialog.getText(self, "Modifier l'action", "Nom:", text=action_data.get("name", ""))
+        name, ok = QInputDialog.getText(self, "Modifier l'action", "Nom :", text=action_data.get("name", ""))
         if not ok or not name:
             return
 
-        description, ok = QInputDialog.getText(self, "Modifier l'action", "Description:", text=action_data.get("description", ""))
+        description, ok = QInputDialog.getText(self, "Modifier l'action", "Description :", text=action_data.get("description", ""))
         if not ok:
             return
 
@@ -544,18 +627,41 @@ class MainWindow(QMainWindow):
         if selected:
             self.actions_list.takeItem(self.actions_list.row(selected))
 
+    def _check_local_model(self) -> bool:
+        """Vérifie que le modèle local est disponible, sinon guide l'utilisateur."""
+        try:
+            local_model.reload_config()
+        except AttributeError:
+            pass
+        if local_model.is_available():
+            return True
+
+        info = local_model.get_model_info()
+        retry = QMessageBox.question(
+            self,
+            "Modèle local manquant",
+            "Le modèle IA local n'est pas encore prêt.\n\n"
+            f"Modèle sélectionné : {info['label']}\n\n"
+            "Voulez-vous le télécharger maintenant ?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if retry != QMessageBox.StandardButton.Yes:
+            return False
+
+        try:
+            local_model.download()
+            QMessageBox.information(self, "Téléchargement terminé",
+                                     "Le modèle local a été téléchargé avec succès.")
+            return True
+        except ModelNotAvailableError as e:
+            QMessageBox.critical(self, "Erreur de téléchargement", str(e))
+            return False
+
     def _generate_ability_scores(self):
         """Génère les caractéristiques du monstre."""
-        api_key = config_manager.get_api_key()
-        if not api_key:
-            QMessageBox.warning(
-                self,
-                "Clé API manquante",
-                "Veuillez configurer votre clé API dans les paramètres avant de générer."
-            )
+        if not self._check_local_model():
             return
 
-        ai_generator.reload_config()
         monster = self.get_monster_from_form()
 
         try:
@@ -572,119 +678,43 @@ class MainWindow(QMainWindow):
                     self.cha_spin.setValue(int(parts[5].strip()))
                     self.update_preview()
         except Exception as e:
-            QMessageBox.critical(self, "Erreur", f"Erreur lors de la génération: {str(e)}")
+            QMessageBox.critical(self, "Erreur", f"Erreur lors de la génération : {str(e)}")
 
     def _generate_actions(self):
-        """Génère des actions pour le monstre."""
-        api_key = config_manager.get_api_key()
-        if not api_key:
-            QMessageBox.warning(
-                self,
-                "Clé API manquante",
-                "Veuillez configurer votre clé API dans les paramètres avant de générer."
-            )
+        """Génère des actions complètes pour le monstre."""
+        if not self._check_local_model():
             return
 
-        ai_generator.reload_config()
         monster = self.get_monster_from_form()
 
         try:
-            options = ai_generator.generate_options(monster, "actions")
-            if options:
-                for action_name in options[:3]:
-                    action = Action(name=action_name, description="")
-                    self.add_action_to_list(self.actions_list, action)
-                self.update_preview()
+            actions = ai_generator.generate_actions(monster)
+            self.actions_list.clear()
+            for action in actions:
+                self.add_action_to_list(self.actions_list, action)
+            self.update_preview()
         except Exception as e:
-            QMessageBox.critical(self, "Erreur", f"Erreur lors de la génération: {str(e)}")
+            QMessageBox.critical(self, "Erreur", f"Erreur lors de la génération : {str(e)}")
 
     def _generate_scenario(self):
-        """Génère un scénario pour le monstre."""
-        api_key = config_manager.get_api_key()
-        if not api_key:
-            QMessageBox.warning(
-                self,
-                "Clé API manquante",
-                "Veuillez configurer votre clé API dans les paramètres avant de générer."
-            )
+        """Génère un scénario rapide basé sur les stats actuelles du monstre."""
+        if not self._check_local_model():
             return
 
-        ai_generator.reload_config()
         monster = self.get_monster_from_form()
 
-        base_prompt = (
-            "RÈGLE ABSOLUE: Réponds UNIQUEMENT avec un JSON valide: {\"options\": [\"scenario\"]}. "
-            "Ne mets AUCUN commentaire, AUCUNE explication, AUCUN texte supplémentaire. "
-            "Contexte: Fiche de PNJ/Monstre pour DnD 5e. "
-            "Nom={}, Race={}, CA={}, PV={}. "
-            "Génère un scénario court (3-5 phrases) pour une rencontre avec ce monstre. "
-            "Décris le contexte, l'environnement et un objectif possible."
-        )
-
-        prompt = base_prompt.format(
-            monster.name or 'None',
-            monster.race or 'None',
-            monster.armor_class or 'None',
-            monster.hit_points or 'None'
-        )
-
         try:
-            import requests
-            import json as json_module
-            import re as re_module
-
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            }
-
-            payload = {
-                "model": ai_generator.model,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.7,
-                "max_tokens": 200,
-            }
-
-            response = requests.post(
-                ai_generator.endpoint,
-                headers=headers,
-                json=payload,
-                timeout=30
-            )
-            response.raise_for_status()
-
-            result = response.json()
-            if "choices" in result and len(result["choices"]) > 0:
-                resp_content = result["choices"][0]["message"]["content"].strip()
-
-                json_match = re_module.search(r'\{.*\}', resp_content, re_module.DOTALL)
-                if json_match:
-                    json_str = json_match.group()
-                    json_str = json_str.replace('```json', '').replace('```', '').strip()
-                    json_str = re_module.sub(r'//.*', '', json_str)
-                    data = json_module.loads(json_str)
-                    if "options" in data and len(data["options"]) > 0:
-                        scenario = data["options"][0]
-                        current_desc = self.description_edit.toPlainText().strip()
-                        separator = "\n\n" if current_desc else ""
-                        new_desc = f"{current_desc}{separator}Scénario:\n{scenario}"
-                        self.description_edit.setPlainText(new_desc)
-                        self.update_preview()
+            scenario = ai_generator.generate_scenario(monster)
+            self.scenario_edit.setPlainText(scenario)
+            self.update_preview()
         except Exception as e:
-            QMessageBox.critical(self, "Erreur", f"Erreur lors de la génération: {str(e)}")
+            QMessageBox.critical(self, "Erreur", f"Erreur lors de la génération : {str(e)}")
 
     def generate_missing_fields(self):
-        """Génère les champs manquants avec l'IA."""
-        api_key = config_manager.get_api_key()
-        if not api_key:
-            QMessageBox.warning(
-                self,
-                "Clé API manquante",
-                "Veuillez configurer votre clé API dans les paramètres avant de générer des champs."
-            )
+        """Génère les champs manquants avec le modèle local."""
+        if not self._check_local_model():
             return
 
-        ai_generator.reload_config()
         monster = self.get_monster_from_form()
 
         missing_fields = []
@@ -694,23 +724,6 @@ class MainWindow(QMainWindow):
             missing_fields.append("race")
         if not monster.description:
             missing_fields.append("description")
-        if not monster.armor_class:
-            missing_fields.append("armor_class")
-        if not monster.hit_points:
-            missing_fields.append("hit_points")
-        if not monster.hit_dice:
-            missing_fields.append("hit_dice")
-        if not monster.speed:
-            missing_fields.append("speed")
-        if not monster.challenge_rating:
-            missing_fields.append("challenge_rating")
-        if not monster.languages:
-            missing_fields.append("languages")
-
-        scores = monster.ability_scores
-        if (scores.strength == 10 and scores.dexterity == 10 and scores.constitution == 10 and
-           scores.intelligence == 10 and scores.wisdom == 10 and scores.charisma == 10):
-            missing_fields.append("ability_scores")
 
         if not missing_fields:
             QMessageBox.information(
@@ -728,7 +741,7 @@ class MainWindow(QMainWindow):
                 if options:
                     all_options[field] = options
             except Exception as e:
-                error_messages.append(f"{field}: {str(e)}")
+                error_messages.append(f"{field} : {str(e)}")
                 continue
 
         if all_options:
@@ -737,7 +750,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(
                 self,
                 "Erreurs de génération",
-                "Impossible de générer des options:\n\n" + "\n".join(error_messages)
+                "Impossible de générer des options :\n\n" + "\n".join(error_messages)
             )
 
     def show_options_dialog(self, field_name: str, options: List[str]):
@@ -794,14 +807,14 @@ class MainWindow(QMainWindow):
 
         layout = QVBoxLayout(dialog)
 
-        intro_label = QLabel("L'IA a généré des options pour les champs manquants.\nSélectionnez une option pour chaque champ :")
+        intro_label = QLabel("Le modèle local a généré des options pour les champs manquants.\nSélectionnez une option pour chaque champ :")
         layout.addWidget(intro_label)
 
         self.field_combos = {}
         for field_name, options in all_options.items():
             field_layout = QHBoxLayout()
 
-            label = QLabel(f"{field_name}:")
+            label = QLabel(f"{field_name} :")
             field_layout.addWidget(label)
 
             combo = QComboBox()
@@ -848,7 +861,6 @@ class MainWindow(QMainWindow):
         numeric_fields = {
             "armor_class": (self.ac_spin, int),
             "hit_points": (self.hp_spin, int),
-            "challenge_rating": (self.cr_spin, float),
         }
 
         if field_name in numeric_fields:

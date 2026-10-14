@@ -39,3 +39,7 @@ fiches/
 # OS
 .DS_Store
 Thumbs.db
+
+# Modèles IA locaux (GGUF)
+models/
+*.gguf

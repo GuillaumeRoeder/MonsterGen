@@ -1,30 +1,30 @@
 """
 Gestionnaire de configuration pour l'application MonsterGen.
-Gère la clé API IA et les paramètres utilisateur.
+Gère le modèle IA local et les paramètres utilisateur.
 """
 
-import os
 import json
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 
 class ConfigManager:
     """Gère la configuration de l'application."""
-    
+
     DEFAULT_CONFIG = {
-        "ai_api_key": "",
-        "ai_model": "mistral-tiny",
-        "ai_endpoint": "https://api.mistral.ai/v1/chat/completions",
+        "local_model_size": "2gb",
+        "local_model_path": "",
+        "local_context": 4096,
+        "local_threads": 4,
         "default_save_path": "./fiches",
         "language": "fr"
     }
-    
+
     def __init__(self, config_path: str = "config/config.json"):
         self.config_path = Path(config_path)
         self.config: Dict[str, Any] = self.DEFAULT_CONFIG.copy()
         self.load_config()
-    
+
     def load_config(self) -> None:
         """Charge la configuration depuis le fichier."""
         if self.config_path.exists():
@@ -33,9 +33,8 @@ class ConfigManager:
                     loaded_config = json.load(f)
                     self.config.update(loaded_config)
             except (json.JSONDecodeError, IOError):
-                # Si le fichier est corrompu, on garde la config par défaut
                 pass
-    
+
     def save_config(self) -> None:
         """Sauvegarde la configuration dans le fichier."""
         try:
@@ -44,47 +43,56 @@ class ConfigManager:
                 json.dump(self.config, f, indent=4, ensure_ascii=False)
         except IOError as e:
             raise RuntimeError(f"Impossible de sauvegarder la configuration: {e}")
-    
-    def get_api_key(self) -> str:
-        """Récupère la clé API IA."""
-        return self.config.get("ai_api_key", "")
-    
-    def set_api_key(self, api_key: str) -> None:
-        """Définit la clé API IA."""
-        self.config["ai_api_key"] = api_key
+
+    def get_local_model_size(self) -> str:
+        """Récupère la taille du modèle local ('2gb' ou '4gb')."""
+        return self.config.get("local_model_size", "2gb")
+
+    def set_local_model_size(self, size: str) -> None:
+        """Définit la taille du modèle local."""
+        self.config["local_model_size"] = size
         self.save_config()
-    
-    def get_model(self) -> str:
-        """Récupère le modèle IA."""
-        return self.config.get("ai_model", "mistral-tiny")
-    
-    def set_model(self, model: str) -> None:
-        """Définit le modèle IA."""
-        self.config["ai_model"] = model
+
+    def get_local_model_path(self) -> str:
+        """Récupère le chemin du fichier modèle GGUF."""
+        return self.config.get("local_model_path", "")
+
+    def set_local_model_path(self, path: str) -> None:
+        """Définit le chemin du fichier modèle GGUF."""
+        self.config["local_model_path"] = path
         self.save_config()
-    
-    def get_endpoint(self) -> str:
-        """Récupère l'endpoint IA."""
-        return self.config.get("ai_endpoint", "https://api.mistral.ai/v1/chat/completions")
-    
-    def set_endpoint(self, endpoint: str) -> None:
-        """Définit l'endpoint IA."""
-        self.config["ai_endpoint"] = endpoint
+
+    def get_local_context(self) -> int:
+        """Récupère la taille du contexte du modèle."""
+        return int(self.config.get("local_context", 4096))
+
+    def set_local_context(self, ctx: int) -> None:
+        """Définit la taille du contexte du modèle."""
+        self.config["local_context"] = int(ctx)
         self.save_config()
-    
+
+    def get_local_threads(self) -> int:
+        """Récupère le nombre de threads CPU pour le modèle."""
+        return int(self.config.get("local_threads", 4))
+
+    def set_local_threads(self, threads: int) -> None:
+        """Définit le nombre de threads CPU pour le modèle."""
+        self.config["local_threads"] = int(threads)
+        self.save_config()
+
     def get_save_path(self) -> str:
         """Récupère le chemin de sauvegarde par défaut."""
         return self.config.get("default_save_path", "./fiches")
-    
+
     def set_save_path(self, path: str) -> None:
         """Définit le chemin de sauvegarde par défaut."""
         self.config["default_save_path"] = path
         self.save_config()
-    
+
     def get_language(self) -> str:
         """Récupère la langue."""
         return self.config.get("language", "fr")
-    
+
     def set_language(self, language: str) -> None:
         """Définit la langue."""
         self.config["language"] = language

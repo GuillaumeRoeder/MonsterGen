@@ -5,7 +5,10 @@ MonsterGen est une application Python qui permet de générer des fiches PDF pou
 ## Fonctionnalités
 
 - **Interface graphique** : UI complète avec des champs à remplir optionnellement
-- **Génération IA** : Complétion automatique des champs manquants via une API IA (clé à fournir)
+- **Modèle IA local** : Génération des descriptions, actions et scénarios via un petit modèle embarqué (GGUF, 2 à 6 Go) exécuté en locale — aucune clé API nécessaire
+- **Stats équilibrées** : Remplissage direct des statistiques (CA, PV, dés de vie, caractéristiques, actions) à partir des tables officielles du Guide du Maître, en fonction du niveau de difficulté (CR)
+- **Niveau de difficulté** : Panel hardcodé de CR affichés en fraction (1/8, 1/4, 1/2, 1, 2…)
+- **Scénario de rencontre** : Généré via un bouton dédié, basé sur les stats actuelles du monstre
 - **Export PDF** : Génération de fiches PDF professionnelles
 - **Multiplateforme** : Fonctionne sur Linux et Windows
 - **Sauvegarde/Chargement** : Sauvegarder et charger vos créations
@@ -74,9 +77,9 @@ sudo dnf install mesa-libGL
 
 ## Configuration
 
-1. **Clé API IA** : Vous devez fournir une clé API pour un service d'IA compatible (Mistral AI, OpenAI, etc.)
-2. **Modèle IA** : Sélectionnez le modèle à utiliser
-3. **Endpoint IA** : URL de l'API IA (par défaut : Mistral AI)
+1. **Modèle IA local** : Choisissez la taille du modèle embarqué (2 Go ou 4,4 Go maximum)
+2. **Télchargement du modèle** : Lancez `python download_model.py` (une seule fois, ou automatiquement depuis l'application)
+3. **Aucune clé API** : toute la génération IA fonctionne hors ligne, en locale
 
 La configuration se fait via le menu "Fichier > Configuration" dans l'application.
 
