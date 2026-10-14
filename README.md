@@ -1,5 +1,7 @@
 # MonsterGen - Générateur de fiches DnD 5e
 
+📖 **Documentation complète : [docs/Home.md](docs/Home.md)** — installation, utilisation, architecture, règles de génération, backends IA, exports.
+
 MonsterGen est une application Python qui permet de générer des fiches PDF pour les PNJ, monstres et ennemis de Donjons & Dragons 5e.
 
 ## Fonctionnalités
