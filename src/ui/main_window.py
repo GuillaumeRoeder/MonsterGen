@@ -17,6 +17,9 @@ from src.models.monster import Monster, Alignment, Size, AbilityScores, Action, 
 from src.ai.ai_generator import ai_generator, DND5_LANGUAGES
 from src.ai.api_client import api_client
 from src.ai.local_model import local_model, ModelNotAvailableError
+from src.rules.encounter import (
+    DIFFICULTIES, DIFFICULTY_COLORS, DIFFICULTY_KEYS, encounter_cr, difficulty_summary,
+)
 from src.rules.stat_builder import (
     CR_ENTRIES, cr_display, parse_cr, cr_xp, build_balanced_monster, build_hit_points,
     build_armor_class, build_ability_scores, build_actions,
@@ -153,17 +156,45 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
 
-        difficulty_layout = QHBoxLayout()
-        self.cr_combo = QComboBox()
-        self.cr_combo.addItems([label for _, label in CR_ENTRIES])
-        difficulty_layout.addWidget(self.cr_combo, stretch=1)
+        # --- Ligne 1 : groupe de joueurs + difficulté de la rencontre ---
+        party_layout = QHBoxLayout()
+        party_layout.setSpacing(6)
+
+        self.party_size_spin = QSpinBox()
+        self.party_size_spin.setRange(1, 10)
+        self.party_size_spin.setValue(4)
+        party_layout.addWidget(QLabel("Joueurs :"))
+        party_layout.addWidget(self.party_size_spin)
+
+        self.party_level_spin = QSpinBox()
+        self.party_level_spin.setRange(1, 20)
+        self.party_level_spin.setValue(2)
+        party_layout.addWidget(QLabel("Niveau moyen :"))
+        party_layout.addWidget(self.party_level_spin)
+
+        self.difficulty_combo = QComboBox()
+        for key, label in DIFFICULTIES:
+            self.difficulty_combo.addItem(label, key)
+        self.difficulty_combo.setCurrentIndex(1)
+        party_layout.addWidget(QLabel("Difficulté :"))
+        party_layout.addWidget(self.difficulty_combo)
 
         self.gen_stats_btn = QPushButton("Remplir les stats équilibrées")
         self.gen_stats_btn.setIcon(QIcon.fromTheme("system-run"))
         self.gen_stats_btn.clicked.connect(self._fill_balanced_stats)
-        difficulty_layout.addWidget(self.gen_stats_btn)
+        party_layout.addWidget(self.gen_stats_btn)
 
-        layout.addRow("Niveau de difficulté (CR) :", difficulty_layout)
+        layout.addRow("Groupe :", party_layout)
+
+        # --- Label dynamique coloré : CR résultant de la combinaison ---
+        self.difficulty_result_label = QLabel("")
+        self.difficulty_result_label.setStyleSheet("font-weight: bold;")
+        layout.addRow("Difficulté résultante :", self.difficulty_result_label)
+
+        self.party_size_spin.valueChanged.connect(self._update_difficulty_label)
+        self.party_level_spin.valueChanged.connect(self._update_difficulty_label)
+        self.difficulty_combo.currentIndexChanged.connect(self._update_difficulty_label)
+        self._update_difficulty_label()
 
         self.ac_spin = QSpinBox()
         self.ac_spin.setRange(0, 50)
@@ -433,43 +464,30 @@ class MainWindow(QMainWindow):
         self.preview_layout.addStretch()
 
     def _get_selected_cr(self) -> Optional[float]:
-        """Récupère le CR sélectionné dans le panneau de difficulté."""
-        return parse_cr(self.cr_combo.currentText())
+        """CR dérivé du groupe (joueurs, niveau moyen, difficulté choisie)."""
+        return encounter_cr(
+            self.party_size_spin.value(),
+            self.party_level_spin.value(),
+            self.difficulty_combo.currentData() or "medium",
+        )
 
     def _ensure_difficulty(self) -> Optional[float]:
-        """Récupère le CR : depuis le panneau, sinon demande à l'utilisateur."""
-        cr = self._get_selected_cr()
-        if cr is not None:
-            return cr
+        """Le CR est toujours dérivé du groupe ; aucun dialogue nécessaire."""
+        return self._get_selected_cr()
 
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QComboBox, QPushButton, QHBoxLayout
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Niveau de difficulté")
-        dialog.setMinimumWidth(300)
-
-        dialog_layout = QVBoxLayout(dialog)
-        dialog_layout.addWidget(QLabel("Aucun niveau de difficulté (CR) n'est défini.\nChoisissez un CR pour équilibrer les stats :"))
-
-        combo = QComboBox()
-        combo.addItems([label for _, label in CR_ENTRIES])
-        combo.setCurrentText("1")
-        dialog_layout.addWidget(combo)
-
-        buttons = QHBoxLayout()
-        ok_btn = QPushButton("Valider")
-        ok_btn.clicked.connect(dialog.accept)
-        buttons.addStretch()
-        buttons.addWidget(ok_btn)
-        dialog_layout.addLayout(buttons)
-
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return None
-
-        selected = parse_cr(combo.currentText())
-        if selected is not None:
-            self.cr_combo.setCurrentText(combo.currentText())
-        return selected
+    def _update_difficulty_label(self):
+        """Met à jour le label coloré de la difficulté résultante."""
+        difficulty_key = self.difficulty_combo.currentData() or "medium"
+        summary = difficulty_summary(
+            self.party_size_spin.value(),
+            self.party_level_spin.value(),
+            difficulty_key,
+        )
+        color = DIFFICULTY_COLORS.get(difficulty_key, "#e0e0e0")
+        self.difficulty_result_label.setText(f"● {summary}")
+        self.difficulty_result_label.setStyleSheet(
+            f"font-weight: bold; color: {color};"
+        )
 
     def _fill_balanced_stats(self):
         """Remplit directement un monstre équilibré pour le CR choisi."""
@@ -542,8 +560,6 @@ class MainWindow(QMainWindow):
         self.hit_dice_edit.setText(monster.hit_dice or "")
         self.speed_edit.setText(monster.speed or "")
 
-        if monster.challenge_rating is not None:
-            self.cr_combo.setCurrentText(cr_display(monster.challenge_rating))
 
         ability_map = {
             "strength": self.str_spin,
