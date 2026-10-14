@@ -809,23 +809,22 @@ class MainWindow(QMainWindow):
                 pass
             return
         
-        # Caractéristiques
+        # Caractéristiques - maintenant format "15,14,13,10,12,8"
         if field_name == "ability_scores":
             try:
-                import json
-                data = json.loads(value)
-                if isinstance(data, list) and len(data) > 0:
-                    scores = data[0]
+                # Parser le format "15,14,13,10,12,8"
+                parts = value.replace('"', '').strip().split(',')
+                if len(parts) == 6:
                     ability_map = {
-                        "strength": self.str_spin,
-                        "dexterity": self.dex_spin,
-                        "constitution": self.con_spin,
-                        "intelligence": self.int_spin,
-                        "wisdom": self.wis_spin,
-                        "charisma": self.cha_spin,
+                        0: self.str_spin,   # FOR
+                        1: self.dex_spin,   # DEX
+                        2: self.con_spin,   # CON
+                        3: self.int_spin,   # INT
+                        4: self.wis_spin,   # SAG
+                        5: self.cha_spin,   # CHA
                     }
-                    for attr, widget in ability_map.items():
-                        widget.setValue(scores.get(attr, 10))
+                    for idx, widget in ability_map.items():
+                        widget.setValue(int(parts[idx].strip()))
             except Exception:
                 pass
     
