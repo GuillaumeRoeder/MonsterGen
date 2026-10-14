@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer les dépendances de vérification
+        run: pip install pyflakes
+
+      - name: Compilation de tous les modules
+        run: python -m compileall -q src config main.py download_model.py
+
+      - name: pyflakes (noms non définis, fautes de frappe)
+        run: |
+          python -m pyflakes src config main.py download_model.py > pyflakes_report.txt || true
+          cat pyflakes_report.txt
+          if grep -E "undefined name" pyflakes_report.txt > /dev/null; then
+            echo "::error::Des noms non définis ont été détectés par pyflakes"
+            exit 1
+          fi
