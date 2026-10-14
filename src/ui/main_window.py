@@ -388,7 +388,7 @@ class MainWindow(QMainWindow):
         if monster.armor_class:
             self._add_preview_label(f"<b>CA :</b> {monster.armor_class}")
         if monster.hit_points:
-            self._add_preview_label(f"<b>PV :</b> {monster.hit_points} ({monster.hit_dice or '\u2014'})")
+            self._add_preview_label(f"<b>PV :</b> {monster.hit_points} ({monster.hit_dice or '—'})")
         if monster.speed:
             self._add_preview_label(f"<b>Vitesse :</b> {monster.speed}")
         if monster.challenge_rating:
