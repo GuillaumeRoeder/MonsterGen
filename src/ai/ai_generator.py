@@ -9,6 +9,29 @@ from typing import List, Dict, Optional
 from src.models.monster import Monster, Alignment, Size, AbilityScores, SavingThrow, Skill, Action
 from config.config_manager import config_manager
 
+# Liste fixe des langues DnD 5e
+DND5_LANGUAGES = [
+    "Commun",
+    "Auran (langue des créatures aériennes)",
+    "Céleste",
+    "Draconique",
+    "Elfique",
+    "Géant",
+    "Gnome",
+    "Gobelin",
+    "Infernal",
+    "Nain",
+    "Orque",
+    "Primordial",
+    "Sylvestre",
+    "Abyssal",
+    "Aklo",
+    "Aquatique",
+    "Chtonien",
+    "Ignan",
+    "Terran",
+]
+
 
 class AIGenerator:
     """Générateur IA pour compléter les données manquantes."""
@@ -68,26 +91,44 @@ class AIGenerator:
         
         return result
 
+    def _extract_simple_values(self, options: List) -> List[str]:
+        """Extraire des valeurs simples d'une liste d'options (peut contenir des objets)."""
+        simple_options = []
+        for option in options:
+            if isinstance(option, str):
+                simple_options.append(option)
+            elif isinstance(option, dict):
+                # Extraire la première valeur string ou numérique
+                for key, value in option.items():
+                    if isinstance(value, (str, int, float)):
+                        simple_options.append(str(value))
+                        break
+                    elif isinstance(value, list) and len(value) > 0:
+                        simple_options.append(str(value[0]))
+                        break
+            elif isinstance(option, (int, float)):
+                simple_options.append(str(option))
+        return simple_options
+    
     def _generate_prompt(self, monster: Monster, field_name: str) -> str:
         """Génère un prompt pour la génération d'un champ spécifique."""
         base_info = """RÈGLE ABSOLUE : Réponds UNIQUEMENT avec un JSON valide : {"options": ["val1", "val2", "val3"]}
-Ne mets AUCUN commentaire, AUCUNE explication, AUCUN texte supplémentaire.
+Ne mets AUCUN commentaire, AUCUNE explication, AUCUN texte supplémentaire, AUCUN objet, AUCUN tableau imbriqué.
 Contexte : Fiche de PNJ/Monstre pour DnD 5e."""
         
         prompts = {
-            "name": "Propose 3 noms adaptés.",
-            "race": "Propose 3 races adaptées.",
-            "description": "Propose 3 descriptions courtes (1 phrase).",
+            "name": f"Propose 3 noms adaptés pour un {monster.race or 'PNJ'}. Réponds UNIQUEMENT avec des strings simples.",
+            "race": "Propose 3 races adaptées (ex: Gobelin, Orc, Elfe Noir, Nain, Humain, Tiefling, Dragonné, Gnome, Halfelin, Elfe). Réponds UNIQUEMENT avec des strings simples.",
+            "description": "Propose 3 descriptions courtes (1 phrase maximum). Réponds UNIQUEMENT avec des strings simples.",
             "alignment": "Propose 3 alignements parmi: Loyal Bon, Neutre Bon, Chaotique Bon, Loyal Neutre, Neutre, Chaotique Neutre, Loyal Mauvais, Neutre Mauvais, Chaotique Mauvais.",
             "size": "Propose 3 tailles parmi: Minuscule, Petit, Moyen, Grand, Énorme, Colossal.",
-            "armor_class": "Propose 3 valeurs de CA (entiers 10-25).",
+            "armor_class": "Propose 3 valeurs de CA (entiers entre 10 et 25).",
             "hit_points": "Propose 3 valeurs de PV (entiers).",
-            "hit_dice": "Propose 3 dés de vie (ex: 2d8, 3d10).",
+            "hit_dice": "Propose 3 dés de vie (ex: 2d8, 3d10, 5d6).",
             "speed": "Propose 3 vitesses (ex: 30 pieds, vol 60 pieds).",
-            "languages": "Propose 3 langues (ex: Commun, Elfique, Nain).",
-            "challenge_rating": "Propose 3 valeurs de CR (ex: 0.5, 1, 2).",
+            "challenge_rating": "Propose 3 valeurs de CR (ex: 0.125, 0.25, 0.5, 1, 2, 5).",
             "ability_scores": "Propose 3 ensembles de 6 caractéristiques au format FOR,DEX,CON,INT,SAG,CHA (ex: 15,14,13,10,12,8).",
-            "actions": "Propose 3 noms d'actions.",
+            "actions": "Propose 3 noms d'actions (ex: Attaque d'épée, Arc court, Morsure).",
         }
         
         if field_name in prompts:
@@ -163,6 +204,10 @@ Propose 3 valeurs simples pour {field_name}.
     
     def generate_options(self, monster: Monster, field_name: str) -> List[str]:
         """Génère des options pour un champ spécifique."""
+        # Pour les langues, retourner la liste fixe
+        if field_name == "languages":
+            return DND5_LANGUAGES
+        
         self.reload_config()
         
         if not self.api_key:
@@ -172,7 +217,8 @@ Propose 3 valeurs simples pour {field_name}.
         result = self._call_ai_api(prompt)
         
         if result and "options" in result:
-            return result["options"]
+            # Extraire les valeurs simples (au cas où l'API retourne des objets)
+            return self._extract_simple_values(result["options"])
         
         return []
 

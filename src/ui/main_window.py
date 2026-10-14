@@ -642,8 +642,8 @@ class MainWindow(QMainWindow):
         
         # Vérifier les caractéristiques
         scores = monster.ability_scores
-        if scores.strength == 10 and scores.dexterity == 10 and scores.constitution == 10 and \
-           scores.intelligence == 10 and scores.wisdom == 10 and scores.charisma == 10:
+        if (scores.strength == 10 and scores.dexterity == 10 and scores.constitution == 10 and
+           scores.intelligence == 10 and scores.wisdom == 10 and scores.charisma == 10):
             missing_fields.append("ability_scores")
         
         if not missing_fields:
