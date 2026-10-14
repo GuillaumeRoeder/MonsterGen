@@ -135,16 +135,50 @@ class AIGenerator:
             """
     
     def _clean_json_string(self, json_str: str) -> str:
-        """Nettoie une chaîne JSON en supprimant les commentaires et caractères invalides."""
+        """Nettoie une chaîne JSON en supprimant les commentaires et en corrigeant le format."""
         import re
         # Supprimer les commentaires // et /* */
         json_str = re.sub(r'//.*', '', json_str)
         json_str = re.sub(r'/\*.*?\*/', '', json_str, flags=re.DOTALL)
         # Supprimer les backticks
         json_str = json_str.replace('```json', '').replace('```', '').strip()
-        # Supprimer les virgules en fin de ligne
-        json_str = re.sub(r',\s*$', '', json_str, flags=re.MULTILINE)
-        return json_str
+        
+        # Approche robuste : reconstruire le JSON ligne par ligne
+        lines = json_str.split('\n')
+        cleaned_lines = []
+        
+        for line in lines:
+            stripped = line.strip()
+            
+            # Ignorer les lignes vides
+            if not stripped:
+                continue
+            
+            # Si la ligne contient une clé:valeur
+            if ':' in stripped:
+                # Ajouter une virgule si ce n'est pas la fin d'un objet/array
+                if not (stripped.endswith('}') or stripped.endswith(']') or stripped.endswith(',')):
+                    stripped = stripped + ','
+            
+            cleaned_lines.append(stripped)
+        
+        # Rejoindre avec des espaces
+        result = ' '.join(cleaned_lines)
+        
+        # CORRIGER : Ajouter les virgules manquantes entre les objets dans un tableau
+        # } { -> }, {
+        result = re.sub(r'(\})\s*(\{)', r'\1, \2', result)
+        
+        # Supprimer les virgules avant } ou ]
+        result = re.sub(r',\s*([}\]])', r'\1', result)
+        
+        # Supprimer les doubles virgules
+        result = re.sub(r',\s*,', ',', result)
+        
+        # Supprimer les virgules après [
+        result = re.sub(r'\[\s*,', '[', result)
+        
+        return result
 
     def _call_ai_api(self, prompt: str) -> Optional[Dict]:
         """Appelle l'API IA pour générer des suggestions."""
