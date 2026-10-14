@@ -33,6 +33,8 @@ class AIGenerator:
         Aide à compléter les informations manquantes de manière cohérente avec DnD 5e.
         Réponds UNIQUEMENT en {language.upper()}.
         
+        RÈGLE ABSOLUE : Réponds EXACTEMENT avec un JSON valide, SANS commentaires, SANS explications, SANS texte supplémentaire.
+        
         Informations déjà fournies :
         - Nom : {monster.name or 'Non spécifié'}
         - Race : {monster.race or 'Non spécifiée'}
@@ -46,14 +48,14 @@ class AIGenerator:
         
         if field_name == "name":
             return f"""{base_info}
-            Propose 3 noms créatifs et adaptés pour ce PNJ/Monstre basé sur sa race : {monster.race or 'race non spécifiée'}.
+            Propose 3 noms créatifs et adaptés pour ce PNJ/Monstre. Réponds UNIQUEMENT avec : {"options": ["nom1", "nom2", "nom3"]} 3 noms créatifs et adaptés pour ce PNJ/Monstre basé sur sa race : {monster.race or 'race non spécifiée'}.
             Formate la réponse comme un tableau JSON avec une clé 'options' contenant la liste des noms.
             Exemple : {{"options": ["Nom 1", "Nom 2", "Nom 3"]}}
             """
         
         elif field_name == "race":
             return f"""{base_info}
-            Propose 3 races ou types de créatures adaptés pour ce PNJ/Monstre.
+            Propose 3 races adaptées. Réponds UNIQUEMENT avec : {"options": ["race1", "race2", "race3"]} 3 races ou types de créatures adaptés pour ce PNJ/Monstre.
             Formate la réponse comme un tableau JSON avec une clé 'options' contenant la liste des races.
             Exemple : {{"options": ["Race 1", "Race 2", "Race 3"]}}
             """
@@ -83,21 +85,21 @@ class AIGenerator:
         
         elif field_name == "armor_class":
             return f"""{base_info}
-            Propose 3 valeurs de Classe d'Armure (CA) réalistes pour ce PNJ/Monstre.
+            Propose 3 valeurs de CA (entiers). Réponds UNIQUEMENT avec : {"options": [12, 14, 16]} 3 valeurs de Classe d'Armure (CA) réalistes pour ce PNJ/Monstre.
             Formate la réponse comme un tableau JSON avec une clé 'options' contenant la liste des valeurs (entiers).
             Exemple : {{"options": [12, 14, 16]}}
             """
         
         elif field_name == "hit_points":
             return f"""{base_info}
-            Propose 3 valeurs de Points de Vie (PV) réalistes pour ce PNJ/Monstre.
+            Propose 3 valeurs de PV (entiers). Réponds UNIQUEMENT avec : {"options": [20, 45, 70]} 3 valeurs de Points de Vie (PV) réalistes pour ce PNJ/Monstre.
             Formate la réponse comme un tableau JSON avec une clé 'options' contenant la liste des valeurs (entiers).
             Exemple : {{"options": [20, 45, 70]}}
             """
         
         elif field_name == "speed":
             return f"""{base_info}
-            Propose 3 valeurs de Vitesse réalistes pour ce PNJ/Monstre (en pieds).
+            Propose 3 vitesses. Réponds UNIQUEMENT avec : {"options": ["30 pieds", "40 pieds", "vol 60 pieds"]} 3 valeurs de Vitesse réalistes pour ce PNJ/Monstre (en pieds).
             Formate la réponse comme un tableau JSON avec une clé 'options' contenant la liste des valeurs.
             Exemple : {{"options": ["30 pieds", "40 pieds", "vol 60 pieds"]}}
             """
@@ -121,7 +123,7 @@ class AIGenerator:
         
         elif field_name == "challenge_rating":
             return f"""{base_info}
-            Propose 3 valeurs de Challenge Rating (CR) réalistes pour ce PNJ/Monstre.
+            Propose 3 valeurs de CR (nombres). Réponds UNIQUEMENT avec : {"options": [0.5, 2, 5]} 3 valeurs de Challenge Rating (CR) réalistes pour ce PNJ/Monstre.
             Formate la réponse comme un tableau JSON avec une clé 'options' contenant la liste des valeurs (nombres).
             Exemple : {{"options": [0.5, 2, 5]}}
             """
@@ -132,6 +134,18 @@ class AIGenerator:
             Formate la réponse comme un tableau JSON avec une clé 'options' contenant la liste des valeurs.
             """
     
+    def _clean_json_string(self, json_str: str) -> str:
+        """Nettoie une chaîne JSON en supprimant les commentaires et caractères invalides."""
+        import re
+        # Supprimer les commentaires // et /* */
+        json_str = re.sub(r'//.*', '', json_str)
+        json_str = re.sub(r'/\*.*?\*/', '', json_str, flags=re.DOTALL)
+        # Supprimer les backticks
+        json_str = json_str.replace('```json', '').replace('```', '').strip()
+        # Supprimer les virgules en fin de ligne
+        json_str = re.sub(r',\s*$', '', json_str, flags=re.MULTILINE)
+        return json_str
+
     def _call_ai_api(self, prompt: str) -> Optional[Dict]:
         """Appelle l'API IA pour générer des suggestions."""
         # Recharger la config pour s'assurer d'avoir la clé à jour
@@ -172,7 +186,7 @@ class AIGenerator:
                 
                 # Nettoyer la réponse pour extraire le JSON
                 content = content.strip()
-                print(f"[DEBUG] Raw AI response: {content[:500]}")  # Log pour débogage
+                print(f"[DEBUG] Raw AI response: {content[:500]}")
                 
                 # Essayer de trouver le JSON dans la réponse
                 import re
@@ -180,15 +194,21 @@ class AIGenerator:
                 if json_match:
                     json_str = json_match.group()
                     try:
+                        json_str = self._clean_json_string(json_str)
                         return json.loads(json_str)
                     except json.JSONDecodeError as e:
                         print(f"[DEBUG] JSON parse error: {e}")
-                        # Essayer de nettoyer les backticks et autres caractères
-                        json_str = json_str.replace('```json', '').replace('```', '').strip()
-                        return json.loads(json_str)
+                        print(f"[DEBUG] Cleaned JSON: {json_str[:500]}")
+                        # Essayer une deuxième fois après nettoyage
+                        try:
+                            json_str = self._clean_json_string(json_str)
+                            return json.loads(json_str)
+                        except json.JSONDecodeError as e2:
+                            print(f"[DEBUG] Second parse error: {e2}")
                 
                 # Si pas de JSON trouvé, essayer de parser directement
                 try:
+                    content = self._clean_json_string(content)
                     return json.loads(content)
                 except json.JSONDecodeError:
                     # Retourner un format par défaut si le parsing échoue
