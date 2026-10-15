@@ -1,0 +1,7 @@
+# Dépendances du mode local (modèle IA embarqué) — optionnelles.
+# Installation réservée au mode local : pas de wheel précompilée pour tous les
+# environnements (ex. Python 3.13 sur Windows), une compilation C peut être requise.
+llama-cpp-python>=0.2.60
+huggingface_hub>=0.23.0
+tqdm>=4.66.0
+hf-transfer>=0.1.6
