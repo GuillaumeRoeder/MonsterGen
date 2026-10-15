@@ -104,29 +104,45 @@ class PillEditor(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
 
-        self._pills_widget = QWidget()
-        self._pills_layout = FlowLayout(self._pills_widget)
-        layout.addWidget(self._pills_widget)
-
-        self._empty_label = QLabel(empty_text)
-        self._empty_label.setStyleSheet("color: #888888; font-style: italic;")
-        layout.addWidget(self._empty_label)
-
+        # Ligne d'ajout : combobox compacte + petit bouton, au-dessus des pills
         add_layout = QHBoxLayout()
         add_layout.setContentsMargins(0, 0, 0, 0)
-
+        add_layout.setSpacing(6)
         self._combo = QComboBox()
         self._combo.setEditable(allow_free_text)
         if allow_free_text:
             self._combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self._combo.addItems(self._suggestions)
+        self._combo.setStyleSheet("""
+            QComboBox {
+                padding: 3px 8px;
+                min-height: 0px;
+            }
+        """)
         add_layout.addWidget(self._combo, stretch=1)
-
-        add_btn = QPushButton("+ Ajouter")
+        add_btn = QPushButton("+")
+        add_btn.setFixedSize(26, 24)
+        add_btn.setToolTip("Ajouter la valeur sélectionnée")
+        add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        add_btn.setStyleSheet("""
+            QPushButton {
+                padding: 0px;
+                min-height: 0px;
+                min-width: 0px;
+                font-weight: bold;
+            }
+        """)
         add_btn.clicked.connect(self._add_selected)
         add_layout.addWidget(add_btn)
-
         layout.addLayout(add_layout)
+
+        # Pills sous la ligne d'ajout
+        self._pills_widget = QWidget()
+        self._pills_layout = FlowLayout(self._pills_widget)
+        layout.addWidget(self._pills_widget)
+        self._empty_label = QLabel(empty_text)
+        self._empty_label.setStyleSheet("color: #888888; font-style: italic;")
+        layout.addWidget(self._empty_label)
 
         self._refresh()
 
