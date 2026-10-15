@@ -1,33 +1,50 @@
 @echo off
 :: MonsterGen - Script de lancement pour Windows
-:: Ce script crée un environnement virtuel Python et lance l'application.
-:: Au démarrage, il propose : mode API (direct) ou tentative d'installation
-:: du modèle local (llama-cpp-python + téléchargement GGUF).
+:: Utilise uv pour créer un environnement virtuel Python 3.13 (téléchargé
+:: automatiquement par uv, sans toucher au Python du système), puis lance
+:: l'application. Au démarrage, il propose : mode API (direct) ou tentative
+:: d'installation du modèle local (llama-cpp-python + téléchargement GGUF).
 
-:: Vérifier si Python est installé
-python --version >nul 2>&1
+:: Vérifier que uv est installé ; sinon l'installer automatiquement
+where uv >nul 2>&1
 if errorlevel 1 (
-    echo Erreur: Python n'est pas installé ou n'est pas dans le PATH
-    echo Veuillez installer Python 3.8 ou supérieur depuis https://www.python.org/downloads/
+    echo uv n'est pas installe : installation automatique...
+    powershell -ExecutionPolicy ByPass -Command "irm https://astral.sh/uv/install.ps1 | iex"
+    if errorlevel 1 (
+        echo Erreur : uv n'a pas pu etre installe.
+        echo Installez uv manuellement : https://docs.astral.sh/uv/getting-started/installation/
+        pause
+        exit /b 1
+    )
+    set "PATH=%USERPROFILE%\.local\bin;%PATH%"
+)
+
+:: Créer l'environnement virtuel Python 3.13 si nécessaire
+:: (uv télécharge l'interpréteur 3.13 lui-même, aucun Python 3.13 système requis)
+if not exist ".venv\" (
+    echo Creation de l'environnement virtuel Python 3.13...
+    uv venv --python 3.13 .venv
+    if errorlevel 1 (
+        echo Erreur : impossible de creer l'environnement Python 3.13.
+        pause
+        exit /b 1
+    )
+)
+
+:: Installer/synchroniser les dépendances dans l'environnement 3.13
+echo Installation des dependances ^(Python 3.13^)...
+uv pip install -r requirements.txt --python .venv
+if errorlevel 1 (
+    echo Erreur : echec de l'installation des dependances.
     pause
     exit /b 1
 )
 
-:: Créer un environnement virtuel si il n'existe pas
-if not exist "venv\" (
-    echo Création de l'environnement virtuel...
-    python -m venv venv
-)
+:: Activer l'environnement virtuel Python 3.13
+call .venv\Scripts\activate.bat
 
-:: Activer l'environnement virtuel
-call venv\Scripts\activate.bat
-
-:: Installer les dépendances si nécessaire
-if not exist "venv\Lib\site-packages\PyQt6" (
-    echo Installation des dépendances...
-    pip install --upgrade pip
-    pip install -r requirements.txt
-)
+:: Vérifier la version de Python de l'environnement
+.venv\Scripts\python --version
 
 :: Choix du mode IA
 echo.
@@ -46,38 +63,38 @@ goto api_mode
 
 :local_mode
 echo Tentative d'installation du modele local...
-python -c "import llama_cpp" >nul 2>&1
+.venv\Scripts\python -c "import llama_cpp" >nul 2>&1
 if not errorlevel 1 (
     echo llama-cpp-python est deja installe.
     goto download_model
 )
-pip install llama-cpp-python
+uv pip install llama-cpp-python --python .venv
 if errorlevel 1 (
     echo.
     echo Echec de l'installation de llama-cpp-python.
     echo Retour en mode API.
-    python -c "from config.config_manager import config_manager; config_manager.set_ai_mode('api')"
+    .venv\Scripts\python -c "from config.config_manager import config_manager; config_manager.set_ai_mode('api')"
     goto launch
 )
 
 :download_model
 echo Verification/telechargement du modele GGUF...
-python download_model.py
+.venv\Scripts\python download_model.py
 if errorlevel 1 (
     echo Echec du telechargement du modele. Retour en mode API.
-    python -c "from config.config_manager import config_manager; config_manager.set_ai_mode('api')"
+    .venv\Scripts\python -c "from config.config_manager import config_manager; config_manager.set_ai_mode('api')"
 )
 goto launch
 
 :api_mode
 echo Lancement en mode API...
-python -c "from config.config_manager import config_manager; config_manager.set_ai_mode('api')"
+.venv\Scripts\python -c "from config.config_manager import config_manager; config_manager.set_ai_mode('api')"
 
 :launch
 :: Lancer l'application
 echo.
 echo Lancement de MonsterGen...
-python main.py
+.venv\Scripts\python main.py
 
 :: Désactiver l'environnement virtuel à la sortie
-call venv\Scripts\deactivate.bat
+call .venv\Scripts\deactivate.bat
