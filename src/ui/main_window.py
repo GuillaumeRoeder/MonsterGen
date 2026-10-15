@@ -162,6 +162,12 @@ class MainWindow(QMainWindow):
         self.export_png_btn.setIcon(QIcon.fromTheme("image-x-generic"))
         control_layout.addWidget(self.export_png_btn)
 
+        self.reset_btn = QPushButton("Réinitialiser")
+        self.reset_btn.setIcon(QIcon.fromTheme("document-new"))
+        self.reset_btn.setToolTip("Effacer tous les champs : identité, stats, actions, scénario, équipement…")
+        self.reset_btn.clicked.connect(self.reset_all_fields)
+        control_layout.addWidget(self.reset_btn)
+
         layout.addLayout(control_layout)
 
         return panel
@@ -703,6 +709,56 @@ class MainWindow(QMainWindow):
         """Retire tous les widgets d'action."""
         for widget in self.get_action_widgets():
             self.remove_action_widget(widget)
+
+    def reset_all_fields(self):
+        """Réinitialise tous les champs du formulaire après confirmation."""
+        reponse = QMessageBox.question(
+            self,
+            "Réinitialiser la fiche",
+            "Effacer tous les champs (identité, statistiques, actions, "
+            "scénario, équipement) ?\n\nCette action est irréversible.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reponse != QMessageBox.StandardButton.Yes:
+            return
+
+        # Onglet Informations : identité, langues, description, scénario
+        self.name_edit.clear()
+        self.race_edit.clear()
+        self.languages_edit.set_values([])
+        self.description_edit.clear()
+        self.scenario_edit.clear()
+
+        # Onglet Statistiques : groupe aux valeurs par défaut
+        self.party_size_spin.setValue(4)
+        self.party_level_spin.setValue(2)
+        self.difficulty_combo.setCurrentIndex(1)
+        self._update_difficulty_label()
+
+        # Chiffres : CA, PV, dés de vie, vitesse, maîtrise
+        self.ac_spin.setValue(0)
+        self.hp_spin.setValue(0)
+        self.hit_dice_edit.clear()
+        self.speed_edit.clear()
+        if hasattr(self, "proficiency_spin"):
+            self.proficiency_spin.setValue(0)
+
+        # Caractéristiques
+        for widget in (self.str_spin, self.dex_spin, self.con_spin,
+                       self.int_spin, self.wis_spin, self.cha_spin):
+            widget.setValue(0)
+
+        # Pills : compétences, résistances, immunités
+        self.skills_edit.set_values([])
+        self.resistances_edit.set_values([])
+        self.immunities_edit.set_values([])
+
+        # Actions et équipement
+        self.clear_actions()
+        self.equipment_edit.clear()
+
+        self.update_preview()
 
     def add_action(self):
         """Ajoute une nouvelle action (widget vide éditable)."""
