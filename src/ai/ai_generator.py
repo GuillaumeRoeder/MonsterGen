@@ -124,9 +124,17 @@ class AIGenerator:
 
     def generate_actions(self, monster: Monster) -> List[Action]:
         """Génère des actions complètes (nom + description + stats) pour le monstre."""
+        context = f"{monster_stats_summary(monster)}"
+        if monster.race:
+            context += f"\nRace : {monster.race}"
+        if monster.description:
+            context += f"\nDescription : {monster.description}"
         prompt = (
-            f"Fiche de PNJ/Monstre DnD 5e. {monster_stats_summary(monster)}\n"
+            f"Fiche de PNJ/Monstre DnD 5e. {context}\n"
             "Génère 3 actions de combat cohérentes avec ces statistiques "
+            "et la description ci-dessus — les armes et aptitudes mentionnées "
+            "dans la description sont OBLIGATOIRES (ex. doué à l'arc -> au "
+            "moins une attaque à distance à l'arc). "
             "(bonus d'attaque et dégâts équilibrés pour ce CR).\n"
             "OBLIGATOIRE : la description de chaque action doit contenir les "
             "chiffres du jeu — pour une attaque, écris par exemple : 'Attaque "
@@ -246,13 +254,14 @@ class AIGenerator:
         label = labels.get(field_name, field_name)
 
         prompt = (
-            f"Fiche de PNJ/Monstre DnD 5e. {monster_stats_summary(monster)}\n"
-            f"{label} actuel :\n{text}\n\n"
+            f"{label} actuel d'une créature :\n{text}\n\n"
             f"Corrige l'orthographe, la grammaire et la ponctuation de ce texte. "
             "Garde exactement le même contenu, le même concept et la même "
             "longueur approximative — ne rajoute rien, ne supprime rien, "
             "conserve le formatage markdown (gras **) s'il est présent.\n"
-            "Réponds UNIQUEMENT avec le texte corrigé, sans préambule."
+            "IMPORTANT : ne recopie ni l'en-tête, ni le label, ni le texte "
+            "d'aucune fiche. Réponds UNIQUEMENT avec le texte corrigé, sans "
+            "préambule ni explication."
         )
 
         raw = _backend_generate(prompt, max_tokens=500, temperature=0.3)
@@ -266,8 +275,19 @@ class AIGenerator:
         """Nettoie une reponse IA courte (nom, race) : guillemets englobants,
         prefixes du type "Nom corrige : ..." et lignes parasites."""
         text = text.strip()
-        first_line = text.splitlines()[0].strip() if text else ""
-        text = first_line.strip("\u00ab\u00bb\u201c\u201d\u2018\u2019\"' ")
+        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+        if not lines:
+            return ""
+        text = lines[0]
+        # Echo du prompt (le modèle rejoue l'en-tête) : garder la 2e ligne,
+        # qui contient la vraie réponse.
+        if len(lines) > 1 and (
+            text.startswith("Fiche de PNJ")
+            or text.startswith("Nom=")
+            or text.startswith("Race=")
+        ):
+            text = lines[1]
+        text = text.strip("\u00ab\u00bb\u201c\u201d\u2018\u2019\"' ")
         m = re.match(r"^\s*(?:le\s+|la\s+)?(?:nom|race|description|texte)\s*(?:corrig\u00e9e?|corrigee?|final|finale)?\s*:\s*(.+)$",
                      text, flags=re.IGNORECASE)
         if m:
