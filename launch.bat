@@ -43,8 +43,18 @@ if errorlevel 1 (
 :: Activer l'environnement virtuel Python 3.13
 call .venv\Scripts\activate.bat
 
-:: Vérifier la version de Python de l'environnement
+:: Vérifier la version de Python de l'environnement (3.13 requis)
+echo Python utilise :
 .venv\Scripts\python --version
+.venv\Scripts\python -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 13) else 1)"
+if errorlevel 1 (
+    echo.
+    echo ERREUR : Python 3.13 est requis.
+    echo Supprimez le dossier .venv et relancez pour recreer un environnement Python 3.13.
+    pause
+    exit /b 1
+)
+echo Version Python 3.13 verifiee.
 
 :: Choix du mode IA
 echo.

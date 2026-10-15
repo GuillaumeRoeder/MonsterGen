@@ -259,7 +259,7 @@ class AIGenerator:
         cleaned = raw.replace('```', '').strip()
         if not cleaned:
             raise RuntimeError("Le modèle n'a pas produit de correction.")
-        return _sanitize_short_text(cleaned)
+        return AIGenerator._sanitize_short_text(cleaned)
 
     @staticmethod
     def _sanitize_short_text(text: str) -> str:
