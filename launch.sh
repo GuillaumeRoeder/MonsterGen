@@ -54,8 +54,18 @@ fi
 source .venv/bin/activate
 PY=".venv/bin/python"
 
-# Vérifier la version de Python de l'environnement
+# Vérifier la version de Python de l'environnement (3.13 requis)
 echo "Python utilisé : $($PY --version)"
+PY_MINOR=$($PY -c "import sys; print(sys.version_info[1])")
+PY_MAJOR=$($PY -c "import sys; print(sys.version_info.major)")
+if [ "$PY_MAJOR" != "3" ] || [ "$PY_MINOR" != "13" ]; then
+    echo ""
+    echo "ERREUR : Python 3.13 est requis, mais l'environnement contient Python $PY_MAJOR.$PY_MINOR."
+    echo "Supprimez le dossier .venv et relancez pour recréer un environnement Python 3.13 :"
+    echo "  rm -rf .venv && ./launch.sh"
+    exit 1
+fi
+echo "Version Python 3.13 vérifiée."
 
 # Choix du mode IA
 echo ""
