@@ -78,7 +78,7 @@ if not errorlevel 1 (
     echo llama-cpp-python est deja installe.
     goto download_model
 )
-uv pip install llama-cpp-python --python .venv
+uv pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/stable --python .venv
 if errorlevel 1 (
     echo.
     echo Echec de l'installation de llama-cpp-python.

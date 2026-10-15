@@ -89,7 +89,10 @@ case "$choice" in
         if $PY -c "import llama_cpp" 2>/dev/null; then
             echo "llama-cpp-python est déjà installé."
         else
-            if ! uv pip install llama-cpp-python --python .venv; then
+            echo "Installation de llama-cpp-python (wheel précompilée d'abord)…"
+            if ! uv pip install llama-cpp-python \
+                --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/stable \
+                --python .venv; then
                 echo ""
                 echo "Échec de l'installation de llama-cpp-python."
                 echo "Retour en mode API."
