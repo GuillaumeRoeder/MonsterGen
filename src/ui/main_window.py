@@ -361,6 +361,25 @@ class MainWindow(QMainWindow):
         gen_actions_btn.clicked.connect(self._generate_actions)
         layout.addWidget(gen_actions_btn)
 
+        # Description libre des actions souhaitées, transmise au prompt IA
+        self.actions_prompt_edit = QTextEdit()
+        self.actions_prompt_edit.setPlaceholderText(
+            "Décrivez brièvement les actions souhaitées — l'IA les générera avec "
+            "les stats équilibrées.\n"
+            "Ex : une attaque à l'arc à distance, une morsure empoisonnée, "
+            "un cri terrifiant une fois par combat."
+        )
+        self.actions_prompt_edit.setMaximumHeight(70)
+        self.actions_prompt_edit.setAcceptRichText(False)
+        layout.addWidget(self.actions_prompt_edit)
+        self.gen_actions_prompt_btn = QPushButton("Générer à partir de la description")
+        self.gen_actions_prompt_btn.setIcon(QIcon.fromTheme("system-run"))
+        self.gen_actions_prompt_btn.setToolTip(
+            "Génère les actions décrites ci-dessus, avec les stats équilibrées pour le CR"
+        )
+        self.gen_actions_prompt_btn.clicked.connect(self._generate_actions_from_prompt)
+        layout.addWidget(self.gen_actions_prompt_btn)
+
         self.actions_scroll = QScrollArea()
         self.actions_scroll.setWidgetResizable(True)
         self.actions_scroll.setMinimumHeight(200)
@@ -763,6 +782,31 @@ class MainWindow(QMainWindow):
     def add_action(self):
         """Ajoute une nouvelle action (widget vide éditable)."""
         self.add_action_to_list(Action(name="", description=""))
+
+    def _generate_actions_from_prompt(self):
+        """Génère les actions décrites dans la zone de description libre."""
+        prompt = self.actions_prompt_edit.toPlainText().strip()
+        if not prompt:
+            QMessageBox.information(
+                self,
+                "Description vide",
+                "Décrivez d'abord brièvement les actions souhaitées "
+                "dans la zone de texte au-dessus du bouton.",
+            )
+            return
+        if not self._check_backend():
+            return
+
+        monster = self.get_monster_from_form()
+
+        try:
+            actions = ai_generator.generate_actions(monster, actions_prompt=prompt)
+            self.clear_actions()
+            for action in actions:
+                self.add_action_to_list(action)
+            self.update_preview()
+        except Exception as e:
+            QMessageBox.critical(self, "Erreur", f"Erreur lors de la génération : {str(e)}")
 
     def _check_backend(self) -> bool:
         """Vérifie le backend IA actif (local ou API), sinon guide l'utilisateur."""
