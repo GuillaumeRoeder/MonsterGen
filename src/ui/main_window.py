@@ -24,6 +24,7 @@ from src.rules.stat_builder import (
 )
 from src.ui.languages_editor import LanguagesEditor
 from src.ui.pill_editor import PillEditor
+from src.ui.styles import ACCENT_BUTTON_STYLE, SECONDARY_BUTTON_STYLE
 
 # Compétences DnD 5e (suggestions pour l'éditeur en pills).
 DND5_SKILLS = [
@@ -152,6 +153,7 @@ class MainWindow(QMainWindow):
 
         self.generate_btn = QPushButton("Générer les champs manquants")
         self.generate_btn.setIcon(QIcon.fromTheme("system-run"))
+        self.generate_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         control_layout.addWidget(self.generate_btn)
 
         self.export_btn = QPushButton("Exporter en PDF")
@@ -205,6 +207,7 @@ class MainWindow(QMainWindow):
 
         self.gen_scenario_btn = QPushButton("Générer\nscénario")
         self.gen_scenario_btn.setIcon(QIcon.fromTheme("system-run"))
+        self.gen_scenario_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         self.gen_scenario_btn.setMaximumWidth(110)
         self.gen_scenario_btn.clicked.connect(self._generate_scenario)
         scenario_layout.addWidget(self.gen_scenario_btn)
@@ -245,6 +248,7 @@ class MainWindow(QMainWindow):
 
         self.gen_stats_btn = QPushButton("Équilibrer les stats")
         self.gen_stats_btn.setIcon(QIcon.fromTheme("system-run"))
+        self.gen_stats_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         self.gen_stats_btn.clicked.connect(self._fill_balanced_stats)
         party_layout.addWidget(self.gen_stats_btn)
 
@@ -358,27 +362,31 @@ class MainWindow(QMainWindow):
 
         gen_actions_btn = QPushButton("Générer des actions")
         gen_actions_btn.setIcon(QIcon.fromTheme("system-run"))
+        gen_actions_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         gen_actions_btn.clicked.connect(self._generate_actions)
         layout.addWidget(gen_actions_btn)
 
-        # Description libre des actions souhaitées, transmise au prompt IA
+        # Sous-fonction : description libre des actions souhaitées,
+        # présentée comme sous-action compacte de la génération automatique.
+        prompt_row = QHBoxLayout()
+        prompt_row.setContentsMargins(14, 0, 0, 0)   # indentation visuelle
+        prompt_row.setSpacing(6)
         self.actions_prompt_edit = QTextEdit()
         self.actions_prompt_edit.setPlaceholderText(
-            "Décrivez brièvement les actions souhaitées — l'IA les générera avec "
-            "les stats équilibrées.\n"
-            "Ex : une attaque à l'arc à distance, une morsure empoisonnée, "
-            "un cri terrifiant une fois par combat."
+            "Ou décrivez vos actions ici (ex : tir à l'arc, morsure empoisonnée…)"
         )
-        self.actions_prompt_edit.setMaximumHeight(70)
+        self.actions_prompt_edit.setMaximumHeight(34)
         self.actions_prompt_edit.setAcceptRichText(False)
-        layout.addWidget(self.actions_prompt_edit)
-        self.gen_actions_prompt_btn = QPushButton("Générer à partir de la description")
-        self.gen_actions_prompt_btn.setIcon(QIcon.fromTheme("system-run"))
+        self.actions_prompt_edit.setStyleSheet("font-size: 11px; padding: 2px 6px;")
+        prompt_row.addWidget(self.actions_prompt_edit, stretch=1)
+        self.gen_actions_prompt_btn = QPushButton("Générer")
         self.gen_actions_prompt_btn.setToolTip(
-            "Génère les actions décrites ci-dessus, avec les stats équilibrées pour le CR"
+            "Génère les actions décrites à gauche, avec les stats équilibrées pour le CR"
         )
+        self.gen_actions_prompt_btn.setStyleSheet(SECONDARY_BUTTON_STYLE)
         self.gen_actions_prompt_btn.clicked.connect(self._generate_actions_from_prompt)
-        layout.addWidget(self.gen_actions_prompt_btn)
+        prompt_row.addWidget(self.gen_actions_prompt_btn)
+        layout.addLayout(prompt_row)
 
         self.actions_scroll = QScrollArea()
         self.actions_scroll.setWidgetResizable(True)
@@ -791,7 +799,7 @@ class MainWindow(QMainWindow):
                 self,
                 "Description vide",
                 "Décrivez d'abord brièvement les actions souhaitées "
-                "dans la zone de texte au-dessus du bouton.",
+                "dans la zone de texte à gauche du bouton.",
             )
             return
         if not self._check_backend():
