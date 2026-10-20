@@ -230,7 +230,7 @@ class MainWindow(QMainWindow):
         languages_frame.setFrameShape(QFrame.Shape.StyledPanel)
         languages_frame.setStyleSheet("""
             QFrame {
-                background-color: #263326;
+                background-color: #1e291e;
                 border: 1px solid #3e5a3e;
                 border-radius: 6px;
             }
@@ -260,39 +260,55 @@ class MainWindow(QMainWindow):
         self.description_edit.setMaximumHeight(100)
         layout.addRow("Description :", self.description_edit)
 
-        scenario_frame = QFrame()
-        scenario_frame.setFrameShape(QFrame.Shape.StyledPanel)
-        scenario_frame.setStyleSheet("""
-            QFrame {
-                background-color: #263326;
-                border: 1px solid #3e5a3e;
-                border-radius: 6px;
-            }
-            QLabel {
-                background: transparent;
-                border: none;
-            }
-        """)
-        scenario_vlayout = QVBoxLayout(scenario_frame)
-        scenario_vlayout.setContentsMargins(8, 6, 8, 8)
-        scenario_vlayout.setSpacing(6)
+        scenario_widget = QWidget()
+        scenario_vlayout = QVBoxLayout(scenario_widget)
+        scenario_vlayout.setContentsMargins(0, 0, 0, 0)
+        scenario_vlayout.setSpacing(0)
 
-        self.scenario_toggle_btn = QPushButton("▸ Scénario de rencontre (optionnel)")
-        self.scenario_toggle_btn.setStyleSheet(SECONDARY_BUTTON_STYLE)
+        # Barre de titre repliable façon Attribute Editor de Maya
+        self.scenario_toggle_btn = QPushButton("  ▸  Scénario de rencontre (optionnel)")
         self.scenario_toggle_btn.setToolTip(
-            "Afficher ou masquer la section scénario"
+            "Cliquer pour déplier ou replier la section scénario"
         )
         self.scenario_toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.scenario_toggle_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #253225;
+                color: #c8e6c9;
+                border: 1px solid #3e5a3e;
+                border-radius: 3px;
+                padding: 6px 10px;
+                text-align: left;
+                font-weight: bold;
+                min-height: 0px;
+            }
+            QPushButton:hover {
+                background-color: #2c3a2c;
+                border: 1px solid #66bb6a;
+            }
+            QPushButton:pressed {
+                background-color: #1c261c;
+            }
+        """)
         self.scenario_toggle_btn.clicked.connect(self._toggle_scenario)
         scenario_vlayout.addWidget(self.scenario_toggle_btn)
 
         self.scenario_content = QWidget()
+        self.scenario_content.setStyleSheet("""
+            QWidget {
+                background-color: #1e291e;
+                border: 1px solid #3e5a3e;
+                border-top: none;
+                border-bottom-left-radius: 6px;
+                border-bottom-right-radius: 6px;
+            }
+        """)
         scenario_inner = QVBoxLayout(self.scenario_content)
-        scenario_inner.setContentsMargins(0, 0, 0, 0)
+        scenario_inner.setContentsMargins(8, 6, 8, 8)
         scenario_inner.setSpacing(6)
 
         scenario_header = QLabel(
-            "Scénario de rencontre — décrivez le contexte, ou générez-le "
+            "Décrivez le contexte de la rencontre, ou générez-le "
             "automatiquement à partir des stats actuelles du monstre :"
         )
         scenario_header.setStyleSheet(
@@ -308,7 +324,7 @@ class MainWindow(QMainWindow):
         )
         self.scenario_edit.setStyleSheet("""
             QTextEdit {
-                background-color: #2c382c;
+                background-color: #222d22;
                 color: #dfe8df;
                 border: 1px solid #3e4e3e;
                 border-radius: 4px;
@@ -328,7 +344,7 @@ class MainWindow(QMainWindow):
         self.scenario_content.setVisible(False)
         scenario_vlayout.addWidget(self.scenario_content)
 
-        layout.addRow("Scénario :", scenario_frame)
+        layout.addRow(scenario_widget)
 
         return tab
 
@@ -350,8 +366,8 @@ class MainWindow(QMainWindow):
         visible = not self.scenario_content.isVisible()
         self.scenario_content.setVisible(visible)
         self.scenario_toggle_btn.setText(
-            "▾ Scénario de rencontre (optionnel)" if visible
-            else "▸ Scénario de rencontre (optionnel)"
+            "  ▾  Scénario de rencontre (optionnel)" if visible
+            else "  ▸  Scénario de rencontre (optionnel)"
         )
 
     def _show_race_menu(self):

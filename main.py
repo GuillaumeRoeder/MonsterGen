@@ -63,11 +63,11 @@ def set_stylesheet(app):
     app.setStyleSheet("""
         /* Style global pour MonsterGen - Thème sombre vert DnD */
         QMainWindow {
-            background-color: #1c241c;
+            background-color: #121a12;
         }
         
         QWidget {
-            background-color: #232d23;
+            background-color: #1a231a;
             color: #dfe8df;
             border: none;
         }
@@ -77,7 +77,7 @@ def set_stylesheet(app):
         }
         
         QLineEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox {
-            background-color: #2c382c;
+            background-color: #222d22;
             color: #dfe8df;
             border: 1px solid #3e4e3e;
             border-radius: 4px;
@@ -88,11 +88,11 @@ def set_stylesheet(app):
         
         QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
             border: 1px solid #66bb6a;
-            background-color: #2c382c;
+            background-color: #222d22;
         }
         
         QPushButton {
-            background-color: #2f3d2f;
+            background-color: #253225;
             color: #dfe8df;
             border: 1px solid #3e4e3e;
             border-radius: 4px;
@@ -101,33 +101,33 @@ def set_stylesheet(app):
         }
         
         QPushButton:hover {
-            background-color: #384838;
+            background-color: #2c3a2c;
             border: 1px solid #66bb6a;
         }
         
         QPushButton:pressed {
-            background-color: #263126;
+            background-color: #1c261c;
             border: 1px solid #66bb6a;
         }
         
         QPushButton:disabled {
-            background-color: #263126;
+            background-color: #1c261c;
             color: #6a7a6a;
             border: 1px solid #3e4e3e;
         }
         
         QTabWidget {
-            background-color: #232d23;
+            background-color: #1a231a;
         }
         
         QTabWidget::pane {
             border: 1px solid #3e4e3e;
             border-radius: 4px;
-            background-color: #232d23;
+            background-color: #1a231a;
         }
         
         QTabBar::tab {
-            background-color: #2c382c;
+            background-color: #222d22;
             color: #dfe8df;
             border: 1px solid #3e4e3e;
             border-bottom: none;
@@ -137,18 +137,18 @@ def set_stylesheet(app):
         }
         
         QTabBar::tab:selected {
-            background-color: #2f442f;
+            background-color: #253d25;
             color: #a5d6a7;
-            border-bottom: 1px solid #2f442f;
+            border-bottom: 1px solid #253d25;
             margin-bottom: -1px;
         }
         
         QTabBar::tab:hover:!selected {
-            background-color: #384838;
+            background-color: #2c3a2c;
         }
         
         QListWidget {
-            background-color: #2c382c;
+            background-color: #222d22;
             color: #dfe8df;
             border: 1px solid #3e4e3e;
             border-radius: 4px;
@@ -156,7 +156,7 @@ def set_stylesheet(app):
         }
         
         QListWidget::item {
-            background-color: #2c382c;
+            background-color: #222d22;
             color: #dfe8df;
             padding: 4px;
             border: none;
@@ -168,16 +168,16 @@ def set_stylesheet(app):
         }
         
         QScrollArea {
-            background-color: #232d23;
+            background-color: #1a231a;
             border: none;
         }
         
         QScrollArea > QWidget {
-            background-color: #232d23;
+            background-color: #1a231a;
         }
         
         QGroupBox {
-            background-color: #232d23;
+            background-color: #1a231a;
             border: 1px solid #3e4e3e;
             border-radius: 4px;
             margin-top: 10px;
@@ -192,7 +192,7 @@ def set_stylesheet(app):
         }
         
         QMenuBar {
-            background-color: #1c241c;
+            background-color: #121a12;
             color: #dfe8df;
             border-bottom: 1px solid #3e4e3e;
         }
@@ -204,19 +204,19 @@ def set_stylesheet(app):
         }
         
         QMenuBar::item:selected {
-            background-color: #2c382c;
+            background-color: #222d22;
             border-radius: 4px;
         }
         
         QMenu {
-            background-color: #2c382c;
+            background-color: #222d22;
             color: #dfe8df;
             border: 1px solid #3e4e3e;
             border-radius: 4px;
         }
         
         QMenu::item {
-            background-color: #2c382c;
+            background-color: #222d22;
             color: #dfe8df;
             padding: 6px 20px;
         }
@@ -227,7 +227,7 @@ def set_stylesheet(app):
         }
         
         QMessageBox {
-            background-color: #232d23;
+            background-color: #1a231a;
             color: #dfe8df;
         }
         
@@ -236,7 +236,7 @@ def set_stylesheet(app):
         }
         
         QMessageBox QPushButton {
-            background-color: #2f3d2f;
+            background-color: #253225;
             color: #dfe8df;
             border: 1px solid #3e4e3e;
             border-radius: 4px;
@@ -245,11 +245,11 @@ def set_stylesheet(app):
         }
         
         QMessageBox QPushButton:hover {
-            background-color: #384838;
+            background-color: #2c3a2c;
         }
         
         QInputDialog {
-            background-color: #232d23;
+            background-color: #1a231a;
         }
         
         QInputDialog QLabel {
@@ -257,21 +257,21 @@ def set_stylesheet(app):
         }
         
         QInputDialog QLineEdit {
-            background-color: #2c382c;
+            background-color: #222d22;
             color: #dfe8df;
             border: 1px solid #3e4e3e;
             border-radius: 4px;
         }
         
         QInputDialog QPushButton {
-            background-color: #2f3d2f;
+            background-color: #253225;
             color: #dfe8df;
             border: 1px solid #3e4e3e;
             border-radius: 4px;
         }
         
         QDialog {
-            background-color: #232d23;
+            background-color: #1a231a;
         }
         
         QDialog QLabel {
