@@ -15,7 +15,8 @@ class LanguagesEditor(PillEditor):
 
     def __init__(self, parent=None):
         super().__init__(suggestions=DND5_LANGUAGES,
-                         empty_text="Aucune langue", parent=parent)
+                         empty_text="(liste vide — ajoutez des langues ci-dessus)",
+                         parent=parent)
 
     def get_languages(self) -> List[str]:
         """Liste des langues sélectionnées."""

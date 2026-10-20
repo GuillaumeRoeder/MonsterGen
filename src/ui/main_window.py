@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QTextEdit, QComboBox, QPushButton, QSpinBox,
     QFormLayout, QMessageBox, QFileDialog, QTabWidget,
-    QScrollArea, QInputDialog
+    QScrollArea, QInputDialog, QFrame
 )
 from PySide6.QtCore import Qt, Signal, QObject, QTimer
 from PySide6.QtGui import QFont, QIcon
@@ -197,12 +197,12 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
 
+        layout.addRow("Groupe :", self._create_party_widgets())
+        layout.addRow("Difficulté résultante :", self.difficulty_result_label)
+
         self.name_edit = QLineEdit()
         self.name_edit.setPlaceholderText("Nom du PNJ/Monstre")
         layout.addRow("Nom :", self.name_edit)
-
-        layout.addRow("Groupe :", self._create_party_widgets())
-        layout.addRow("Difficulté résultante :", self.difficulty_result_label)
 
         race_layout = QHBoxLayout()
         race_layout.setSpacing(4)
@@ -220,7 +220,30 @@ class MainWindow(QMainWindow):
         layout.addRow("Race :", race_layout)
 
         self.languages_edit = LanguagesEditor()
-        layout.addRow("Langues :", self.languages_edit)
+        languages_frame = QFrame()
+        languages_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        languages_frame.setStyleSheet("""
+            QFrame {
+                background-color: #f4f7fa;
+                border: 1px solid #b8c6d3;
+                border-radius: 6px;
+            }
+        """)
+        languages_layout = QVBoxLayout(languages_frame)
+        languages_layout.setContentsMargins(8, 6, 8, 8)
+        languages_layout.setSpacing(6)
+
+        languages_header = QLabel(
+            "Langues parlées — cliquez sur ▾ puis + pour ajouter une langue, "
+            "✕ pour la retirer :"
+        )
+        languages_header.setStyleSheet(
+            "color: #45607a; font-size: 11px; background: transparent; border: none;"
+        )
+        languages_layout.addWidget(languages_header)
+        languages_layout.addWidget(self.languages_edit)
+
+        layout.addRow("Langues :", languages_frame)
 
         self.description_edit = QTextEdit()
         self.description_edit.setPlaceholderText("Description du PNJ/Monstre")
