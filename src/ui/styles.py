@@ -1,28 +1,31 @@
-"""Styles partagés pour les widgets de l'interface MonsterGen."""
+"""
+Styles partagés pour les widgets de l'interface MonsterGen.
+Palette en tons de verts.
+"""
 
-# Bouton d'action principale (générations IA, équilibrage) : accent bleu.
+# Bouton d'action principale (générations IA, équilibrage) : accent vert.
 ACCENT_BUTTON_STYLE = """
     QPushButton {
-        background-color: #005f8a;
+        background-color: #2e7d32;
         color: #ffffff;
-        border: 1px solid #0077b0;
+        border: 1px solid #43a047;
         border-radius: 4px;
         padding: 6px 14px;
         min-height: 20px;
         font-weight: bold;
     }
     QPushButton:hover {
-        background-color: #0077b0;
-        border: 1px solid #00aaff;
+        background-color: #388e3c;
+        border: 1px solid #66bb6a;
     }
     QPushButton:pressed {
-        background-color: #004a6e;
-        border: 1px solid #00aaff;
+        background-color: #1b5e20;
+        border: 1px solid #66bb6a;
     }
     QPushButton:disabled {
-        background-color: #3a3a3a;
-        color: #6a6a6a;
-        border: 1px solid #5a5a5a;
+        background-color: #3a4a3a;
+        color: #7a8a7a;
+        border: 1px solid #556b55;
     }
 """
 
@@ -30,9 +33,9 @@ ACCENT_BUTTON_STYLE = """
 # texte plus petit, pas de gras.
 SECONDARY_BUTTON_STYLE = """
     QPushButton {
-        background-color: #3f4650;
-        color: #c8d4e0;
-        border: 1px solid #556170;
+        background-color: #37453a;
+        color: #c8dcc8;
+        border: 1px solid #557055;
         border-radius: 4px;
         padding: 3px 10px;
         min-height: 0px;
@@ -40,11 +43,11 @@ SECONDARY_BUTTON_STYLE = """
         font-size: 11px;
     }
     QPushButton:hover {
-        background-color: #4a5360;
-        border: 1px solid #00aaff;
+        background-color: #40543f;
+        border: 1px solid #66bb6a;
         color: #ffffff;
     }
     QPushButton:pressed {
-        background-color: #353b44;
+        background-color: #2b352b;
     }
 """

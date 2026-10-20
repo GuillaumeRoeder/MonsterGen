@@ -200,6 +200,11 @@ class MainWindow(QMainWindow):
         layout.addRow("Groupe :", self._create_party_widgets())
         layout.addRow("Difficulté résultante :", self.difficulty_result_label)
 
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setStyleSheet("color: #9dbd9d; background: #9dbd9d; border: none; max-height: 1px;")
+        layout.addRow(separator)
+
         self.name_edit = QLineEdit()
         self.name_edit.setPlaceholderText("Nom du PNJ/Monstre")
         layout.addRow("Nom :", self.name_edit)
@@ -224,8 +229,8 @@ class MainWindow(QMainWindow):
         languages_frame.setFrameShape(QFrame.Shape.StyledPanel)
         languages_frame.setStyleSheet("""
             QFrame {
-                background-color: #f4f7fa;
-                border: 1px solid #b8c6d3;
+                background-color: #e8f2e8;
+                border: 1px solid #9dbd9d;
                 border-radius: 6px;
             }
         """)
@@ -238,7 +243,7 @@ class MainWindow(QMainWindow):
             "✕ pour la retirer :"
         )
         languages_header.setStyleSheet(
-            "color: #45607a; font-size: 11px; background: transparent; border: none;"
+            "color: #33691e; font-size: 11px; background: transparent; border: none;"
         )
         languages_layout.addWidget(languages_header)
         languages_layout.addWidget(self.languages_edit)
@@ -250,12 +255,42 @@ class MainWindow(QMainWindow):
         self.description_edit.setMaximumHeight(100)
         layout.addRow("Description :", self.description_edit)
 
+        scenario_frame = QFrame()
+        scenario_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        scenario_frame.setStyleSheet("""
+            QFrame {
+                background-color: #f0f6ef;
+                border: 1px solid #9dbd9d;
+                border-radius: 6px;
+            }
+        """)
+        scenario_vlayout = QVBoxLayout(scenario_frame)
+        scenario_vlayout.setContentsMargins(8, 6, 8, 8)
+        scenario_vlayout.setSpacing(6)
+
+        scenario_header = QLabel(
+            "Scénario de rencontre — décrivez le contexte, ou générez-le "
+            "automatiquement à partir des stats actuelles du monstre :"
+        )
+        scenario_header.setStyleSheet(
+            "color: #33691e; font-size: 11px; background: transparent; border: none;"
+        )
+        scenario_vlayout.addWidget(scenario_header)
+
         scenario_layout = QHBoxLayout()
+        scenario_layout.setSpacing(6)
         self.scenario_edit = QTextEdit()
         self.scenario_edit.setPlaceholderText(
-            "Scénario de rencontre — cliquez sur le bouton pour le générer "
-            "à partir des stats actuelles du monstre."
+            "Scénario de rencontre (lieu, circonstances, motivation du monstre...)"
         )
+        self.scenario_edit.setStyleSheet("""
+            QTextEdit {
+                background-color: #ffffff;
+                border: 1px solid #b8ccb8;
+                border-radius: 4px;
+                font-size: 11px;
+            }
+        """)
         scenario_layout.addWidget(self.scenario_edit, stretch=1)
 
         self.gen_scenario_btn = QPushButton("Générer\nscénario")
@@ -265,7 +300,9 @@ class MainWindow(QMainWindow):
         self.gen_scenario_btn.clicked.connect(self._generate_scenario)
         scenario_layout.addWidget(self.gen_scenario_btn)
 
-        layout.addRow("Scénario :", scenario_layout)
+        scenario_vlayout.addLayout(scenario_layout)
+
+        layout.addRow("Scénario :", scenario_frame)
 
         return tab
 
