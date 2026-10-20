@@ -212,7 +212,10 @@ class MainWindow(QMainWindow):
         tab_widget.addTab(stats_tab, "Statistiques")
 
         actions_tab = self.create_actions_tab()
-        tab_widget.addTab(actions_tab, "Actions et Équipement")
+        tab_widget.addTab(actions_tab, "Actions")
+
+        equipment_tab = self.create_equipment_tab()
+        tab_widget.addTab(equipment_tab, "Équipement / Inventaire")
 
         layout.addWidget(tab_widget)
 
@@ -683,19 +686,53 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(actions_frame, stretch=1)
 
-        # --- Séparation nette avant la section Équipement ---
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setStyleSheet("color: #3e5a8a; background: #3e5a8a; border: none; max-height: 1px;")
-        layout.addWidget(separator)
+        return tab
 
-        equipment_title = QLabel("Équipement/Armements :")
-        equipment_title.setStyleSheet("color: #bbdefb; font-weight: bold;")
-        layout.addWidget(equipment_title)
+    def create_equipment_tab(self) -> QWidget:
+        """Crée l'onglet de l'équipement et des armements."""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
+
+        equipment_frame = QFrame()
+        equipment_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        equipment_frame.setStyleSheet("""
+            QFrame {
+                background-color: #161f2a;
+                border: 1px solid #3e5a8a;
+                border-radius: 6px;
+            }
+            QLabel {
+                background: transparent;
+                border: none;
+            }
+        """)
+        equipment_vlayout = QVBoxLayout(equipment_frame)
+        equipment_vlayout.setContentsMargins(8, 8, 8, 8)
+        equipment_vlayout.setSpacing(8)
+
+        equipment_title = QLabel("Équipement / Armements")
+        equipment_title.setStyleSheet(
+            "color: #bbdefb; font-weight: bold; background: transparent; border: none;"
+        )
+        equipment_vlayout.addWidget(equipment_title)
+
         self.equipment_edit = QTextEdit()
-        self.equipment_edit.setPlaceholderText("Ex: Épée longue, Arc court, Armure de cuir")
-        self.equipment_edit.setMinimumHeight(80)
-        layout.addWidget(self.equipment_edit)
+        self.equipment_edit.setPlaceholderText(
+            "Ex: Épée longue, Arc court, Armure de cuir, 20 flèches..."
+        )
+        self.equipment_edit.setStyleSheet("""
+            QTextEdit {
+                background-color: #1e2632;
+                color: #dce4ee;
+                border: 1px solid #39485c;
+                border-radius: 4px;
+            }
+        """)
+        equipment_vlayout.addWidget(self.equipment_edit, stretch=1)
+
+        layout.addWidget(equipment_frame, stretch=1)
 
         return tab
 
