@@ -218,7 +218,7 @@ class MainWindow(QMainWindow):
 
         control_layout = QHBoxLayout()
 
-        self.generate_btn = QPushButton("Générer les champs manquants")
+        self.generate_btn = QPushButton("Compléter les champs")
         self.generate_btn.setIcon(QIcon.fromTheme("system-run"))
         self.generate_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         control_layout.addWidget(self.generate_btn)

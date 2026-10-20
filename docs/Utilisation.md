@@ -15,7 +15,7 @@ Le label coloré en dessous affiche en temps réel le **CR résultant** : `● C
 
 Renseigne ce que tu connais : nom, race, description, langues (pills). **Tout est optionnel** — mais plus tu donnes de contexte (surtout race et description), plus les stats générées seront crédibles (voir [Inférence de traits](Inference-traits.md)).
 
-### 3. « Générer les champs manquants »
+### 3. « Compléter les champs »
 
 Le bouton principal, qui chaîne automatiquement :
 
