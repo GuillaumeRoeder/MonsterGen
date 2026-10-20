@@ -328,15 +328,20 @@ def build_balanced_monster(cr: float, base: Optional[Monster] = None,
     if not monster.passive_perception:
         monster.passive_perception = 10 + scores.get_modifier("wisdom")
 
-    if not monster.skills and traits.skills:
+    # Compétences / résistances / immunités : les traits inférés de la
+    # description prennent le dessus — l'équilibrage régénère les stats
+    # en tenant compte du concept décrit.
+    if traits.skills:
         from src.models.monster import Skill
         monster.skills = [Skill(name=name, ability="", proficiency=True)
                           for name in traits.skills]
+    elif not monster.skills:
+        monster.skills = []
 
-    if not monster.damage_resistances and traits.resistances:
+    if traits.resistances:
         monster.damage_resistances = list(traits.resistances)
 
-    if not monster.damage_immunities and traits.immunities:
+    if traits.immunities:
         monster.damage_immunities = list(traits.immunities)
 
     monster.actions = build_actions(cr, scores, rng, traits=traits)
