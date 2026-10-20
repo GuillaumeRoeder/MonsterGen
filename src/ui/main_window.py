@@ -34,6 +34,22 @@ DND5_SKILLS = [
     "Religion", "Supercherie", "Survie",
 ]
 
+# Races DnD 5e (liste hardcodée pour le champ Race).
+DND5_RACES = [
+    "Humain", "Elfe", "Haut-elfe", "Elfe des bois", "Elfe noir (Drow)",
+    "Nain", "Nain des collines", "Nain des montagnes", "Gnome",
+    "Gnome des forêts", "Gnome des roches", "Halfelin", "Dem elfe",
+    "Dem-orc", "Tiefling", "Drakéide (Dragonborn)", "Goliath",
+    "Aasimar", "Genasi", "Gobelin", "Hobgobelin", "Orc", "Bugbear",
+    "Kobold", "Gnoll", "Homme-lézard", "Ogre", "Troll", "Géant",
+    "Squelette", "Zombie", "Goule", "Spectre", "Liche",
+    "Diable", "Démon", "Ange", "Fée", "Dryade", "Satyre",
+    "Méduse", "Minotaure", "Centaure", "Hydre", "Basilic",
+    "Béhir", "Wyverne", "Dragon", "Griffon", "Hippogriffe",
+    "Chimère", "Manticore", "Sphinx", "Kraken", "Aboleth",
+    "Golem d'argile", "Golem de chair", "Golem de fer", "Golem de pierre",
+]
+
 # Types de dégâts DnD 5e (résistances/immunités).
 DND5_DAMAGE_TYPES = [
     "contondant", "tranchant", "perforant", "feu", "froid", "foudre",
@@ -185,9 +201,23 @@ class MainWindow(QMainWindow):
         self.name_edit.setPlaceholderText("Nom du PNJ/Monstre")
         layout.addRow("Nom :", self.name_edit)
 
+        layout.addRow("Groupe :", self._create_party_widgets())
+        layout.addRow("Difficulté résultante :", self.difficulty_result_label)
+
+        race_layout = QHBoxLayout()
+        race_layout.setSpacing(4)
         self.race_edit = QLineEdit()
         self.race_edit.setPlaceholderText("Race ou type de créature")
-        layout.addRow("Race :", self.race_edit)
+        race_layout.addWidget(self.race_edit, stretch=1)
+
+        self.race_menu_btn = QPushButton("▾")
+        self.race_menu_btn.setFixedSize(24, 24)
+        self.race_menu_btn.setToolTip("Choisir une race DnD 5e")
+        self.race_menu_btn.setStyleSheet(SECONDARY_BUTTON_STYLE)
+        self.race_menu_btn.clicked.connect(self._show_race_menu)
+        race_layout.addWidget(self.race_menu_btn)
+
+        layout.addRow("Race :", race_layout)
 
         self.languages_edit = LanguagesEditor()
         layout.addRow("Langues :", self.languages_edit)
@@ -216,14 +246,21 @@ class MainWindow(QMainWindow):
 
         return tab
 
-    def create_stats_tab(self) -> QWidget:
-        """Crée l'onglet des statistiques."""
-        tab = QWidget()
-        layout = QFormLayout(tab)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
+    def _show_race_menu(self):
+        """Affiche le menu déroulant des races DnD 5e sous la flèche."""
+        from PySide6.QtWidgets import QMenu
 
-        # --- Ligne 1 : groupe de joueurs + difficulté de la rencontre ---
+        menu = QMenu(self)
+        for race in DND5_RACES:
+            action = menu.addAction(race)
+            action.triggered.connect(
+                lambda checked, r=race: self.race_edit.setText(r)
+            )
+        btn_pos = self.race_menu_btn.mapTo(self, self.race_menu_btn.rect().bottomLeft())
+        menu.exec(btn_pos)
+
+    def _create_party_widgets(self) -> QHBoxLayout:
+        """Crée la ligne 'groupe de joueurs + difficulté' (tab Informations)."""
         party_layout = QHBoxLayout()
         party_layout.setSpacing(6)
 
@@ -252,17 +289,22 @@ class MainWindow(QMainWindow):
         self.gen_stats_btn.clicked.connect(self._fill_balanced_stats)
         party_layout.addWidget(self.gen_stats_btn)
 
-        layout.addRow("Groupe :", party_layout)
-
-        # --- Label dynamique coloré : CR résultant de la combinaison ---
         self.difficulty_result_label = QLabel("")
         self.difficulty_result_label.setStyleSheet("font-weight: bold;")
-        layout.addRow("Difficulté résultante :", self.difficulty_result_label)
 
         self.party_size_spin.valueChanged.connect(self._update_difficulty_label)
         self.party_level_spin.valueChanged.connect(self._update_difficulty_label)
         self.difficulty_combo.currentIndexChanged.connect(self._update_difficulty_label)
         self._update_difficulty_label()
+
+        return party_layout
+
+    def create_stats_tab(self) -> QWidget:
+        """Crée l'onglet des statistiques."""
+        tab = QWidget()
+        layout = QFormLayout(tab)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
 
         self.ac_spin = QSpinBox()
         self.ac_spin.setRange(0, 50)
@@ -926,8 +968,6 @@ class MainWindow(QMainWindow):
         if self._check_backend():
             # (champ, texte actuel, application du corrigé)
             correctable = [
-                ("race", monster.race or "",
-                 lambda v: self.race_edit.setText(v)),
                 ("description", monster.description or "",
                  lambda v: self.description_edit.setPlainText(v)),
                 ("scenario", monster.scenario or "",
@@ -943,12 +983,15 @@ class MainWindow(QMainWindow):
                 except Exception:
                     continue
 
+        # --- Race : remplie automatiquement depuis la liste hardcodée ---
+        if not monster.race:
+            self.race_edit.setText(self._suggest_race(monster))
+            monster.race = self.race_edit.text()
+
         # --- Champs IA : uniquement s'il en manque, et backend disponible ---
         missing_fields = []
         if not monster.name:
             missing_fields.append("name")
-        if not monster.race:
-            missing_fields.append("race")
         if not monster.description:
             missing_fields.append("description")
 
@@ -995,6 +1038,15 @@ class MainWindow(QMainWindow):
                 )
 
         self.update_preview()
+
+    def _suggest_race(self, monster: Monster) -> str:
+        """Devine une race DnD 5e depuis le nom et la description (liste hardcodée)."""
+        haystack = (f"{monster.name or ''} {monster.description or ''}").lower()
+        for race in DND5_RACES:
+            base = race.split(" (")[0].lower()
+            if base in haystack:
+                return race
+        return "Humain"
 
     def show_options_dialog(self, field_name: str, options: List[str]):
         """Affiche une boîte de dialogue pour sélectionner une option."""
