@@ -242,7 +242,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(10)
 
         layout.addRow("Groupe :", self._create_party_widgets())
-        layout.addRow("Difficulté résultante :", self.difficulty_result_label)
+        layout.addRow(self.difficulty_result_label)
 
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.HLine)
