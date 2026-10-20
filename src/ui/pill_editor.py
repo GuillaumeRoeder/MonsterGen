@@ -170,7 +170,7 @@ class PillEditor(QWidget):
             pill = QWidget()
             pill.setStyleSheet("""
                 QWidget {
-                    background-color: #005f8a;
+                    background-color: #2e7d32;
                     color: #ffffff;
                     border-radius: 9px;
                 }

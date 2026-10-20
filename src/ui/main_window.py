@@ -203,7 +203,7 @@ class MainWindow(QMainWindow):
 
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setStyleSheet("color: #9dbd9d; background: #9dbd9d; border: none; max-height: 1px;")
+        separator.setStyleSheet("color: #3e5a3e; background: #3e5a3e; border: none; max-height: 1px;")
         layout.addRow(separator)
 
         self.name_edit = QLineEdit()
@@ -230,9 +230,13 @@ class MainWindow(QMainWindow):
         languages_frame.setFrameShape(QFrame.Shape.StyledPanel)
         languages_frame.setStyleSheet("""
             QFrame {
-                background-color: #e8f2e8;
-                border: 1px solid #9dbd9d;
+                background-color: #263326;
+                border: 1px solid #3e5a3e;
                 border-radius: 6px;
+            }
+            QLabel {
+                background: transparent;
+                border: none;
             }
         """)
         languages_layout = QVBoxLayout(languages_frame)
@@ -244,7 +248,7 @@ class MainWindow(QMainWindow):
             "✕ pour la retirer :"
         )
         languages_header.setStyleSheet(
-            "color: #33691e; font-size: 11px; background: transparent; border: none;"
+            "color: #a5d6a7; font-size: 11px; background: transparent; border: none;"
         )
         languages_layout.addWidget(languages_header)
         languages_layout.addWidget(self.languages_edit)
@@ -260,9 +264,13 @@ class MainWindow(QMainWindow):
         scenario_frame.setFrameShape(QFrame.Shape.StyledPanel)
         scenario_frame.setStyleSheet("""
             QFrame {
-                background-color: #f0f6ef;
-                border: 1px solid #9dbd9d;
+                background-color: #263326;
+                border: 1px solid #3e5a3e;
                 border-radius: 6px;
+            }
+            QLabel {
+                background: transparent;
+                border: none;
             }
         """)
         scenario_vlayout = QVBoxLayout(scenario_frame)
@@ -274,7 +282,7 @@ class MainWindow(QMainWindow):
             "automatiquement à partir des stats actuelles du monstre :"
         )
         scenario_header.setStyleSheet(
-            "color: #33691e; font-size: 11px; background: transparent; border: none;"
+            "color: #a5d6a7; font-size: 11px; background: transparent; border: none;"
         )
         scenario_vlayout.addWidget(scenario_header)
 
@@ -286,8 +294,9 @@ class MainWindow(QMainWindow):
         )
         self.scenario_edit.setStyleSheet("""
             QTextEdit {
-                background-color: #ffffff;
-                border: 1px solid #b8ccb8;
+                background-color: #2c382c;
+                color: #dfe8df;
+                border: 1px solid #3e4e3e;
                 border-radius: 4px;
                 font-size: 11px;
             }
