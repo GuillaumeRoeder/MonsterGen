@@ -541,13 +541,35 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
 
-        layout.addWidget(QLabel("Actions :"))
+        # --- Section Actions : cadre délimité ---
+        actions_frame = QFrame()
+        actions_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        actions_frame.setStyleSheet("""
+            QFrame {
+                background-color: #161f2a;
+                border: 1px solid #3e5a8a;
+                border-radius: 6px;
+            }
+            QLabel {
+                background: transparent;
+                border: none;
+            }
+        """)
+        actions_vlayout = QVBoxLayout(actions_frame)
+        actions_vlayout.setContentsMargins(8, 8, 8, 8)
+        actions_vlayout.setSpacing(8)
+
+        actions_title = QLabel("Actions :")
+        actions_title.setStyleSheet(
+            "color: #bbdefb; font-weight: bold; background: transparent; border: none;"
+        )
+        actions_vlayout.addWidget(actions_title)
 
         gen_actions_btn = QPushButton("Générer des actions")
         gen_actions_btn.setIcon(QIcon.fromTheme("system-run"))
         gen_actions_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         gen_actions_btn.clicked.connect(self._generate_actions)
-        layout.addWidget(gen_actions_btn)
+        actions_vlayout.addWidget(gen_actions_btn)
 
         # Sous-fonction : description libre des actions souhaitées,
         # présentée comme sous-action compacte de la génération automatique.
@@ -569,18 +591,41 @@ class MainWindow(QMainWindow):
         self.gen_actions_prompt_btn.setStyleSheet(SECONDARY_BUTTON_STYLE)
         self.gen_actions_prompt_btn.clicked.connect(self._generate_actions_from_prompt)
         prompt_row.addWidget(self.gen_actions_prompt_btn)
-        layout.addLayout(prompt_row)
+        actions_vlayout.addLayout(prompt_row)
 
+        # Liste d'actions : contour délimité, même vide
         self.actions_scroll = QScrollArea()
         self.actions_scroll.setWidgetResizable(True)
         self.actions_scroll.setMinimumHeight(200)
+        self.actions_scroll.setStyleSheet("""
+            QScrollArea {
+                background-color: #1e2632;
+                border: 1px solid #3e5a8a;
+                border-radius: 4px;
+            }
+            QWidget {
+                background-color: transparent;
+                border: none;
+            }
+        """)
         self.actions_container = QWidget()
+        self.actions_container.setStyleSheet("background: transparent; border: none;")
         self.actions_layout = QVBoxLayout(self.actions_container)
         self.actions_layout.setContentsMargins(4, 4, 4, 4)
         self.actions_layout.setSpacing(8)
         self.actions_layout.addStretch()
+
+        self.actions_empty_label = QLabel(
+            "Aucune action — cliquez sur \"+ Action\" ou générez-les automatiquement."
+        )
+        self.actions_empty_label.setStyleSheet(
+            "color: #7a8aa0; font-style: italic; background: transparent; border: none;"
+        )
+        self.actions_empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.actions_layout.insertWidget(0, self.actions_empty_label)
+
         self.actions_scroll.setWidget(self.actions_container)
-        layout.addWidget(self.actions_scroll)
+        actions_vlayout.addWidget(self.actions_scroll, stretch=1)
 
         actions_control_layout = QHBoxLayout()
 
@@ -591,9 +636,19 @@ class MainWindow(QMainWindow):
         actions_control_layout.addWidget(self.add_action_btn)
         actions_control_layout.addStretch()
 
-        layout.addLayout(actions_control_layout)
+        actions_vlayout.addLayout(actions_control_layout)
 
-        layout.addWidget(QLabel("Équipement/Armements :"))
+        layout.addWidget(actions_frame, stretch=1)
+
+        # --- Séparation nette avant la section Équipement ---
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setStyleSheet("color: #3e5a8a; background: #3e5a8a; border: none; max-height: 1px;")
+        layout.addWidget(separator)
+
+        equipment_title = QLabel("Équipement/Armements :")
+        equipment_title.setStyleSheet("color: #bbdefb; font-weight: bold;")
+        layout.addWidget(equipment_title)
         self.equipment_edit = QTextEdit()
         self.equipment_edit.setPlaceholderText("Ex: Épée longue, Arc court, Armure de cuir")
         self.equipment_edit.setMinimumHeight(80)
@@ -889,6 +944,7 @@ class MainWindow(QMainWindow):
         widget.changed.connect(self.on_action_changed)
         widget.removeRequested.connect(self._on_remove_action)
         self.actions_layout.insertWidget(self.actions_layout.count() - 1, widget)
+        self._update_actions_empty_label()
 
     def _on_remove_action(self, widget: ActionEditorWidget):
         """Supprime l'action dont la croix a été cliquée."""
@@ -899,6 +955,12 @@ class MainWindow(QMainWindow):
         """Retire un widget d'action de la liste."""
         self.actions_layout.removeWidget(widget)
         widget.deleteLater()
+        self._update_actions_empty_label()
+
+    def _update_actions_empty_label(self):
+        """Affiche le message de liste vide si aucune action n'est présente."""
+        has_actions = bool(self.get_action_widgets())
+        self.actions_empty_label.setVisible(not has_actions)
 
     def get_action_widgets(self) -> list:
         """Liste des widgets d'action présents dans la liste."""
