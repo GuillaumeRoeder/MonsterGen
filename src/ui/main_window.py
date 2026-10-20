@@ -277,6 +277,20 @@ class MainWindow(QMainWindow):
         scenario_vlayout.setContentsMargins(8, 6, 8, 8)
         scenario_vlayout.setSpacing(6)
 
+        self.scenario_toggle_btn = QPushButton("▸ Scénario de rencontre (optionnel)")
+        self.scenario_toggle_btn.setStyleSheet(SECONDARY_BUTTON_STYLE)
+        self.scenario_toggle_btn.setToolTip(
+            "Afficher ou masquer la section scénario"
+        )
+        self.scenario_toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.scenario_toggle_btn.clicked.connect(self._toggle_scenario)
+        scenario_vlayout.addWidget(self.scenario_toggle_btn)
+
+        self.scenario_content = QWidget()
+        scenario_inner = QVBoxLayout(self.scenario_content)
+        scenario_inner.setContentsMargins(0, 0, 0, 0)
+        scenario_inner.setSpacing(6)
+
         scenario_header = QLabel(
             "Scénario de rencontre — décrivez le contexte, ou générez-le "
             "automatiquement à partir des stats actuelles du monstre :"
@@ -284,7 +298,7 @@ class MainWindow(QMainWindow):
         scenario_header.setStyleSheet(
             "color: #a5d6a7; font-size: 11px; background: transparent; border: none;"
         )
-        scenario_vlayout.addWidget(scenario_header)
+        scenario_inner.addWidget(scenario_header)
 
         scenario_layout = QHBoxLayout()
         scenario_layout.setSpacing(6)
@@ -310,7 +324,9 @@ class MainWindow(QMainWindow):
         self.gen_scenario_btn.clicked.connect(self._generate_scenario)
         scenario_layout.addWidget(self.gen_scenario_btn)
 
-        scenario_vlayout.addLayout(scenario_layout)
+        scenario_inner.addLayout(scenario_layout)
+        self.scenario_content.setVisible(False)
+        scenario_vlayout.addWidget(self.scenario_content)
 
         layout.addRow("Scénario :", scenario_frame)
 
@@ -328,6 +344,15 @@ class MainWindow(QMainWindow):
 
         btn_pos = self.export_btn.mapTo(self, self.export_btn.rect().bottomLeft())
         menu.exec(btn_pos)
+
+    def _toggle_scenario(self):
+        """Affiche ou masque la section scénario."""
+        visible = not self.scenario_content.isVisible()
+        self.scenario_content.setVisible(visible)
+        self.scenario_toggle_btn.setText(
+            "▾ Scénario de rencontre (optionnel)" if visible
+            else "▸ Scénario de rencontre (optionnel)"
+        )
 
     def _show_race_menu(self):
         """Affiche le menu déroulant des races DnD 5e sous la flèche."""
