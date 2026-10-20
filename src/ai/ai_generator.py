@@ -34,25 +34,11 @@ def _backend_generate(prompt: str, max_tokens: int, temperature: float = 0.7) ->
 
 # Liste fixe des langues DnD 5e
 DND5_LANGUAGES = [
-    "Commun",
-    "Auran",
-    "Céleste",
-    "Draconique",
-    "Elfique",
-    "Géant",
-    "Gnome",
-    "Gobelin",
-    "Infernal",
-    "Nain",
-    "Orque",
-    "Primordial",
-    "Sylvestre",
-    "Abyssal",
-    "Aklo",
-    "Aquatique",
-    "Chtonien",
-    "Ignan",
-    "Terran",
+    'Abyssal', 'Aklo', 'Aquatique', 'Auran',
+    'Chtonien', 'Commun', 'Céleste', 'Draconique',
+    'Elfique', 'Gnome', 'Gobelin', 'Géant',
+    'Ignan', 'Infernal', 'Nain', 'Orque',
+    'Primordial', 'Sylvestre', 'Terran'
 ]
 
 def monster_stats_summary(monster: Monster) -> str:

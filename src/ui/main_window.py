@@ -36,18 +36,21 @@ DND5_SKILLS = [
 
 # Races DnD 5e (liste hardcodée pour le champ Race).
 DND5_RACES = [
-    "Humain", "Elfe", "Haut-elfe", "Elfe des bois", "Elfe noir (Drow)",
-    "Nain", "Nain des collines", "Nain des montagnes", "Gnome",
-    "Gnome des forêts", "Gnome des roches", "Halfelin", "Dem elfe",
-    "Dem-orc", "Tiefling", "Drakéide (Dragonborn)", "Goliath",
-    "Aasimar", "Genasi", "Gobelin", "Hobgobelin", "Orc", "Bugbear",
-    "Kobold", "Gnoll", "Homme-lézard", "Ogre", "Troll", "Géant",
-    "Squelette", "Zombie", "Goule", "Spectre", "Liche",
-    "Diable", "Démon", "Ange", "Fée", "Dryade", "Satyre",
-    "Méduse", "Minotaure", "Centaure", "Hydre", "Basilic",
-    "Béhir", "Wyverne", "Dragon", "Griffon", "Hippogriffe",
-    "Chimère", "Manticore", "Sphinx", "Kraken", "Aboleth",
-    "Golem d'argile", "Golem de chair", "Golem de fer", "Golem de pierre",
+    'Aasimar', 'Aboleth', 'Ange', 'Basilic',
+    'Bugbear', 'Béhir', 'Centaure', 'Chimère',
+    'Dem elfe', 'Dem-orc', 'Diable', 'Dragon',
+    'Drakéide (Dragonborn)', 'Dryade', 'Démon', 'Elfe',
+    'Elfe des bois', 'Elfe noir (Drow)', 'Fée', 'Genasi',
+    'Gnoll', 'Gnome', 'Gnome des forêts', 'Gnome des roches',
+    'Gobelin', "Golem d'argile", 'Golem de chair', 'Golem de fer',
+    'Golem de pierre', 'Goliath', 'Goule', 'Griffon',
+    'Géant', 'Halfelin', 'Haut-elfe', 'Hippogriffe',
+    'Hobgobelin', 'Homme-lézard', 'Humain', 'Hydre',
+    'Kobold', 'Kraken', 'Liche', 'Manticore',
+    'Minotaure', 'Méduse', 'Nain', 'Nain des collines',
+    'Nain des montagnes', 'Ogre', 'Orc', 'Satyre',
+    'Spectre', 'Sphinx', 'Squelette', 'Tiefling',
+    'Troll', 'Wyverne', 'Zombie'
 ]
 
 # Types de dégâts DnD 5e (résistances/immunités).
