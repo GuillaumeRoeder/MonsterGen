@@ -20,7 +20,7 @@ MonsterGen/
 │   │   └── api_client.py    # Client API distante (OpenAI/Mistral)
 │   ├── ui/
 │   │   ├── main_window.py   # Fenêtre principale, tabs, orchestration
-│   │   ├── config_dialog.py # Fichier > Configuration
+│   │   ├── config_dialog.py # Configuration
 │   │   ├── monster_library.py  # Popup bibliothèque de sauvegardes
 │   │   ├── action_editor.py    # Carte d'action éditable
 │   │   ├── pill_editor.py      # Éditeur en pills générique
