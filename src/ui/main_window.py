@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QTextEdit, QComboBox, QPushButton, QSpinBox,
     QFormLayout, QMessageBox, QFileDialog, QTabWidget,
-    QScrollArea, QInputDialog, QFrame, QMenu
+    QScrollArea, QInputDialog, QFrame, QMenu, QSizePolicy
 )
 from PySide6.QtCore import Qt, Signal, QObject, QTimer
 from PySide6.QtGui import QFont, QIcon
@@ -635,7 +635,8 @@ class MainWindow(QMainWindow):
         # Liste d'actions : contour délimité, même vide
         self.actions_scroll = QScrollArea()
         self.actions_scroll.setWidgetResizable(True)
-        self.actions_scroll.setMinimumHeight(200)
+        self.actions_scroll.setMinimumHeight(120)
+        self.actions_scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.actions_scroll.setStyleSheet("""
             QScrollArea {
                 background-color: #141b26;
