@@ -638,8 +638,8 @@ class MainWindow(QMainWindow):
         self.actions_scroll.setMinimumHeight(200)
         self.actions_scroll.setStyleSheet("""
             QScrollArea {
-                background-color: #1e2632;
-                border: 1px solid #3e5a8a;
+                background-color: #141b26;
+                border: 1px solid #39485c;
                 border-radius: 4px;
             }
             QWidget {
