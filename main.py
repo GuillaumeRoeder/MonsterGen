@@ -12,7 +12,7 @@ except BootstrapError as e:
     print(f"[MonsterGen] {e}", flush=True)
     sys.exit(1)
 
-from PySide6.QtWidgets import QApplication, QMessageBox, QPushButton
+from PySide6.QtWidgets import QApplication, QMessageBox, QPushButton, QWidget, QHBoxLayout
 from PySide6.QtCore import Qt
 
 from src.ui.main_window import MainWindow
@@ -287,29 +287,56 @@ def set_stylesheet(app):
 
 
 def create_menus(window: MainWindow):
-    """Crée les menus de l'application."""
+    """Crée les menus de l'application.
+
+    La barre est un conteneur horizontal : menus natifs à gauche,
+    bouton Configuration poussé tout à droite (le corner widget natif
+    de QMenuBar est masqué par certains styles/WM).
+    """
+    menu_bar = window.menuBar()
+
     # Menu Bibliothèque (sauvegarder/charger/supprimer des monstres)
-    library_menu = window.menuBar().addMenu("Bibliothèque")
+    library_menu = menu_bar.addMenu("Bibliothèque")
     library_action = library_menu.addAction("Gérer les monstres sauvegardés")
     library_action.triggered.connect(lambda: window.open_library())
     
     # Menu Export (PDF / PNG)
-    export_menu = window.menuBar().addMenu("Export")
+    export_menu = menu_bar.addMenu("Export")
     pdf_action = export_menu.addAction("Exporter en PDF")
     pdf_action.triggered.connect(lambda: window.export_to_pdf())
     png_action = export_menu.addAction("Exporter en PNG")
     png_action.triggered.connect(lambda: window.export_to_png())
     
-    # Menu Configuration : bouton poussé tout à droite de la barre
-    config_btn = QPushButton("Configuration")
-    config_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-    config_btn.clicked.connect(lambda: show_config_dialog(window))
-    window.menuBar().setCornerWidget(config_btn, Qt.Corner.TopRightCorner)
-    
     # Menu Aide
-    help_menu = window.menuBar().addMenu("Aide")
+    help_menu = menu_bar.addMenu("Aide")
     about_action = help_menu.addAction("À propos")
     about_action.triggered.connect(lambda: show_about_dialog(window))
+    
+    # Menu Configuration : bouton dans la barre, collé à droite
+    config_btn = QPushButton("⚙ Configuration")
+    config_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    config_btn.setStyleSheet("""
+        QPushButton {
+            background-color: transparent;
+            border: none;
+            color: #dce4ee;
+            padding: 4px 10px;
+            min-height: 0px;
+            font-weight: bold;
+        }
+        QPushButton:hover {
+            color: #42a5f5;
+        }
+    """)
+    config_btn.clicked.connect(lambda: show_config_dialog(window))
+    bar_container = QWidget()
+    bar_layout = QHBoxLayout(bar_container)
+    bar_layout.setContentsMargins(0, 0, 8, 0)
+    bar_layout.setSpacing(0)
+    bar_layout.addWidget(menu_bar)
+    bar_layout.addStretch()
+    bar_layout.addWidget(config_btn)
+    window.setMenuBar(bar_container)
 
 
 def show_config_dialog(parent: MainWindow):
