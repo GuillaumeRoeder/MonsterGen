@@ -672,7 +672,7 @@ class MainWindow(QMainWindow):
         self.add_action_btn = QPushButton("Nouvelle action")
         self.add_action_btn.setIcon(QIcon.fromTheme("list-add"))
         self.add_action_btn.setToolTip("Ajouter une nouvelle action à la liste")
-        self.add_action_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        self.add_action_btn.setStyleSheet(SECONDARY_BUTTON_STYLE)
         actions_control_layout.addWidget(self.add_action_btn)
         actions_control_layout.addStretch()
 
