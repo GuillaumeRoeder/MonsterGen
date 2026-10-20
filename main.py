@@ -287,9 +287,6 @@ def set_stylesheet(app):
 
 def create_menus(window: MainWindow):
     """Crée les menus de l'application."""
-    # Menu Fichier
-    file_menu = window.menuBar().addMenu("Fichier")
-    
     # Menu Bibliothèque (sauvegarder/charger/supprimer des monstres)
     library_menu = window.menuBar().addMenu("Bibliothèque")
     library_action = library_menu.addAction("Gérer les monstres sauvegardés")
@@ -303,12 +300,8 @@ def create_menus(window: MainWindow):
     png_action.triggered.connect(lambda: window.export_to_png())
     
     # Menu Configuration
-    config_action = file_menu.addAction("Configuration")
+    config_action = window.menuBar().addAction("Configuration")
     config_action.triggered.connect(lambda: show_config_dialog(window))
-    
-    # Menu Quitter
-    quit_action = file_menu.addAction("Quitter")
-    quit_action.triggered.connect(window.close)
     
     # Menu Aide
     help_menu = window.menuBar().addMenu("Aide")
