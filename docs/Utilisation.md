@@ -11,7 +11,7 @@ En haut de l'onglet, la ligne **Groupe** :
 
 Le label coloré en dessous affiche en temps réel le **CR résultant** : `● CR 1 (200 PX / budget 400 PX)`. Toutes les stats générées découlent de ce CR — modifie le groupe et le label suit instantanément.
 
-### 2. Saisir le concept (tab Informations de base)
+### 2. Saisir le concept (tab Description)
 
 Renseigne ce que tu connais : nom, race, description, langues (pills). **Tout est optionnel** — mais plus tu donnes de contexte (surtout race et description), plus les stats générées seront crédibles (voir [Inférence de traits](Inference-traits.md)).
 
