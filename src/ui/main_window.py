@@ -437,8 +437,15 @@ class MainWindow(QMainWindow):
         return party_layout
 
     def create_stats_tab(self) -> QWidget:
-        """Crée l'onglet des statistiques."""
+        """Crée l'onglet des statistiques (défilable : le contenu dépasse
+        la hauteur disponible de la fenêtre)."""
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+
         tab = QWidget()
+        tab.setStyleSheet("background: transparent; border: none;")
         layout = QFormLayout(tab)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
@@ -534,7 +541,8 @@ class MainWindow(QMainWindow):
                                           empty_text="Aucune immunité")
         layout.addRow("Immunités :", self.immunities_edit)
 
-        return tab
+        scroll.setWidget(tab)
+        return scroll
 
     def create_actions_tab(self) -> QWidget:
         """Crée l'onglet des actions et équipements."""
