@@ -450,7 +450,34 @@ class MainWindow(QMainWindow):
         scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
 
         tab = QWidget()
-        tab.setStyleSheet("background: transparent; border: none;")
+        tab.setObjectName("statsTabContent")
+        tab.setStyleSheet("""
+            #statsTabContent {
+                background: transparent;
+                border: none;
+            }
+            #statsTabContent QWidget {
+                background: transparent;
+                border: none;
+            }
+            #statsTabContent QLineEdit, #statsTabContent QTextEdit,
+            #statsTabContent QComboBox, #statsTabContent QSpinBox,
+            #statsTabContent QDoubleSpinBox {
+                background-color: #1e2632;
+                color: #dce4ee;
+                border: 1px solid #39485c;
+                border-radius: 4px;
+                padding: 6px;
+                selection-background-color: #1e88e5;
+                selection-color: #ffffff;
+            }
+            #statsTabContent QLineEdit:focus, #statsTabContent QTextEdit:focus,
+            #statsTabContent QComboBox:focus, #statsTabContent QSpinBox:focus,
+            #statsTabContent QDoubleSpinBox:focus {
+                border: 1px solid #42a5f5;
+                background-color: #1e2632;
+            }
+        """)
         layout = QFormLayout(tab)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
