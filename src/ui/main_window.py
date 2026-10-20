@@ -1312,8 +1312,8 @@ class MainWindow(QMainWindow):
         desc = (monster.description or "").lower()
 
         race_languages = {
-            "drow": ["Elfique", "Commun", "Langue des signes des profondeurs"],
-            "elfe noir": ["Elfique", "Commun", "Langue des signes des profondeurs"],
+            "drow": ["Elfique", "Commun", "Chtonien"],
+            "elfe noir": ["Elfique", "Commun", "Chtonien"],
             "elfe": ["Commun", "Elfique"],
             "haut-elfe": ["Commun", "Elfique"],
             "elfe des bois": ["Commun", "Elfique"],
@@ -1328,7 +1328,7 @@ class MainWindow(QMainWindow):
             "hobgobelin": ["Gobelin"],
             "bugbear": ["Gobelin"],
             "kobold": ["Draconique"],
-            "gnoll": ["Gnoll"],
+            "gnoll": ["Abyssal"],
             "homme-lézard": ["Draconique"],
             "ogre": ["Commun", "Géant"],
             "troll": ["Géant"],
@@ -1351,7 +1351,7 @@ class MainWindow(QMainWindow):
             "wyverne": ["Draconique"],
             "griffon": ["Commun", "Auran"],
             "sphinx": ["Commun"],
-            "aboleth": ["Aquatique", "Commun"],
+            "aboleth": ["Aquatique", "Chtonien"],
             "spectre": ["—"],
         }
 
