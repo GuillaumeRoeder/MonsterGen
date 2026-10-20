@@ -306,12 +306,6 @@ class MainWindow(QMainWindow):
         party_layout.addWidget(QLabel("Difficulté :"))
         party_layout.addWidget(self.difficulty_combo)
 
-        self.gen_stats_btn = QPushButton("Équilibrer les stats")
-        self.gen_stats_btn.setIcon(QIcon.fromTheme("system-run"))
-        self.gen_stats_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
-        self.gen_stats_btn.clicked.connect(self._fill_balanced_stats)
-        party_layout.addWidget(self.gen_stats_btn)
-
         self.difficulty_result_label = QLabel("")
         self.difficulty_result_label.setStyleSheet("font-weight: bold;")
 
@@ -328,6 +322,12 @@ class MainWindow(QMainWindow):
         layout = QFormLayout(tab)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
+
+        self.gen_stats_btn = QPushButton("Équilibrer les stats")
+        self.gen_stats_btn.setIcon(QIcon.fromTheme("system-run"))
+        self.gen_stats_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        self.gen_stats_btn.clicked.connect(self._fill_balanced_stats)
+        layout.addRow(self.gen_stats_btn)
 
         self.ac_spin = QSpinBox()
         self.ac_spin.setRange(0, 50)
