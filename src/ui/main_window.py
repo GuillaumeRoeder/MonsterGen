@@ -155,7 +155,7 @@ class MainWindow(QMainWindow):
         tab_widget = QTabWidget()
 
         basic_tab = self.create_basic_tab()
-        tab_widget.addTab(basic_tab, "Informations de base")
+        tab_widget.addTab(basic_tab, "Description")
 
         stats_tab = self.create_stats_tab()
         tab_widget.addTab(stats_tab, "Statistiques")
