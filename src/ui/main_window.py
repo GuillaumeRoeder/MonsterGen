@@ -672,8 +672,10 @@ class MainWindow(QMainWindow):
 
         self.add_action_btn = QPushButton("Nouvelle action")
         self.add_action_btn.setToolTip("Ajouter une nouvelle action à la liste")
-        self.add_action_btn.setStyleSheet(SECONDARY_BUTTON_STYLE)
-        self.add_action_btn.setMinimumHeight(32)
+        self.add_action_btn.setStyleSheet(
+            SECONDARY_BUTTON_STYLE.replace("min-height: 0px;", "min-height: 20px; padding: 6px 12px;")
+        )
+        self.add_action_btn.setFixedHeight(36)
         actions_control_layout.addWidget(self.add_action_btn)
         actions_control_layout.addStretch()
 
