@@ -12,10 +12,7 @@ except BootstrapError as e:
     print(f"[MonsterGen] {e}", flush=True)
     sys.exit(1)
 
-from PySide6.QtWidgets import (
-    QApplication, QMessageBox, QPushButton, QWidget, QSizePolicy,
-)
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from src.ui.main_window import MainWindow
 from src.ui.config_dialog import ConfigDialog
@@ -289,12 +286,7 @@ def set_stylesheet(app):
 
 
 def create_menus(window: MainWindow):
-    """Crée les menus de l'application.
-
-    La barre est un conteneur horizontal : menus natifs à gauche,
-    bouton Configuration poussé tout à droite (le corner widget natif
-    de QMenuBar est masqué par certains styles/WM).
-    """
+    """Crée les menus de l'application."""
     menu_bar = window.menuBar()
 
     # Menu Bibliothèque (sauvegarder/charger/supprimer des monstres)
@@ -314,27 +306,9 @@ def create_menus(window: MainWindow):
     about_action = help_menu.addAction("À propos")
     about_action.triggered.connect(lambda: show_about_dialog(window))
     
-    # Menu Configuration : bouton inséré dans la QMenuBar, poussé à droite
-    config_btn = QPushButton("⚙ Configuration")
-    config_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-    config_btn.setStyleSheet("""
-        QPushButton {
-            background-color: transparent;
-            border: none;
-            color: #dce4ee;
-            padding: 4px 10px;
-            min-height: 0px;
-            font-weight: bold;
-        }
-        QPushButton:hover {
-            color: #42a5f5;
-        }
-    """)
-    config_btn.clicked.connect(lambda: show_config_dialog(window))
-    spacer = QWidget()
-    spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-    menu_bar.addAction(spacer)
-    menu_bar.addAction(config_btn)
+    # Menu Configuration
+    config_action = menu_bar.addAction("Configuration")
+    config_action.triggered.connect(lambda: show_config_dialog(window))
 
 
 def show_config_dialog(parent: MainWindow):
