@@ -1364,7 +1364,8 @@ class MainWindow(QMainWindow):
         intelligence = monster.ability_scores.intelligence
         if intelligence >= 8:
             return ["Commun"]
-        return []
+        # INT animale : pas de langage, mais le champ reste explicite
+        return ["—"]
 
     def show_options_dialog(self, field_name: str, options: List[str]):
         """Affiche une boîte de dialogue pour sélectionner une option."""
