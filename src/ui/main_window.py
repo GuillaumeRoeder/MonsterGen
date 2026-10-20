@@ -655,7 +655,7 @@ class MainWindow(QMainWindow):
         self.actions_layout.addStretch()
 
         self.actions_empty_label = QLabel(
-            "Aucune action — cliquez sur \"+ Action\" ou générez-les automatiquement."
+            "Aucune action — cliquez sur \"Add action\" ou générez-les automatiquement."
         )
         self.actions_empty_label.setStyleSheet(
             "color: #7a8aa0; font-style: italic; background: transparent; border: none;"
