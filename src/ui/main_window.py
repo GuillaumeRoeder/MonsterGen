@@ -1241,11 +1241,6 @@ class MainWindow(QMainWindow):
             self.race_edit.setText(self._suggest_race(monster))
             monster.race = self.race_edit.text()
 
-        # --- Langues : remplies automatiquement selon la race ---
-        if not monster.languages:
-            self.languages_edit.set_values(self._suggest_languages(monster))
-            monster.languages = self.languages_edit.get_values()
-
         # --- Champs IA : uniquement s'il en manque, et backend disponible ---
         missing_fields = []
         if not monster.name:
@@ -1294,6 +1289,13 @@ class MainWindow(QMainWindow):
                     f"Les actions n'ont pas pu être régénérées :\n{e}\n\n"
                     "Les actions issues des tables DMG sont conservées."
                 )
+
+        # --- Langues : en tout dernier, pour s'adapter à la race et aux
+        # stats choisies/générées au cours du remplissage (le fallback
+        # dépend de l'INT équilibrée) ---
+        fresh = self.get_monster_from_form()
+        if not fresh.languages:
+            self.languages_edit.set_values(self._suggest_languages(fresh))
 
         self.update_preview()
 
