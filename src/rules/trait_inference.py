@@ -228,7 +228,12 @@ def infer_traits(race: Optional[str], description: Optional[str]) -> InferredTra
 
     # Vitesse de base ajustée au concept.
     if traits.speed is None:
-        if any(kw in combined for kw in _FAST):
+        # Intensité de vitesse : « très rapide » / comparaisons animales
+        # (guépard, éclair...) = 18 m ; « rapide » standard = 12 m.
+        very_fast = any(kw in combined for kw in ("tres rapide", "aussi vite", "extremement rapide"))
+        if very_fast or "guepard" in combined:
+            traits.speed = "18 m (12 cases)"
+        elif any(kw in combined for kw in _FAST):
             traits.speed = "12 m (8 cases)"
         elif any(kw in combined for kw in _SLOW):
             traits.speed = "6 m (4 cases)"

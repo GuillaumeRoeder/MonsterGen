@@ -317,8 +317,13 @@ def build_balanced_monster(cr: float, base: Optional[Monster] = None,
     monster.armor_class = build_armor_class(cr, dex_mod, rng)
     monster.hit_points, monster.hit_dice = build_hit_points(cr, con_mod, monster.size, rng)
 
-    if not monster.speed:
-        monster.speed = traits.speed or "9 m (6 cases)"
+    # Vitesse : si les traits en infèrent une (rapide, vol, nage...),
+    # elle remplace même une valeur déjà posée par un équilibrage
+    # précédent — elle reflète la description de l'utilisateur.
+    if traits.speed:
+        monster.speed = traits.speed
+    elif not monster.speed:
+        monster.speed = "9 m (6 cases)"
 
     if not monster.passive_perception:
         monster.passive_perception = 10 + scores.get_modifier("wisdom")
