@@ -84,7 +84,6 @@ class AIGenerator:
 
         prompts = {
             "name": "Propose 3 noms de fantaisie adaptés, un seul nom par proposition, sans guillemets ni numérotation, séparés par des points-virgules.",
-            "race": "Propose 3 races DnD 5e (ex: Gobelin, Orc, Elfe Noir, Tiefling), séparées par des points-virgules.",
             "description": (
                 "Propose 3 descriptions courtes (1 phrase chacune) pour cette créature, "
                 "séparées par des points-virgules."
@@ -245,7 +244,6 @@ class AIGenerator:
         """
         labels = {
             "name": "Nom du monstre",
-            "race": "Race",
             "description": "Description",
             "scenario": "Scénario de rencontre",
         }

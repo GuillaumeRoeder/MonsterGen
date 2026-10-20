@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QTextEdit, QComboBox, QPushButton, QSpinBox,
     QFormLayout, QMessageBox, QFileDialog, QTabWidget,
-    QScrollArea, QInputDialog, QFrame
+    QScrollArea, QInputDialog, QFrame, QMenu
 )
 from PySide6.QtCore import Qt, Signal, QObject, QTimer
 from PySide6.QtGui import QFont, QIcon
@@ -382,14 +382,11 @@ class MainWindow(QMainWindow):
 
     def _apply_scenario_toggle_state(self):
         """Applique l'état replié/déplié de la section scénario."""
-        expanded = getattr(self, "_scenario_expanded", False)
-        self.scenario_content.setVisible(expanded)
-        self.scenario_toggle_header.set_expanded(expanded)
+        self.scenario_content.setVisible(self._scenario_expanded)
+        self.scenario_toggle_header.set_expanded(self._scenario_expanded)
 
     def _show_race_menu(self):
         """Affiche le menu déroulant des races DnD 5e sous la flèche."""
-        from PySide6.QtWidgets import QMenu
-
         menu = QMenu(self)
         for race in DND5_RACES:
             action = menu.addAction(race)
@@ -1208,7 +1205,8 @@ class MainWindow(QMainWindow):
         vie, vitesse, caractéristiques, actions) sont complétés avec des
         valeurs équilibrées pour le CR courant, sans toucher aux champs que
         l'utilisateur a déjà remplis. Les langues sont proposées depuis la
-        liste hardcodée DnD 5e.
+        liste hardcodée DnD 5e, la race depuis la liste hardcodée des races
+        DnD 5e (sans passer par l'IA).
         """
         monster = self.get_monster_from_form()
 
@@ -1358,7 +1356,7 @@ class MainWindow(QMainWindow):
             field_layout = QHBoxLayout()
 
             label = QLabel({
-                "name": "Nom", "race": "Race", "description": "Description",
+                "name": "Nom", "description": "Description",
             }.get(field_name, field_name) + " :")
             field_layout.addWidget(label)
 
@@ -1392,7 +1390,6 @@ class MainWindow(QMainWindow):
         """Définit la valeur d'un champ dans le formulaire."""
         field_mapping = {
             "name": lambda v: self.name_edit.setText(v),
-            "race": lambda v: self.race_edit.setText(v),
             "description": lambda v: self.description_edit.setPlainText(v),
             "hit_dice": lambda v: self.hit_dice_edit.setText(v),
             "speed": lambda v: self.speed_edit.setText(v),
