@@ -655,7 +655,7 @@ class MainWindow(QMainWindow):
         self.actions_layout.addStretch()
 
         self.actions_empty_label = QLabel(
-            "Aucune action — cliquez sur \"Ajouter une action personnalisée\" ou générez-les automatiquement."
+            "Aucune action — cliquez sur \"Nouvelle action\" ou générez-les automatiquement."
         )
         self.actions_empty_label.setStyleSheet(
             "color: #7a8aa0; font-style: italic; background: transparent; border: none;"
@@ -669,7 +669,7 @@ class MainWindow(QMainWindow):
         actions_control_layout = QHBoxLayout()
         actions_control_layout.addStretch()
 
-        self.add_action_btn = QPushButton("Ajouter une action personnalisée")
+        self.add_action_btn = QPushButton("Nouvelle action")
         self.add_action_btn.setIcon(QIcon.fromTheme("list-add"))
         self.add_action_btn.setToolTip("Ajouter une nouvelle action à la liste")
         self.add_action_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
