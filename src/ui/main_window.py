@@ -425,7 +425,9 @@ class MainWindow(QMainWindow):
         party_layout.addWidget(self.difficulty_combo)
 
         self.difficulty_result_label = QLabel("")
-        self.difficulty_result_label.setStyleSheet("font-weight: bold;")
+        self.difficulty_result_label.setStyleSheet(
+            "font-weight: bold; margin-top: -4px; margin-bottom: -4px;"
+        )
 
         self.party_size_spin.valueChanged.connect(self._update_difficulty_label)
         self.party_level_spin.valueChanged.connect(self._update_difficulty_label)
@@ -834,7 +836,8 @@ class MainWindow(QMainWindow):
         color = DIFFICULTY_COLORS.get(difficulty_key, "#e0e0e0")
         self.difficulty_result_label.setText(f"● {summary}")
         self.difficulty_result_label.setStyleSheet(
-            f"font-weight: bold; color: {color};"
+            f"font-weight: bold; color: {color}; "
+            "margin-top: -4px; margin-bottom: -4px;"
         )
 
     def _fill_balanced_stats(self):
