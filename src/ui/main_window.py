@@ -300,7 +300,7 @@ class MainWindow(QMainWindow):
         self.description_edit = QTextEdit()
         self.description_edit.setPlaceholderText("Description du PNJ/Monstre")
         self.description_edit.setMaximumHeight(100)
-        layout.addRow("Description :", self.description_edit)
+        layout.addRow("Description / Métier :", self.description_edit)
 
         scenario_widget = QWidget()
         scenario_widget.setStyleSheet("background: transparent; border: none;")
@@ -837,7 +837,7 @@ class MainWindow(QMainWindow):
             )
 
         if monster.description:
-            self._add_section_title("Description :")
+            self._add_section_title("Description / Métier :")
             self._add_preview_label(monster.description, word_wrap=True)
 
         if monster.actions:
@@ -1428,7 +1428,7 @@ class MainWindow(QMainWindow):
             field_layout = QHBoxLayout()
 
             label = QLabel({
-                "name": "Nom", "description": "Description",
+                "name": "Nom", "description": "Description / Métier",
             }.get(field_name, field_name) + " :")
             field_layout.addWidget(label)
 
