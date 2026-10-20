@@ -12,7 +12,8 @@ except BootstrapError as e:
     print(f"[MonsterGen] {e}", flush=True)
     sys.exit(1)
 
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication, QMessageBox, QPushButton
+from PySide6.QtCore import Qt
 
 from src.ui.main_window import MainWindow
 from src.ui.config_dialog import ConfigDialog
@@ -299,9 +300,11 @@ def create_menus(window: MainWindow):
     png_action = export_menu.addAction("Exporter en PNG")
     png_action.triggered.connect(lambda: window.export_to_png())
     
-    # Menu Configuration
-    config_action = window.menuBar().addAction("Configuration")
-    config_action.triggered.connect(lambda: show_config_dialog(window))
+    # Menu Configuration : bouton poussé tout à droite de la barre
+    config_btn = QPushButton("Configuration")
+    config_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    config_btn.clicked.connect(lambda: show_config_dialog(window))
+    window.menuBar().setCornerWidget(config_btn, Qt.Corner.TopRightCorner)
     
     # Menu Aide
     help_menu = window.menuBar().addMenu("Aide")
