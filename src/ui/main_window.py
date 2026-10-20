@@ -627,7 +627,7 @@ class MainWindow(QMainWindow):
         self.gen_actions_prompt_btn.setToolTip(
             "Génère les actions décrites à gauche, avec les stats équilibrées pour le CR"
         )
-        self.gen_actions_prompt_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        self.gen_actions_prompt_btn.setStyleSheet(SECONDARY_BUTTON_STYLE)
         self.gen_actions_prompt_btn.clicked.connect(self._generate_actions_from_prompt)
         prompt_row.addWidget(self.gen_actions_prompt_btn)
         actions_vlayout.addLayout(prompt_row)
