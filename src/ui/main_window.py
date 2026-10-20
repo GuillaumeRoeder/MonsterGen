@@ -131,7 +131,7 @@ class MainWindow(QMainWindow):
             if local_model.is_available():
                 status = "prêt"
                 bg = "#1e3a24"
-                fg = "#66bb6a"
+                fg = "#42a5f5"
             else:
                 status = "non téléchargé"
                 bg = "#3a2a1a"
@@ -203,7 +203,7 @@ class MainWindow(QMainWindow):
 
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setStyleSheet("color: #3e5a3e; background: #3e5a3e; border: none; max-height: 1px;")
+        separator.setStyleSheet("color: #3e5a8a; background: #3e5a8a; border: none; max-height: 1px;")
         layout.addRow(separator)
 
         self.name_edit = QLineEdit()
@@ -230,8 +230,8 @@ class MainWindow(QMainWindow):
         languages_frame.setFrameShape(QFrame.Shape.StyledPanel)
         languages_frame.setStyleSheet("""
             QFrame {
-                background-color: #1e291e;
-                border: 1px solid #3e5a3e;
+                background-color: #161f2a;
+                border: 1px solid #3e5a8a;
                 border-radius: 6px;
             }
             QLabel {
@@ -248,7 +248,7 @@ class MainWindow(QMainWindow):
             "✕ pour la retirer :"
         )
         languages_header.setStyleSheet(
-            "color: #a5d6a7; font-size: 11px; background: transparent; border: none;"
+            "color: #90caf9; font-size: 11px; background: transparent; border: none;"
         )
         languages_layout.addWidget(languages_header)
         languages_layout.addWidget(self.languages_edit)
@@ -273,9 +273,9 @@ class MainWindow(QMainWindow):
         self.scenario_toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.scenario_toggle_btn.setStyleSheet("""
             QPushButton {
-                background-color: #253225;
-                color: #c8e6c9;
-                border: 1px solid #3e5a3e;
+                background-color: #212b38;
+                color: #bbdefb;
+                border: 1px solid #3e5a8a;
                 border-radius: 3px;
                 padding: 6px 10px;
                 text-align: left;
@@ -283,11 +283,11 @@ class MainWindow(QMainWindow):
                 min-height: 0px;
             }
             QPushButton:hover {
-                background-color: #2c3a2c;
-                border: 1px solid #66bb6a;
+                background-color: #26344a;
+                border: 1px solid #42a5f5;
             }
             QPushButton:pressed {
-                background-color: #1c261c;
+                background-color: #171e28;
             }
         """)
         self.scenario_toggle_btn.clicked.connect(self._toggle_scenario)
@@ -296,8 +296,8 @@ class MainWindow(QMainWindow):
         self.scenario_content = QWidget()
         self.scenario_content.setStyleSheet("""
             QWidget {
-                background-color: #1e291e;
-                border: 1px solid #3e5a3e;
+                background-color: #161f2a;
+                border: 1px solid #3e5a8a;
                 border-top: none;
                 border-bottom-left-radius: 6px;
                 border-bottom-right-radius: 6px;
@@ -312,7 +312,7 @@ class MainWindow(QMainWindow):
             "automatiquement à partir des stats actuelles du monstre :"
         )
         scenario_header.setStyleSheet(
-            "color: #a5d6a7; font-size: 11px; background: transparent; border: none;"
+            "color: #90caf9; font-size: 11px; background: transparent; border: none;"
         )
         scenario_inner.addWidget(scenario_header)
 
@@ -324,9 +324,9 @@ class MainWindow(QMainWindow):
         )
         self.scenario_edit.setStyleSheet("""
             QTextEdit {
-                background-color: #222d22;
-                color: #dfe8df;
-                border: 1px solid #3e4e3e;
+                background-color: #1e2632;
+                color: #dce4ee;
+                border: 1px solid #39485c;
                 border-radius: 4px;
                 font-size: 11px;
             }

@@ -61,75 +61,75 @@ def main():
 def set_stylesheet(app):
     """Applique le style sheet global à l'application."""
     app.setStyleSheet("""
-        /* Style global pour MonsterGen - Thème sombre vert DnD */
+        /* Style global pour MonsterGen - Thème sombre bleu DnD */
         QMainWindow {
-            background-color: #121a12;
+            background-color: #10151c;
         }
         
         QWidget {
-            background-color: #1a231a;
-            color: #dfe8df;
+            background-color: #161d26;
+            color: #dce4ee;
             border: none;
         }
         
         QLabel {
-            color: #dfe8df;
+            color: #dce4ee;
         }
         
         QLineEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox {
-            background-color: #222d22;
-            color: #dfe8df;
-            border: 1px solid #3e4e3e;
+            background-color: #1e2632;
+            color: #dce4ee;
+            border: 1px solid #39485c;
             border-radius: 4px;
             padding: 6px;
-            selection-background-color: #4caf50;
+            selection-background-color: #1e88e5;
             selection-color: #ffffff;
         }
         
         QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
-            border: 1px solid #66bb6a;
-            background-color: #222d22;
+            border: 1px solid #42a5f5;
+            background-color: #1e2632;
         }
         
         QPushButton {
-            background-color: #253225;
-            color: #dfe8df;
-            border: 1px solid #3e4e3e;
+            background-color: #212b38;
+            color: #dce4ee;
+            border: 1px solid #39485c;
             border-radius: 4px;
             padding: 8px 16px;
             min-height: 28px;
         }
         
         QPushButton:hover {
-            background-color: #2c3a2c;
-            border: 1px solid #66bb6a;
+            background-color: #26344a;
+            border: 1px solid #42a5f5;
         }
         
         QPushButton:pressed {
-            background-color: #1c261c;
-            border: 1px solid #66bb6a;
+            background-color: #171e28;
+            border: 1px solid #42a5f5;
         }
         
         QPushButton:disabled {
-            background-color: #1c261c;
-            color: #6a7a6a;
-            border: 1px solid #3e4e3e;
+            background-color: #171e28;
+            color: #6a7a8a;
+            border: 1px solid #39485c;
         }
         
         QTabWidget {
-            background-color: #1a231a;
+            background-color: #161d26;
         }
         
         QTabWidget::pane {
-            border: 1px solid #3e4e3e;
+            border: 1px solid #39485c;
             border-radius: 4px;
-            background-color: #1a231a;
+            background-color: #161d26;
         }
         
         QTabBar::tab {
-            background-color: #222d22;
-            color: #dfe8df;
-            border: 1px solid #3e4e3e;
+            background-color: #1e2632;
+            color: #dce4ee;
+            border: 1px solid #39485c;
             border-bottom: none;
             border-radius: 4px 4px 0 0;
             padding: 8px 16px;
@@ -137,149 +137,149 @@ def set_stylesheet(app):
         }
         
         QTabBar::tab:selected {
-            background-color: #253d25;
-            color: #a5d6a7;
-            border-bottom: 1px solid #253d25;
+            background-color: #1e2f47;
+            color: #90caf9;
+            border-bottom: 1px solid #1e2f47;
             margin-bottom: -1px;
         }
         
         QTabBar::tab:hover:!selected {
-            background-color: #2c3a2c;
+            background-color: #26344a;
         }
         
         QListWidget {
-            background-color: #222d22;
-            color: #dfe8df;
-            border: 1px solid #3e4e3e;
+            background-color: #1e2632;
+            color: #dce4ee;
+            border: 1px solid #39485c;
             border-radius: 4px;
             padding: 4px;
         }
         
         QListWidget::item {
-            background-color: #222d22;
-            color: #dfe8df;
+            background-color: #1e2632;
+            color: #dce4ee;
             padding: 4px;
             border: none;
         }
         
         QListWidget::item:selected {
-            background-color: #2e7d32;
+            background-color: #1e5fa8;
             color: #ffffff;
         }
         
         QScrollArea {
-            background-color: #1a231a;
+            background-color: #161d26;
             border: none;
         }
         
         QScrollArea > QWidget {
-            background-color: #1a231a;
+            background-color: #161d26;
         }
         
         QGroupBox {
-            background-color: #1a231a;
-            border: 1px solid #3e4e3e;
+            background-color: #161d26;
+            border: 1px solid #39485c;
             border-radius: 4px;
             margin-top: 10px;
             padding-top: 15px;
         }
         
         QGroupBox::title {
-            color: #81c784;
+            color: #64b5f6;
             subcontrol-origin: margin;
             left: 10px;
             padding: 0 5px;
         }
         
         QMenuBar {
-            background-color: #121a12;
-            color: #dfe8df;
-            border-bottom: 1px solid #3e4e3e;
+            background-color: #10151c;
+            color: #dce4ee;
+            border-bottom: 1px solid #39485c;
         }
         
         QMenuBar::item {
             background: transparent;
-            color: #dfe8df;
+            color: #dce4ee;
             padding: 4px 8px;
         }
         
         QMenuBar::item:selected {
-            background-color: #222d22;
+            background-color: #1e2632;
             border-radius: 4px;
         }
         
         QMenu {
-            background-color: #222d22;
-            color: #dfe8df;
-            border: 1px solid #3e4e3e;
+            background-color: #1e2632;
+            color: #dce4ee;
+            border: 1px solid #39485c;
             border-radius: 4px;
         }
         
         QMenu::item {
-            background-color: #222d22;
-            color: #dfe8df;
+            background-color: #1e2632;
+            color: #dce4ee;
             padding: 6px 20px;
         }
         
         QMenu::item:selected {
-            background-color: #2e7d32;
+            background-color: #1e5fa8;
             color: #ffffff;
         }
         
         QMessageBox {
-            background-color: #1a231a;
-            color: #dfe8df;
+            background-color: #161d26;
+            color: #dce4ee;
         }
         
         QMessageBox QLabel {
-            color: #dfe8df;
+            color: #dce4ee;
         }
         
         QMessageBox QPushButton {
-            background-color: #253225;
-            color: #dfe8df;
-            border: 1px solid #3e4e3e;
+            background-color: #212b38;
+            color: #dce4ee;
+            border: 1px solid #39485c;
             border-radius: 4px;
             padding: 6px 12px;
             min-width: 80px;
         }
         
         QMessageBox QPushButton:hover {
-            background-color: #2c3a2c;
+            background-color: #26344a;
         }
         
         QInputDialog {
-            background-color: #1a231a;
+            background-color: #161d26;
         }
         
         QInputDialog QLabel {
-            color: #dfe8df;
+            color: #dce4ee;
         }
         
         QInputDialog QLineEdit {
-            background-color: #222d22;
-            color: #dfe8df;
-            border: 1px solid #3e4e3e;
+            background-color: #1e2632;
+            color: #dce4ee;
+            border: 1px solid #39485c;
             border-radius: 4px;
         }
         
         QInputDialog QPushButton {
-            background-color: #253225;
-            color: #dfe8df;
-            border: 1px solid #3e4e3e;
+            background-color: #212b38;
+            color: #dce4ee;
+            border: 1px solid #39485c;
             border-radius: 4px;
         }
         
         QDialog {
-            background-color: #1a231a;
+            background-color: #161d26;
         }
         
         QDialog QLabel {
-            color: #dfe8df;
+            color: #dce4ee;
         }
         
         QFormLayout QLabel {
-            color: #a5d6a7;
+            color: #90caf9;
             min-width: 150px;
         }
     """)
@@ -321,7 +321,7 @@ def show_about_dialog(parent: MainWindow):
     from PySide6.QtWidgets import QMessageBox
     
     about_text = """
-    <h2 style='color: #81c784;'>MonsterGen</h2>
+    <h2 style='color: #64b5f6;'>MonsterGen</h2>
     <p style='color: #e0e0e0;'>Générateur de fiches de PNJ/Monstres pour Donjons & Dragons 5e.</p>
     <p style='color: #e0e0e0;'>Version : 1.0.0</p>
     <p style='color: #e0e0e0;'>Auteur : Guillaume Roeder</p>

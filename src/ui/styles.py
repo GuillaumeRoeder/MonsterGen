@@ -1,31 +1,31 @@
 """
 Styles partagés pour les widgets de l'interface MonsterGen.
-Palette en tons de verts.
+Palette en tons de bleus.
 """
 
-# Bouton d'action principale (générations IA, équilibrage) : accent vert.
+# Bouton d'action principale (générations IA, équilibrage) : accent bleu.
 ACCENT_BUTTON_STYLE = """
     QPushButton {
-        background-color: #2e7d32;
+        background-color: #1e5fa8;
         color: #ffffff;
-        border: 1px solid #43a047;
+        border: 1px solid #2d7cd6;
         border-radius: 4px;
         padding: 6px 14px;
         min-height: 20px;
         font-weight: bold;
     }
     QPushButton:hover {
-        background-color: #388e3c;
-        border: 1px solid #66bb6a;
+        background-color: #2672b8;
+        border: 1px solid #42a5f5;
     }
     QPushButton:pressed {
-        background-color: #1b5e20;
-        border: 1px solid #66bb6a;
+        background-color: #154a7d;
+        border: 1px solid #42a5f5;
     }
     QPushButton:disabled {
-        background-color: #3a4a3a;
-        color: #7a8a7a;
-        border: 1px solid #556b55;
+        background-color: #33374a;
+        color: #7a7a8a;
+        border: 1px solid #4a5a7a;
     }
 """
 
@@ -33,9 +33,9 @@ ACCENT_BUTTON_STYLE = """
 # texte plus petit, pas de gras.
 SECONDARY_BUTTON_STYLE = """
     QPushButton {
-        background-color: #37453a;
-        color: #c8dcc8;
-        border: 1px solid #557055;
+        background-color: #333c4a;
+        color: #c8d4e8;
+        border: 1px solid #506080;
         border-radius: 4px;
         padding: 3px 10px;
         min-height: 0px;
@@ -43,11 +43,11 @@ SECONDARY_BUTTON_STYLE = """
         font-size: 11px;
     }
     QPushButton:hover {
-        background-color: #40543f;
-        border: 1px solid #66bb6a;
+        background-color: #3a4a55;
+        border: 1px solid #42a5f5;
         color: #ffffff;
     }
     QPushButton:pressed {
-        background-color: #2b352b;
+        background-color: #262c33;
     }
 """
