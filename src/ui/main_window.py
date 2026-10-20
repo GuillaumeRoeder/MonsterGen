@@ -669,10 +669,10 @@ class MainWindow(QMainWindow):
         actions_control_layout = QHBoxLayout()
         actions_control_layout.addStretch()
 
-        self.add_action_btn = QPushButton("+")
+        self.add_action_btn = QPushButton("Add action")
         self.add_action_btn.setIcon(QIcon.fromTheme("list-add"))
         self.add_action_btn.setToolTip("Ajouter une nouvelle action à la liste")
-        self.add_action_btn.setFixedSize(36, 28)
+        self.add_action_btn.setMinimumHeight(28)
         actions_control_layout.addWidget(self.add_action_btn)
         actions_control_layout.addStretch()
 
