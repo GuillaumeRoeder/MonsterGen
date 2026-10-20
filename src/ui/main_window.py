@@ -172,13 +172,14 @@ class MainWindow(QMainWindow):
         self.generate_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         control_layout.addWidget(self.generate_btn)
 
-        self.export_btn = QPushButton("Exporter en PDF")
+        self.export_btn = QPushButton("Exporter ▾")
         self.export_btn.setIcon(QIcon.fromTheme("document-export"))
+        self.export_btn.setToolTip("Exporter la fiche en PDF ou en PNG")
+        self.export_btn.clicked.connect(self._show_export_menu)
         control_layout.addWidget(self.export_btn)
 
-        self.export_png_btn = QPushButton("Exporter en PNG")
-        self.export_png_btn.setIcon(QIcon.fromTheme("image-x-generic"))
-        control_layout.addWidget(self.export_png_btn)
+        self._export_pdf_action = None
+        self._export_png_action = None
 
         self.reset_btn = QPushButton("Réinitialiser")
         self.reset_btn.setIcon(QIcon.fromTheme("document-new"))
@@ -305,6 +306,19 @@ class MainWindow(QMainWindow):
         layout.addRow("Scénario :", scenario_frame)
 
         return tab
+
+    def _show_export_menu(self):
+        """Affiche le menu d'export (PDF / PNG) sous le bouton Exporter."""
+        from PySide6.QtWidgets import QMenu
+
+        menu = QMenu(self)
+        pdf_action = menu.addAction(QIcon.fromTheme("document-export"), "Exporter en PDF")
+        png_action = menu.addAction(QIcon.fromTheme("image-x-generic"), "Exporter en PNG")
+        pdf_action.triggered.connect(self.export_to_pdf)
+        png_action.triggered.connect(self.export_to_png)
+
+        btn_pos = self.export_btn.mapTo(self, self.export_btn.rect().bottomLeft())
+        menu.exec(btn_pos)
 
     def _show_race_menu(self):
         """Affiche le menu déroulant des races DnD 5e sous la flèche."""
@@ -550,8 +564,6 @@ class MainWindow(QMainWindow):
     def setup_connections(self):
         """Configure les connexions des signaux."""
         self.generate_btn.clicked.connect(self.generate_missing_fields)
-        self.export_btn.clicked.connect(self.export_to_pdf)
-        self.export_png_btn.clicked.connect(self.export_to_png)
 
         self.add_action_btn.clicked.connect(self.add_action)
 
