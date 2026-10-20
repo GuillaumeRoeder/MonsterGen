@@ -242,7 +242,6 @@ class MainWindow(QMainWindow):
         layout.setSpacing(10)
 
         layout.addRow("Groupe :", self._create_party_widgets())
-        layout.addRow(self.difficulty_result_label)
 
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.HLine)
@@ -434,7 +433,13 @@ class MainWindow(QMainWindow):
         self.difficulty_combo.currentIndexChanged.connect(self._update_difficulty_label)
         self._update_difficulty_label()
 
-        return party_layout
+        group_layout = QVBoxLayout()
+        group_layout.setContentsMargins(0, 0, 0, 0)
+        group_layout.setSpacing(2)
+        group_layout.addLayout(party_layout)
+        group_layout.addWidget(self.difficulty_result_label)
+
+        return group_layout
 
     def create_stats_tab(self) -> QWidget:
         """Crée l'onglet des statistiques (défilable : le contenu dépasse
