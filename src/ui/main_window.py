@@ -774,11 +774,14 @@ class MainWindow(QMainWindow):
         return ", ".join(parts)
 
     def _clear_preview(self):
-        """Efface l'aperçu actuel."""
+        """Efface l'aperçu actuel (widgets et items de layout)."""
         for i in reversed(range(self.preview_layout.count())):
-            widget = self.preview_layout.itemAt(i).widget()
+            item = self.preview_layout.itemAt(i)
+            widget = item.widget()
             if widget:
                 widget.deleteLater()
+            else:
+                self.preview_layout.takeAt(i)
 
     def _get_modifier(self, score: int) -> int:
         """Calcule le modificateur pour une caractéristique."""
