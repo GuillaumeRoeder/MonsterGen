@@ -1241,6 +1241,11 @@ class MainWindow(QMainWindow):
             self.race_edit.setText(self._suggest_race(monster))
             monster.race = self.race_edit.text()
 
+        # --- Langues : remplies automatiquement selon la race ---
+        if not monster.languages:
+            self.languages_edit.set_values(self._suggest_languages(monster))
+            monster.languages = self.languages_edit.get_values()
+
         # --- Champs IA : uniquement s'il en manque, et backend disponible ---
         missing_fields = []
         if not monster.name:
@@ -1300,6 +1305,64 @@ class MainWindow(QMainWindow):
             if base in haystack:
                 return race
         return "Humain"
+
+    def _suggest_languages(self, monster: Monster) -> List[str]:
+        """Langues DnD 5e cohérentes avec la race et l'alignement du monstre."""
+        race = (monster.race or "").lower()
+        desc = (monster.description or "").lower()
+
+        race_languages = {
+            "drow": ["Elfique", "Commun", "Langue des signes des profondeurs"],
+            "elfe noir": ["Elfique", "Commun", "Langue des signes des profondeurs"],
+            "elfe": ["Commun", "Elfique"],
+            "haut-elfe": ["Commun", "Elfique"],
+            "elfe des bois": ["Commun", "Elfique"],
+            "nain": ["Commun", "Nain"],
+            "gnome": ["Commun", "Gnome"],
+            "halfelin": ["Commun"],
+            "dem-orc": ["Commun", "Orque"],
+            "orc": ["Orque"],
+            "tiefling": ["Commun", "Infernal"],
+            "drakéide": ["Commun", "Draconique"],
+            "gobelin": ["Gobelin"],
+            "hobgobelin": ["Gobelin"],
+            "bugbear": ["Gobelin"],
+            "kobold": ["Draconique"],
+            "gnoll": ["Gnoll"],
+            "homme-lézard": ["Draconique"],
+            "ogre": ["Commun", "Géant"],
+            "troll": ["Géant"],
+            "géant": ["Géant"],
+            "squelette": ["—"],
+            "zombie": ["—"],
+            "goule": ["Commun"],
+            "liche": ["Commun"],
+            "diable": ["Infernal"],
+            "démon": ["Abyssal"],
+            "ange": ["Céleste"],
+            "fée": ["Sylvestre"],
+            "dryade": ["Sylvestre", "Elfique"],
+            "satyre": ["Sylvestre", "Commun"],
+            "méduse": ["Commun"],
+            "minotaure": ["Abyssal"],
+            "hydre": ["—"],
+            "basilic": ["—"],
+            "dragon": ["Draconique", "Commun"],
+            "wyverne": ["Draconique"],
+            "griffon": ["Commun", "Auran"],
+            "sphinx": ["Commun"],
+            "aboleth": ["Aquatique", "Commun"],
+            "spectre": ["—"],
+        }
+
+        for key, languages in race_languages.items():
+            if key in race or key in desc:
+                return languages
+
+        intelligence = monster.ability_scores.intelligence
+        if intelligence >= 8:
+            return ["Commun"]
+        return []
 
     def show_options_dialog(self, field_name: str, options: List[str]):
         """Affiche une boîte de dialogue pour sélectionner une option."""
