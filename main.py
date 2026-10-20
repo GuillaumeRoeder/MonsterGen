@@ -50,7 +50,7 @@ def main():
                 "Modèle local indisponible",
                 "llama-cpp-python n'a pas pu être installé automatiquement.\n\n"
                 "L'application passe en mode API par défaut.\n"
-                "Renseignez votre clé API dans Fichier > Configuration, ou installez "
+                "Renseignez votre clé API dans Configuration, ou installez "
                 "llama-cpp-python manuellement pour revenir au modèle local."
             )
     

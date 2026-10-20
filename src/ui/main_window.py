@@ -1115,7 +1115,7 @@ class MainWindow(QMainWindow):
                 self,
                 "Configuration API incomplète",
                 "Le mode API est sélectionné mais la clé API est manquante.\n\n"
-                "Fichier > Configuration : renseignez la clé API,\n"
+                "Configuration : renseignez la clé API,\n"
                 "ou repassez sur le modèle local."
             )
             return False
@@ -1131,7 +1131,7 @@ class MainWindow(QMainWindow):
                 "llama-cpp-python n'est pas installé : le modèle local ne peut pas "
                 "fonctionner.\n\n"
                 "Basculer maintenant en mode API ?\n"
-                "(Vous pourrez renseigner la clé API dans Fichier > Configuration.)",
+                "(Vous pourrez renseigner la clé API dans Configuration.)",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if switch == QMessageBox.StandardButton.Yes:
@@ -1147,7 +1147,7 @@ class MainWindow(QMainWindow):
             "Le modèle IA local n'est pas encore prêt.\n\n"
             f"Modèle sélectionné : {info['label']}\n\n"
             "Voulez-vous le télécharger maintenant ?\n\n"
-            "(Astuce : Fichier > Configuration permet aussi de basculer\n"
+            "(Astuce : Configuration permet aussi de basculer\n"
             "sur une API distante avec clé API.)",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
