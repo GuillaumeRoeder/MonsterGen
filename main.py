@@ -295,6 +295,13 @@ def create_menus(window: MainWindow):
     library_action = library_menu.addAction("Gérer les monstres sauvegardés")
     library_action.triggered.connect(lambda: window.open_library())
     
+    # Menu Export (PDF / PNG)
+    export_menu = window.menuBar().addMenu("Export")
+    pdf_action = export_menu.addAction("Exporter en PDF")
+    pdf_action.triggered.connect(lambda: window.export_to_pdf())
+    png_action = export_menu.addAction("Exporter en PNG")
+    png_action.triggered.connect(lambda: window.export_to_png())
+    
     # Menu Configuration
     config_action = file_menu.addAction("Configuration")
     config_action.triggered.connect(lambda: show_config_dialog(window))

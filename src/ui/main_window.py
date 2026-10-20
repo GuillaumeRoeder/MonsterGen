@@ -172,15 +172,6 @@ class MainWindow(QMainWindow):
         self.generate_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         control_layout.addWidget(self.generate_btn)
 
-        self.export_btn = QPushButton("Exporter ▾")
-        self.export_btn.setIcon(QIcon.fromTheme("document-export"))
-        self.export_btn.setToolTip("Exporter la fiche en PDF ou en PNG")
-        self.export_btn.clicked.connect(self._show_export_menu)
-        control_layout.addWidget(self.export_btn)
-
-        self._export_pdf_action = None
-        self._export_png_action = None
-
         self.reset_btn = QPushButton("Réinitialiser")
         self.reset_btn.setIcon(QIcon.fromTheme("document-new"))
         self.reset_btn.setToolTip("Effacer tous les champs : identité, stats, actions, scénario, équipement…")
@@ -261,11 +252,13 @@ class MainWindow(QMainWindow):
         layout.addRow("Description :", self.description_edit)
 
         scenario_widget = QWidget()
+        scenario_widget.setStyleSheet("background: transparent; border: none;")
         scenario_vlayout = QVBoxLayout(scenario_widget)
         scenario_vlayout.setContentsMargins(0, 0, 0, 0)
         scenario_vlayout.setSpacing(0)
 
         # Barre de titre repliable façon Attribute Editor de Maya
+        self._scenario_expanded = False
         self.scenario_toggle_btn = QPushButton("  ▸  Scénario de rencontre (optionnel)")
         self.scenario_toggle_btn.setToolTip(
             "Cliquer pour déplier ou replier la section scénario"
@@ -292,6 +285,7 @@ class MainWindow(QMainWindow):
         """)
         self.scenario_toggle_btn.clicked.connect(self._toggle_scenario)
         scenario_vlayout.addWidget(self.scenario_toggle_btn)
+        self._apply_scenario_toggle_state()
 
         self.scenario_content = QWidget()
         self.scenario_content.setStyleSheet("""
@@ -348,25 +342,17 @@ class MainWindow(QMainWindow):
 
         return tab
 
-    def _show_export_menu(self):
-        """Affiche le menu d'export (PDF / PNG) sous le bouton Exporter."""
-        from PySide6.QtWidgets import QMenu
-
-        menu = QMenu(self)
-        pdf_action = menu.addAction(QIcon.fromTheme("document-export"), "Exporter en PDF")
-        png_action = menu.addAction(QIcon.fromTheme("image-x-generic"), "Exporter en PNG")
-        pdf_action.triggered.connect(self.export_to_pdf)
-        png_action.triggered.connect(self.export_to_png)
-
-        btn_pos = self.export_btn.mapTo(self, self.export_btn.rect().bottomLeft())
-        menu.exec(btn_pos)
-
     def _toggle_scenario(self):
         """Affiche ou masque la section scénario."""
-        visible = not self.scenario_content.isVisible()
-        self.scenario_content.setVisible(visible)
+        self._scenario_expanded = not self._scenario_expanded
+        self._apply_scenario_toggle_state()
+
+    def _apply_scenario_toggle_state(self):
+        """Applique l'état replié/déplié de la section scénario."""
+        expanded = getattr(self, "_scenario_expanded", False)
+        self.scenario_content.setVisible(expanded)
         self.scenario_toggle_btn.setText(
-            "  ▾  Scénario de rencontre (optionnel)" if visible
+            "  ▾  Scénario de rencontre (optionnel)" if expanded
             else "  ▸  Scénario de rencontre (optionnel)"
         )
 
