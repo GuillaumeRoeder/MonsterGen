@@ -34,7 +34,7 @@ Bouton **« Générer scénario »** à côté du champ Scénario : produit une 
 
 ### 6. Exporter et sauvegarder
 
-- **Exporter en PDF** / **Exporter en PNG** (style stat block officiel)
+- **Exporter ▾** → *Exporter en PDF* ou *Exporter en PNG* (style stat block officiel)
 - **Bibliothèque > Gérer les monstres sauvegardés** : mini gestionnaire de sauvegardes (voir [Bibliothèque](Bibliothèque.md))
 
 ## Raccourcis utiles
