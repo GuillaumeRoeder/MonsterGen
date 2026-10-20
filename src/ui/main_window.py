@@ -61,6 +61,55 @@ from src.export.png_exporter import png_exporter
 from config.config_manager import config_manager
 
 
+class _CollapsibleHeader(QFrame):
+    """Barre de titre cliquable et repliable (style Attribute Editor Maya).
+
+    Flèche et texte sont des labels séparés : le titre reste toujours
+    visible, quel que soit l'état de la section.
+    """
+
+    clicked = Signal()
+
+    def __init__(self, title: str, parent=None):
+        super().__init__(parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setStyleSheet("""
+            QFrame {
+                background-color: #212b38;
+                border: 1px solid #3e5a8a;
+                border-radius: 3px;
+            }
+            QFrame:hover {
+                background-color: #26344a;
+                border: 1px solid #42a5f5;
+            }
+            QLabel {
+                background: transparent;
+                border: none;
+                color: #bbdefb;
+                font-weight: bold;
+            }
+        """)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(10, 6, 10, 6)
+        layout.setSpacing(8)
+
+        self._arrow_label = QLabel("▸")
+        self._arrow_label.setFixedWidth(14)
+        self._title_label = QLabel(title)
+        layout.addWidget(self._arrow_label)
+        layout.addWidget(self._title_label)
+        layout.addStretch()
+
+    def set_expanded(self, expanded: bool):
+        """Met à jour la flèche selon l'état de la section."""
+        self._arrow_label.setText("▾" if expanded else "▸")
+
+    def mousePressEvent(self, event):
+        self.clicked.emit()
+        super().mousePressEvent(event)
+
+
 class SignalEmitter(QObject):
     """
     Émetteur de signaux pour la communication entre threads.
@@ -259,32 +308,14 @@ class MainWindow(QMainWindow):
 
         # Barre de titre repliable façon Attribute Editor de Maya
         self._scenario_expanded = False
-        self.scenario_toggle_btn = QPushButton("  ▸  Scénario de rencontre (optionnel)")
-        self.scenario_toggle_btn.setToolTip(
+        self.scenario_toggle_header = _CollapsibleHeader(
+            "Scénario de rencontre (optionnel)"
+        )
+        self.scenario_toggle_header.setToolTip(
             "Cliquer pour déplier ou replier la section scénario"
         )
-        self.scenario_toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.scenario_toggle_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #212b38;
-                color: #bbdefb;
-                border: 1px solid #3e5a8a;
-                border-radius: 3px;
-                padding: 6px 10px;
-                text-align: left;
-                font-weight: bold;
-                min-height: 0px;
-            }
-            QPushButton:hover {
-                background-color: #26344a;
-                border: 1px solid #42a5f5;
-            }
-            QPushButton:pressed {
-                background-color: #171e28;
-            }
-        """)
-        self.scenario_toggle_btn.clicked.connect(self._toggle_scenario)
-        scenario_vlayout.addWidget(self.scenario_toggle_btn)
+        self.scenario_toggle_header.clicked.connect(self._toggle_scenario)
+        scenario_vlayout.addWidget(self.scenario_toggle_header)
 
         self.scenario_content = QWidget()
         self.scenario_content.setStyleSheet("""
@@ -351,10 +382,7 @@ class MainWindow(QMainWindow):
         """Applique l'état replié/déplié de la section scénario."""
         expanded = getattr(self, "_scenario_expanded", False)
         self.scenario_content.setVisible(expanded)
-        self.scenario_toggle_btn.setText(
-            "  ▾  Scénario de rencontre (optionnel)" if expanded
-            else "  ▸  Scénario de rencontre (optionnel)"
-        )
+        self.scenario_toggle_header.set_expanded(expanded)
 
     def _show_race_menu(self):
         """Affiche le menu déroulant des races DnD 5e sous la flèche."""
