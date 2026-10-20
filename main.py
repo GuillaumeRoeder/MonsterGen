@@ -12,7 +12,9 @@ except BootstrapError as e:
     print(f"[MonsterGen] {e}", flush=True)
     sys.exit(1)
 
-from PySide6.QtWidgets import QApplication, QMessageBox, QPushButton, QWidget, QHBoxLayout
+from PySide6.QtWidgets import (
+    QApplication, QMessageBox, QPushButton, QWidget, QSizePolicy,
+)
 from PySide6.QtCore import Qt
 
 from src.ui.main_window import MainWindow
@@ -312,7 +314,7 @@ def create_menus(window: MainWindow):
     about_action = help_menu.addAction("À propos")
     about_action.triggered.connect(lambda: show_about_dialog(window))
     
-    # Menu Configuration : bouton dans la barre, collé à droite
+    # Menu Configuration : bouton inséré dans la QMenuBar, poussé à droite
     config_btn = QPushButton("⚙ Configuration")
     config_btn.setCursor(Qt.CursorShape.PointingHandCursor)
     config_btn.setStyleSheet("""
@@ -329,14 +331,10 @@ def create_menus(window: MainWindow):
         }
     """)
     config_btn.clicked.connect(lambda: show_config_dialog(window))
-    bar_container = QWidget()
-    bar_layout = QHBoxLayout(bar_container)
-    bar_layout.setContentsMargins(0, 0, 8, 0)
-    bar_layout.setSpacing(0)
-    bar_layout.addWidget(menu_bar)
-    bar_layout.addStretch()
-    bar_layout.addWidget(config_btn)
-    window.setMenuBar(bar_container)
+    spacer = QWidget()
+    spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+    menu_bar.addAction(spacer)
+    menu_bar.addAction(config_btn)
 
 
 def show_config_dialog(parent: MainWindow):
