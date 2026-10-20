@@ -104,7 +104,7 @@ class PNGExporter:
                 height += len(wrapped) * 21 + 4
             elif kind == "action":
                 name, desc = rest
-                wrapped = self._wrap_text(draw, f"{name}. {desc}", self.font_text,
+                wrapped = self._wrap_text(draw, f"{name} : {desc}", self.font_text,
                                            self.width - 2 * MARGIN_X)
                 height += len(wrapped) * 21 + 10
             elif kind == "scenario_subtitle":
@@ -182,21 +182,25 @@ class PNGExporter:
             content.append(("gap",))
 
         if monster.actions:
+            content.append(("rule",))
             content.append(("section", "Actions"))
             for action in monster.actions:
                 content.append(("action", action.name, action.description or ""))
 
         if monster.legendary_actions:
+            content.append(("rule",))
             content.append(("section", "Actions légendaires"))
             for action in monster.legendary_actions:
                 content.append(("action", action.name, action.description or ""))
 
         if monster.reactions:
+            content.append(("rule",))
             content.append(("section", "Réactions"))
             for action in monster.reactions:
                 content.append(("action", action.name, action.description or ""))
 
         if monster.scenario:
+            content.append(("rule",))
             content.append(("section", "Scénario de rencontre"))
             for item in self._scenario_items(monster.scenario):
                 content.append(item)
@@ -311,16 +315,16 @@ class PNGExporter:
                 y += 4
             elif kind == "action":
                 name, desc = item[1], item[2]
-                # Nom en gras + description dans le même paragraphe (style officiel)
-                full = f"{name}. {desc}" if desc else name
+                # Nom en gras suivi de " :" puis description (style officiel)
+                full = f"{name} : {desc}" if desc else name
                 wrapped = self._wrap_text(draw, full, self.font_text, text_width)
                 for i, wline in enumerate(wrapped):
                     if i == 0 and name and wline.startswith(name.split()[0]):
                         # rendu gras du début = nom
-                        draw.text((x, y), name + ".", font=self.font_bold, fill=TEXT_DARK)
-                        rest = wline[len(name):].lstrip(". ")
+                        draw.text((x, y), name + " :", font=self.font_bold, fill=TEXT_DARK)
+                        rest = wline[len(name):].lstrip(". :")
                         if rest:
-                            off = draw.textbbox((x, y), name + " ", font=self.font_bold)[2]
+                            off = draw.textbbox((x, y), name + "  ", font=self.font_bold)[2]
                             draw.text((off, y), rest, font=self.font_text, fill=TEXT_DARK)
                     else:
                         draw.text((x, y), wline, font=self.font_text, fill=TEXT_DARK)
