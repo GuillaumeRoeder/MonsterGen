@@ -83,8 +83,7 @@ class _CollapsibleHeader(QFrame):
                 border-radius: 3px;
             }
             QFrame:hover {
-                background-color: #26344a;
-                border: 1px solid #42a5f5;
+                background-color: #212b38;
             }
             QLabel {
                 background: transparent;
@@ -226,6 +225,7 @@ class MainWindow(QMainWindow):
 
         self.reset_btn = QPushButton("Réinitialiser")
         self.reset_btn.setIcon(QIcon.fromTheme("document-new"))
+        self.reset_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         self.reset_btn.setToolTip("Effacer tous les champs : identité, stats, actions, scénario, équipement…")
         self.reset_btn.clicked.connect(self.reset_all_fields)
         control_layout.addWidget(self.reset_btn)
@@ -584,9 +584,12 @@ class MainWindow(QMainWindow):
 
         actions_control_layout = QHBoxLayout()
 
-        self.add_action_btn = QPushButton("Ajouter une action")
+        self.add_action_btn = QPushButton("+ Action")
         self.add_action_btn.setIcon(QIcon.fromTheme("list-add"))
+        self.add_action_btn.setToolTip("Ajouter une nouvelle action à la liste")
+        self.add_action_btn.setMaximumWidth(110)
         actions_control_layout.addWidget(self.add_action_btn)
+        actions_control_layout.addStretch()
 
         layout.addLayout(actions_control_layout)
 
@@ -623,6 +626,7 @@ class MainWindow(QMainWindow):
 
         refresh_btn = QPushButton("Rafraîchir l'aperçu")
         refresh_btn.setIcon(QIcon.fromTheme("view-refresh"))
+        refresh_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         refresh_btn.clicked.connect(self.refresh_preview)
         layout.addWidget(refresh_btn)
 
