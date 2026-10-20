@@ -285,7 +285,6 @@ class MainWindow(QMainWindow):
         """)
         self.scenario_toggle_btn.clicked.connect(self._toggle_scenario)
         scenario_vlayout.addWidget(self.scenario_toggle_btn)
-        self._apply_scenario_toggle_state()
 
         self.scenario_content = QWidget()
         self.scenario_content.setStyleSheet("""
@@ -335,8 +334,9 @@ class MainWindow(QMainWindow):
         scenario_layout.addWidget(self.gen_scenario_btn)
 
         scenario_inner.addLayout(scenario_layout)
-        self.scenario_content.setVisible(False)
         scenario_vlayout.addWidget(self.scenario_content)
+
+        self._apply_scenario_toggle_state()
 
         layout.addRow(scenario_widget)
 
