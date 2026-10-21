@@ -233,11 +233,81 @@ def build_hit_points(cr: float, con_mod: int, size: Optional[Size], rng: random.
     return max(1, hp), hit_dice
 
 
-def build_armor_class(cr: float, dex_mod: int, rng: random.Random) -> int:
-    """Génère une CA cohérente avec le CR (bonus d'armure estimé)."""
+# Classes d'Armure officielles DnD 5e : (CA de base, bonus DEX max admis).
+ARMOR_TYPES = {
+    "armure matelassée": (11, 0),
+    "armure de peausserie": (12, 0),
+    "armure de cuir": (11, None),
+    "armure cloutée": (12, 2),
+    "armure d'écailles": (14, 2),
+    "cotte de mailles": (13, 2),
+    "armure de plaques": (18, 0),
+    "armure de plates": (18, 0),
+    "harnois": (18, 0),
+}
+
+# Objets magiques conférant un bonus de CA.
+MAGIC_AC_ITEMS = {
+    "anneau magique": 1,
+    "amulette": 1,
+    "bâton magique": 1,
+    "baguette": 1,
+    "cape": 1,
+}
+
+
+def build_armor_class(cr: float, dex_mod: int, rng: random.Random,
+                      equipment: Optional[str] = None) -> int:
+    """Génère une CA cohérente avec le CR.
+
+    Si l'équipement est fourni, la CA est dérivée de l'armure portée
+    (tables officielles DnD 5e) + bouclier (+2) + objet magique (+1),
+    ajustée vers la cible du CR si l'écart devient irréaliste.
+    """
     _, target_ac, _, _, _, _, _, _ = DMG_TABLE[_cr_key(cr)]
-    armor_bonus = max(0, target_ac - 10 - dex_mod + rng.randint(-1, 1))
-    return 10 + dex_mod + armor_bonus
+
+    if not equipment:
+        armor_bonus = max(0, target_ac - 10 - dex_mod + rng.randint(-1, 1))
+        return 10 + dex_mod + armor_bonus
+
+    items = [i.strip().lower() for i in equipment.split(",")]
+
+    # Armure portée : la meilleure trouvée
+    base_ac = None
+    dex_cap = None
+    for item in items:
+        if item in ARMOR_TYPES:
+            armor_ac, armor_cap = ARMOR_TYPES[item]
+            if base_ac is None or armor_ac > base_ac:
+                base_ac = armor_ac
+                dex_cap = armor_cap
+
+    if base_ac is None:
+        # Pas d'armure : CA naturelle estimée pour le CR
+        armor_bonus = max(0, target_ac - 10 - dex_mod + rng.randint(-1, 1))
+        ac = 10 + dex_mod + armor_bonus
+    else:
+        effective_dex = dex_mod if dex_cap is None else min(dex_mod, dex_cap)
+        ac = base_ac + effective_dex
+
+    # Bouclier
+    if "bouclier" in items:
+        ac += 2
+
+    # Objets magiques protecteurs
+    for item in items:
+        if item in MAGIC_AC_ITEMS:
+            ac += MAGIC_AC_ITEMS[item]
+            break
+
+    # Ajustement doux vers la cible du CR : un grand écart (monstre
+    # déséquilibré pour son CR) est resserré d'au maximum 2 points.
+    if ac < target_ac - 2:
+        ac = min(ac + 2, target_ac)
+    elif ac > target_ac + 2:
+        ac = max(ac - 2, target_ac)
+
+    return ac
 
 
 def build_actions(cr: float, scores: AbilityScores, rng: random.Random,
@@ -326,7 +396,12 @@ def build_balanced_monster(cr: float, base: Optional[Monster] = None,
     con_mod = scores.get_modifier("constitution")
     dex_mod = scores.get_modifier("dexterity")
 
-    monster.armor_class = build_armor_class(cr, dex_mod, rng)
+    # Inventaire d'abord : la CA en dépend (armure, bouclier, objets
+    # magiques), et les actions utilisent les armes portées.
+    monster.notes = build_equipment(traits, rng)
+
+    monster.armor_class = build_armor_class(cr, dex_mod, rng,
+                                            equipment=monster.notes)
     monster.hit_points, monster.hit_dice = build_hit_points(cr, con_mod, monster.size, rng)
 
     # Vitesse : régénérée à chaque équilibrage. Les traits inférés de la
@@ -352,9 +427,6 @@ def build_balanced_monster(cr: float, base: Optional[Monster] = None,
     if traits.immunities:
         monster.damage_immunities = list(traits.immunities)
 
-    # Inventaire genere avant les actions : ces dernieres utilisent
-    # les armes portees.
-    monster.notes = build_equipment(traits, rng)
     monster.actions = build_actions(cr, scores, rng, traits=traits,
                                     equipment=monster.notes)
 
