@@ -423,9 +423,9 @@ def build_balanced_monster(cr: float, base: Optional[Monster] = None,
     con_mod = scores.get_modifier("constitution")
     dex_mod = scores.get_modifier("dexterity")
 
-    # Inventaire d'abord : la CA en dépend (armure, bouclier, objets
-    # magiques), et les actions utilisent les armes portées.
-    monster.notes = build_equipment(traits, rng)
+    # Inventaire : champ manuel — il n'est PAS régénéré ici. S'il est
+    # rempli, la CA en tient compte (armure, bouclier, objets magiques)
+    # et les actions utilisent les armes portées.
 
     monster.armor_class = build_armor_class(cr, dex_mod, rng,
                                             equipment=monster.notes)
@@ -496,38 +496,6 @@ def _describe_equipment(equipment: List[str]) -> str:
         effect = EQUIPMENT_EFFECTS.get(item.lower())
         parts.append(f"{item} ({effect})" if effect else item)
     return ", ".join(parts)
-
-
-def build_equipment(traits, rng: random.Random) -> Optional[str]:
-    """Construit la ligne d'inventaire détaillée du monstre.
-
-    Priorité à l'équipement détecté dans la description ; sinon un
-    équipement standard selon l'archétype. Uniquement des éléments
-    importants (armes, armures, boucliers, objets magiques), chacun
-    accompagné de ses effets (dégâts, CA, pouvoir).
-    """
-    if traits.equipment:
-        return _describe_equipment(traits.equipment)
-
-    archetype_equipment = {
-        "brute": ["hache de bataille", "armure de cuir"],
-        "sneaky": ["dague", "arc long", "armure de cuir"],
-        "caster": ["bâton magique", "grimoire"],
-        "divin": ["symbole sacré", "armure matelassée"],
-        "charismatique": ["rapière", "armure de cuir"],
-    }
-    fallback = {
-        True: ["épée longue", "bouclier", "armure de cuir"],
-        False: [],
-    }
-    if traits.archetype and traits.archetype in archetype_equipment:
-        return _describe_equipment(archetype_equipment[traits.archetype])
-
-    # Bête (armes naturelles) : pas d'inventaire. Sinon équipement
-    # standard de créature civilisée.
-    if traits.weapons and all(w[0] in ("griffes", "morsure", "queue fouettante") for w in traits.weapons):
-        return None
-    return _describe_equipment(fallback[True])
 
 
 def proficiency_bonus(cr: float) -> int:
