@@ -256,6 +256,28 @@ MAGIC_AC_ITEMS = {
 }
 
 
+def armor_class_detail(ac: int, equipment: Optional[str]) -> Optional[str]:
+    """Détail de la CA dérivé de l'équipement, pour l'affichage.
+
+    Retourne par ex. « armure de plates, bouclier » ou None si aucune
+    pièce d'équipement protectrice n'est identifiable.
+    """
+    if not equipment:
+        return None
+    items = [i.strip().lower() for i in equipment.split(",")]
+    parts = []
+    for item in items:
+        if item in ARMOR_TYPES:
+            parts.append(item)
+    if "bouclier" in items:
+        parts.append("bouclier")
+    for item in items:
+        if item in MAGIC_AC_ITEMS:
+            parts.append(f"{item} (+1)")
+            break
+    return ", ".join(parts) if parts else None
+
+
 def build_armor_class(cr: float, dex_mod: int, rng: random.Random,
                       equipment: Optional[str] = None) -> int:
     """Génère une CA cohérente avec le CR.

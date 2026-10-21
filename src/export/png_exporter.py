@@ -10,7 +10,7 @@ from typing import List, Tuple
 from PIL import Image, ImageDraw, ImageFont
 
 from src.models.monster import Monster
-from src.rules.stat_builder import cr_display, cr_xp
+from src.rules.stat_builder import cr_display, cr_xp, armor_class_detail
 
 try:
     import importlib.resources as _resources
@@ -134,7 +134,11 @@ class PNGExporter:
         content.append(("meta", ", ".join(meta_parts) if meta_parts else ""))
 
         if monster.armor_class:
-            content.append(("ac", monster.armor_class))
+            ac_text = str(monster.armor_class)
+            detail = armor_class_detail(monster.armor_class, monster.notes)
+            if detail:
+                ac_text += f" ({detail})"
+            content.append(("ac", ac_text))
         if monster.hit_points:
             dice = f" ({monster.hit_dice})" if monster.hit_dice else ""
             content.append(("hp", f"{monster.hit_points}{dice}"))
