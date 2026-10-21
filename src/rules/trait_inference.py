@@ -9,6 +9,7 @@ monstre décrit par l'utilisateur.
 """
 
 from dataclasses import dataclass, field
+import re
 from typing import List, Optional, Tuple
 
 
@@ -62,7 +63,10 @@ ARCHETYPE_KEYWORDS: List[Tuple[str, List[str]]] = [
 # Mots-clés -> arme (nom, type de dégâts, dé). L'ordre compte.
 WEAPON_KEYWORDS: List[Tuple[List[str], Tuple[str, str, int]]] = [
     (["dague", "poignard"], ("dague", "perforant", 4)),
-    (["epee", "sabre", "rapiere", "katana"], ("épée longue", "tranchant", 8)),
+    (["epee courte", "epees courtes"], ("épée courte", "perforant", 6)),
+    (["epee longue", "epees longues", "sabre", "rapiere", "katana"],
+     ("épée longue", "tranchant", 8)),
+    ([r"re:\bepees?\b(?!\s+courtes?)"], ("épée longue", "tranchant", 8)),
     (["hache", "hachoir"], ("hache de bataille", "tranchant", 10)),
     (["marteau", "masse", "gourdin"], ("marteau de guerre", "contondant", 8)),
     (["lance", "javelot", "pieu", "harpon", "trident"], ("lance", "perforant", 6)),
@@ -77,7 +81,9 @@ WEAPON_KEYWORDS: List[Tuple[List[str], Tuple[str, str, int]]] = [
 # magiques) — uniquement les éléments importants, pas le butin.
 EQUIPMENT_KEYWORDS: List[Tuple[List[str], str]] = [
     (["dague", "poignard"], "dague"),
-    (["epee", "sabre", "rapiere", "katana"], "épée longue"),
+    (["epee courte", "epees courtes"], "épée courte"),
+    (["epee longue", "epees longues", "sabre", "rapiere", "katana"], "épée longue"),
+    ([r"re:\bepees?\b(?!\s+courtes?)"], "épée longue"),
     (["hache"], "hache de bataille"),
     (["marteau", "masse d'arme"], "marteau de guerre"),
     (["lance", "javelot", "trident"], "lance"),
@@ -193,6 +199,13 @@ def _normalize(text: str) -> str:
     return lowered.translate(str.maketrans("àâäéèêëîïôöùûüçñ", "aaaeeeeiioouuucn"))
 
 
+
+def _kw_match(keyword: str, text: str) -> bool:
+    """Matche un mot-clé : sous-chaîne simple, ou regex si préfixé re:."""
+    if keyword.startswith("re:"):
+        return re.search(keyword[3:], text) is not None
+    return keyword in text
+
 def _count_matches(text: str, keywords: List[str]) -> int:
     """Nombre de mots-clés présents dans le texte."""
     return sum(1 for kw in keywords if kw in text)
@@ -228,7 +241,8 @@ def infer_traits(race: Optional[str], description: Optional[str]) -> InferredTra
     # Armes : premiers mots-clés trouvés (max 3).
     weapons: List[Tuple[str, str, int]] = []
     for keywords, weapon in WEAPON_KEYWORDS:
-        if any(kw in combined_for_weapons for kw in keywords):
+        if any(_kw_match(kw, combined_for_weapons) for kw in keywords) \
+                and weapon not in weapons:
             weapons.append(weapon)
         if len(weapons) >= 3:
             break
@@ -237,7 +251,7 @@ def infer_traits(race: Optional[str], description: Optional[str]) -> InferredTra
     # Équipement porté : armes réelles, armures, boucliers, objets magiques.
     equipment: List[str] = []
     for keywords, item in EQUIPMENT_KEYWORDS:
-        if any(kw in combined for kw in keywords) and item not in equipment:
+        if any(_kw_match(kw, combined) for kw in keywords) and item not in equipment:
             equipment.append(item)
     traits.equipment = equipment[:6]
 
