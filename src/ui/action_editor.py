@@ -55,7 +55,10 @@ class ActionEditorWidget(QWidget):
     changed = Signal()
     removeRequested = Signal(object)
 
-    def __init__(self, action: Action, parent=None):
+    def __init__(self, action: Action, parent=None,
+                 name_placeholder: str = "Nom de l'action",
+                 remove_tooltip: str = "Supprimer cette action",
+                 description_placeholder: str = None):
         super().__init__(parent)
         self.setObjectName("ActionCard")
         self.setStyleSheet(ACTION_CARD_STYLE)
@@ -70,7 +73,7 @@ class ActionEditorWidget(QWidget):
         top_layout.setSpacing(6)
 
         self.name_edit = QLineEdit(action.name or "")
-        self.name_edit.setPlaceholderText("Nom de l'action")
+        self.name_edit.setPlaceholderText(name_placeholder)
         self.name_edit.setObjectName("ActionName")
         self.name_edit.setStyleSheet("font-weight: bold; font-size: 13px;")
         top_layout.addWidget(self.name_edit, stretch=1)
@@ -79,7 +82,7 @@ class ActionEditorWidget(QWidget):
         self.remove_btn.setObjectName("RemoveButton")
         self.remove_btn.setFixedSize(22, 22)
         self.remove_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.remove_btn.setToolTip("Supprimer cette action")
+        self.remove_btn.setToolTip(remove_tooltip)
         self.remove_btn.clicked.connect(lambda *args: self.removeRequested.emit(self))
         top_layout.addWidget(self.remove_btn)
 
@@ -88,11 +91,14 @@ class ActionEditorWidget(QWidget):
         # --- Description : tout (bonus, dégâts, DD) y est écrit ---
         self.description_edit = QTextEdit()
         self.description_edit.setObjectName("ActionDescription")
-        self.description_edit.setPlaceholderText(
-            "Description complète : bonus au toucher, dégâts, DD de sauvegarde…\n"
-            "Ex : Attaque d'arme au corps à corps : +6 au toucher, 2d8+4 dégâts "
-            "tranchants, portée 1,50 m."
-        )
+        if description_placeholder is not None:
+            self.description_edit.setPlaceholderText(description_placeholder)
+        else:
+            self.description_edit.setPlaceholderText(
+                "Description complète : bonus au toucher, dégâts, DD de sauvegarde…\n"
+                "Ex : Attaque d'arme au corps à corps : +6 au toucher, 2d8+4 dégâts "
+                "tranchants, portée 1,50 m."
+            )
         self.description_edit.setPlainText(action.description or "")
         self.description_edit.setAcceptRichText(False)
         layout.addWidget(self.description_edit)

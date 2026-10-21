@@ -814,7 +814,15 @@ class MainWindow(QMainWindow):
         """Ajoute un widget d'objet éditable (nom + effets) à la liste."""
         from src.ui.action_editor import ActionEditorWidget
         from src.models.monster import Action
-        widget = ActionEditorWidget(Action(name=item, description=""))
+        widget = ActionEditorWidget(
+            Action(name=item, description=""),
+            name_placeholder="Nom de l'objet",
+            remove_tooltip="Supprimer cet objet",
+            description_placeholder=(
+                "Effets de l'objet : dégâts, CA, pouvoir…\n"
+                "Ex : +2 à la CA, ou perforant 1d6, légère."
+            ),
+        )
         widget.changed.connect(self._schedule_preview)
         widget.removeRequested.connect(self._on_remove_equipment)
         self.equipment_layout.insertWidget(
