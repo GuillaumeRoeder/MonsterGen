@@ -692,8 +692,6 @@ class MainWindow(QMainWindow):
     def create_equipment_tab(self) -> QWidget:
         """Crée l'onglet Équipement : cartes d'objets (nom + effets),
         interface similaire à celle des actions."""
-        from PySide6.QtWidgets import QCheckBox
-
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -721,20 +719,6 @@ class MainWindow(QMainWindow):
             "color: #bbdefb; font-weight: bold; background: transparent; border: none;"
         )
         equipment_vlayout.addWidget(equipment_title)
-
-        # Case à cocher : inclure dans la fiche exportée
-        self.include_equipment_check = QCheckBox(
-            "Inclure l'équipement dans la fiche exportée"
-        )
-        self.include_equipment_check.setToolTip(
-            "Si coché, la section Équipement/Armements apparaît sur la "
-            "fiche exportée (PNG/PDF) ; sinon elle sert uniquement au "
-            "calcul des stats."
-        )
-        self.include_equipment_check.stateChanged.connect(
-            lambda state: self._schedule_preview()
-        )
-        equipment_vlayout.addWidget(self.include_equipment_check)
 
         # Stockage texte de l'inventaire (champ caché, synchronisé avec
         # les cartes d'objets)
@@ -1157,7 +1141,6 @@ class MainWindow(QMainWindow):
 
         self._sync_equipment_field()
         monster.notes = self.equipment_edit.toPlainText().strip() or None
-        monster.include_equipment = self.include_equipment_check.isChecked()
 
         return monster
 
@@ -1197,7 +1180,6 @@ class MainWindow(QMainWindow):
             self.add_action_to_list(action)
 
         self.set_equipment_to_form(monster.notes or "")
-        self.include_equipment_check.setChecked(monster.include_equipment)
 
         if not keep_scenario:
             self.scenario_edit.setPlainText(monster.scenario or "")
@@ -1296,7 +1278,6 @@ class MainWindow(QMainWindow):
         self.clear_actions()
         self.equipment_edit.clear()
         self.clear_equipment_items()
-        self.include_equipment_check.setChecked(False)
 
         self.update_preview()
 

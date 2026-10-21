@@ -340,7 +340,7 @@ class PDFExporter:
             if action.attack_bonus is not None:
                 weapons.append(action.name)
         
-        if monster.notes and monster.include_equipment:
+        if monster.notes:
             elements.append(Paragraph("Équipement", self.styles["Section"]))
             elements.append(Paragraph(monster.notes, self.styles["SmallValue"]))
             elements.append(Spacer(1, 4))
