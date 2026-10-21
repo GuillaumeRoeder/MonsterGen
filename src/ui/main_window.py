@@ -732,6 +732,19 @@ class MainWindow(QMainWindow):
         """)
         equipment_vlayout.addWidget(self.equipment_edit, stretch=1)
 
+        self.gen_equipment_btn = QPushButton("(Re)générer")
+        self.gen_equipment_btn.setIcon(QIcon.fromTheme("system-run"))
+        self.gen_equipment_btn.setToolTip(
+            "Régénère l'inventaire depuis la description et rééquilibre "
+            "toutes les stats (CA incluse) en fonction de l'équipement."
+        )
+        self.gen_equipment_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        self.gen_equipment_btn.clicked.connect(self._regenerate_equipment)
+        equipment_btn_layout = QHBoxLayout()
+        equipment_btn_layout.addStretch()
+        equipment_btn_layout.addWidget(self.gen_equipment_btn)
+        equipment_vlayout.addLayout(equipment_btn_layout)
+
         layout.addWidget(equipment_frame, stretch=1)
 
         return tab
@@ -927,6 +940,19 @@ class MainWindow(QMainWindow):
         if cr is None:
             return
 
+        monster = build_balanced_monster(cr, base=self.get_monster_from_form())
+        self.set_monster_to_form(monster, keep_scenario=True)
+        self.update_preview()
+
+    def _regenerate_equipment(self):
+        """Régénère l'inventaire depuis la description, puis rééquilibre
+        toutes les stats (CA, actions...) en fonction de l'équipement."""
+        cr = self._ensure_difficulty()
+        if cr is None:
+            return
+
+        # L'inventaire est régénéré par build_balanced_monster (depuis la
+        # description) ; toutes les stats en dépendent, dont la CA.
         monster = build_balanced_monster(cr, base=self.get_monster_from_form())
         self.set_monster_to_form(monster, keep_scenario=True)
         self.update_preview()
