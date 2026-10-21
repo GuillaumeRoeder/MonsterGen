@@ -1626,6 +1626,60 @@ class MainWindow(QMainWindow):
         )
         dialog.exec()
 
+    def save_to_library(self):
+        """Sauvegarde le monstre courant dans la bibliothèque, sans ouvrir
+        l'interface de gestion (nom de fichier éditable, confirmation en
+        cas d'écrasement)."""
+        import json
+        from pathlib import Path
+        from config.config_manager import config_manager
+
+        monster = self.get_monster_from_form()
+        if not monster.name:
+            QMessageBox.warning(
+                self, "Nom manquant",
+                "Le monstre actuel n'a pas de nom. Donnez-lui un nom avant "
+                "de le sauvegarder."
+            )
+            return
+
+        filename, ok = QInputDialog.getText(
+            self, "Sauvegarder le monstre",
+            "Nom de la sauvegarde :",
+            text=monster.name,
+        )
+        if not ok or not filename.strip():
+            return
+
+        safe = filename.strip().replace(" ", "_")
+        library_dir = Path(config_manager.get_save_path())
+        library_dir.mkdir(parents=True, exist_ok=True)
+        target = library_dir / f"{safe}.json"
+
+        if target.exists():
+            confirm = QMessageBox.question(
+                self, "Écraser la sauvegarde",
+                f"Une sauvegarde « {filename.strip()} » existe déjà.\n"
+                "Voulez-vous l'écraser ?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if confirm != QMessageBox.StandardButton.Yes:
+                return
+
+        try:
+            target.write_text(
+                json.dumps(monster.to_dict(), indent=4, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        except OSError as e:
+            QMessageBox.critical(self, "Erreur", f"Échec de la sauvegarde :\n{e}")
+            return
+
+        QMessageBox.information(
+            self, "Sauvegarde réussie",
+            f"« {monster.name} » a été sauvegardé dans la bibliothèque."
+        )
+
     def _load_monster_from_library(self, monster: Monster):
         """Charge un monstre depuis la bibliothèque."""
         self.set_monster_to_form(monster)

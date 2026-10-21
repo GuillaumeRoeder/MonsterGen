@@ -291,6 +291,8 @@ def create_menus(window: MainWindow):
 
     # Menu Bibliothèque (sauvegarder/charger/supprimer des monstres)
     library_menu = menu_bar.addMenu("Bibliothèque")
+    save_action = library_menu.addAction("Sauvegarder le monstre courant")
+    save_action.triggered.connect(lambda: window.save_to_library())
     library_action = library_menu.addAction("Gérer les monstres sauvegardés")
     library_action.triggered.connect(lambda: window.open_library())
     
