@@ -256,6 +256,11 @@ MAGIC_AC_ITEMS = {
 }
 
 
+
+def _item_name(item: str) -> str:
+    """Nom d'objet d'inventaire, sans le detail entre parentheses."""
+    return item.strip().lower().split(" (")[0]
+
 def armor_class_detail(ac: int, equipment: Optional[str]) -> Optional[str]:
     """Détail de la CA dérivé de l'équipement, pour l'affichage.
 
@@ -264,7 +269,7 @@ def armor_class_detail(ac: int, equipment: Optional[str]) -> Optional[str]:
     """
     if not equipment:
         return None
-    items = [i.strip().lower() for i in equipment.split(",")]
+    items = [_item_name(i) for i in equipment.split(",")]
     parts = []
     for item in items:
         if item in ARMOR_TYPES:
@@ -292,7 +297,7 @@ def build_armor_class(cr: float, dex_mod: int, rng: random.Random,
         armor_bonus = max(0, target_ac - 10 - dex_mod + rng.randint(-1, 1))
         return 10 + dex_mod + armor_bonus
 
-    items = [i.strip().lower() for i in equipment.split(",")]
+    items = [_item_name(i) for i in equipment.split(",")]
 
     # Armure portée : la meilleure trouvée
     base_ac = None
@@ -351,7 +356,7 @@ def build_actions(cr: float, scores: AbilityScores, rng: random.Random,
     if equipment:
         natural = {"griffes", "morsure", "queue fouettante"}
         for item in equipment.split(","):
-            item = item.strip().lower()
+            item = _item_name(item)
             for weapon in WEAPONS:
                 if weapon[0] == item and weapon[0] not in natural \
                         and weapon not in weapon_pool:
@@ -455,15 +460,54 @@ def build_balanced_monster(cr: float, base: Optional[Monster] = None,
     return monster
 
 
+# Effets détaillés des objets d'inventaire (armes, armures, magiques).
+EQUIPMENT_EFFECTS = {
+    "dague": "perforant 1d4, légère, lancer (portée 6/18 m)",
+    "épée courte": "perforant 1d6, légère, souple",
+    "épée longue": "tranchant 1d8, polyvalente (1d10)",
+    "rapière": "perforant 1d8, souple",
+    "hache de bataille": "tranchant 1d8, polyvalente (1d10)",
+    "marteau de guerre": "contondant 1d8, polyvalent (1d10)",
+    "lance": "perforant 1d6, lancer (portée 6/18 m)",
+    "arc long": "perforant 1d8, portée 45/180 m, deux mains",
+    "bouclier": "+2 à la CA",
+    "armure matelassée": "CA 11 + DEX",
+    "armure de peausserie": "CA 12 + DEX",
+    "armure de cuir": "CA 11 + DEX",
+    "armure cloutée": "CA 12 + DEX (max 2)",
+    "cotte de mailles": "CA 13 + DEX (max 2)",
+    "armure d'écailles": "CA 14 + DEX (max 2)",
+    "armure de plates": "CA 18, discrétion désavantagée",
+    "anneau magique": "objet magique, +1 à la CA",
+    "amulette": "objet magique, +1 à la CA",
+    "bâton magique": "objet magique, focaliseur arcanique, +1 à la CA",
+    "baguette": "objet magique, focaliseur arcanique",
+    "cape": "objet magique, +1 à la CA",
+    "grimoire": "livre de sorts",
+    "potion de soin": "2d4+2 PV restaurés",
+    "symbole sacré": "focaliseur divin",
+}
+
+
+def _describe_equipment(equipment: List[str]) -> str:
+    """Formate l'inventaire : « objet (effet) », une virgule par élément."""
+    parts = []
+    for item in equipment:
+        effect = EQUIPMENT_EFFECTS.get(item.lower())
+        parts.append(f"{item} ({effect})" if effect else item)
+    return ", ".join(parts)
+
+
 def build_equipment(traits, rng: random.Random) -> Optional[str]:
-    """Construit la ligne d'inventaire du monstre.
+    """Construit la ligne d'inventaire détaillée du monstre.
 
     Priorité à l'équipement détecté dans la description ; sinon un
     équipement standard selon l'archétype. Uniquement des éléments
-    importants (armes, armures, boucliers, objets magiques).
+    importants (armes, armures, boucliers, objets magiques), chacun
+    accompagné de ses effets (dégâts, CA, pouvoir).
     """
     if traits.equipment:
-        return ", ".join(traits.equipment)
+        return _describe_equipment(traits.equipment)
 
     archetype_equipment = {
         "brute": ["hache de bataille", "armure de cuir"],
@@ -474,16 +518,16 @@ def build_equipment(traits, rng: random.Random) -> Optional[str]:
     }
     fallback = {
         True: ["épée longue", "bouclier", "armure de cuir"],
-        False: ["griffes", "morsure"],
+        False: [],
     }
     if traits.archetype and traits.archetype in archetype_equipment:
-        return ", ".join(archetype_equipment[traits.archetype])
+        return _describe_equipment(archetype_equipment[traits.archetype])
 
     # Bête (armes naturelles) : pas d'inventaire. Sinon équipement
     # standard de créature civilisée.
     if traits.weapons and all(w[0] in ("griffes", "morsure", "queue fouettante") for w in traits.weapons):
         return None
-    return ", ".join(fallback[True])
+    return _describe_equipment(fallback[True])
 
 
 def proficiency_bonus(cr: float) -> int:
