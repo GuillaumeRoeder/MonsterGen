@@ -396,7 +396,7 @@ class MainWindow(QMainWindow):
             action.triggered.connect(
                 lambda checked, r=race: self.race_edit.setText(r)
             )
-        btn_pos = self.race_menu_btn.mapTo(self, self.race_menu_btn.rect().bottomLeft())
+        btn_pos = self.race_menu_btn.mapToGlobal(self.race_menu_btn.rect().bottomLeft())
         menu.exec(btn_pos)
 
     def _create_party_widgets(self) -> QHBoxLayout:
