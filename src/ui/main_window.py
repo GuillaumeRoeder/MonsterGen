@@ -208,6 +208,9 @@ class MainWindow(QMainWindow):
         basic_tab = self.create_basic_tab()
         tab_widget.addTab(basic_tab, "Description")
 
+        equipment_tab = self.create_equipment_tab()
+        tab_widget.addTab(equipment_tab, "Équipement")
+
         stats_tab = self.create_stats_tab()
         tab_widget.addTab(stats_tab, "Statistiques")
 
@@ -371,8 +374,6 @@ class MainWindow(QMainWindow):
         scenario_vlayout.addWidget(self.scenario_content)
 
         self._apply_scenario_toggle_state()
-
-        layout.addRow(self._create_equipment_section())
 
         layout.addRow(scenario_widget)
 
@@ -688,44 +689,53 @@ class MainWindow(QMainWindow):
 
         return tab
 
-    def _create_equipment_section(self) -> QWidget:
-        """Section Équipement repliable et optionnelle (au-dessus du
-        scénario) : la case à cocher détermine si l'équipement figure
-        sur la fiche exportée."""
+    def create_equipment_tab(self) -> QWidget:
+        """Crée l'onglet Équipement : cartes d'objets (nom + effets),
+        interface similaire à celle des actions."""
         from PySide6.QtWidgets import QCheckBox
 
-        section_widget = QWidget()
-        section_widget.setStyleSheet("background: transparent; border: none;")
-        section_vlayout = QVBoxLayout(section_widget)
-        section_vlayout.setContentsMargins(0, 0, 0, 0)
-        section_vlayout.setSpacing(0)
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
 
-        self._equipment_expanded = False
-        self.equipment_toggle_header = _CollapsibleHeader(
-            "Équipement / Inventaire (optionnel)"
-        )
-        self.equipment_toggle_header.setToolTip(
-            "Cliquer pour déplier ou replier la section équipement"
-        )
-        self.equipment_toggle_header.clicked.connect(self._toggle_equipment)
-        section_vlayout.addWidget(self.equipment_toggle_header)
-
-        self.equipment_content = QWidget()
-        self.equipment_content.setStyleSheet("""
-            QWidget {
+        equipment_frame = QFrame()
+        equipment_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        equipment_frame.setStyleSheet("""
+            QFrame {
                 background-color: #161f2a;
                 border: 1px solid #3e5a8a;
-                border-top: none;
-                border-bottom-left-radius: 6px;
-                border-bottom-right-radius: 6px;
+                border-radius: 6px;
+            }
+            QLabel {
+                background: transparent;
+                border: none;
             }
         """)
-        equipment_inner = QVBoxLayout(self.equipment_content)
-        equipment_inner.setContentsMargins(8, 6, 8, 8)
-        equipment_inner.setSpacing(8)
+        equipment_vlayout = QVBoxLayout(equipment_frame)
+        equipment_vlayout.setContentsMargins(8, 8, 8, 8)
+        equipment_vlayout.setSpacing(8)
 
+        equipment_title = QLabel("Équipement / Inventaire :")
+        equipment_title.setStyleSheet(
+            "color: #bbdefb; font-weight: bold; background: transparent; border: none;"
+        )
+        equipment_vlayout.addWidget(equipment_title)
+
+        # Génération depuis la description
+        self.gen_equipment_btn = QPushButton("(Re)générer depuis la description")
+        self.gen_equipment_btn.setIcon(QIcon.fromTheme("system-run"))
+        self.gen_equipment_btn.setToolTip(
+            "Régénère l'inventaire depuis la description et rééquilibre "
+            "toutes les stats (CA incluse) en fonction de l'équipement."
+        )
+        self.gen_equipment_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        self.gen_equipment_btn.clicked.connect(self._regenerate_equipment)
+        equipment_vlayout.addWidget(self.gen_equipment_btn)
+
+        # Case à cocher : inclure dans la fiche exportée
         self.include_equipment_check = QCheckBox(
-            "Inclure l'équipement dans la fiche"
+            "Inclure l'équipement dans la fiche exportée"
         )
         self.include_equipment_check.setToolTip(
             "Si coché, la section Équipement/Armements apparaît sur la "
@@ -735,50 +745,176 @@ class MainWindow(QMainWindow):
         self.include_equipment_check.stateChanged.connect(
             lambda state: self._schedule_preview()
         )
-        equipment_inner.addWidget(self.include_equipment_check)
+        equipment_vlayout.addWidget(self.include_equipment_check)
 
+        # Stockage texte de l'inventaire (champ caché, synchronisé avec
+        # les cartes d'objets)
         self.equipment_edit = QTextEdit()
-        self.equipment_edit.setPlaceholderText(
-            "Ex: Épée longue, Arc court, Armure de cuir, 20 flèches..."
+        self.equipment_edit.setAcceptRichText(False)
+        self.equipment_edit.setVisible(False)
+        equipment_vlayout.addWidget(self.equipment_edit)
+
+        # Liste d'objets : contour délimité, même vide
+        self.equipment_scroll = QScrollArea()
+        self.equipment_scroll.setWidgetResizable(True)
+        self.equipment_scroll.setMinimumHeight(120)
+        self.equipment_scroll.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
-        self.equipment_edit.setStyleSheet("""
-            QTextEdit {
-                background-color: #1e2632;
-                color: #dce4ee;
+        self.equipment_scroll.setStyleSheet("""
+            QScrollArea {
+                background-color: #141b26;
                 border: 1px solid #39485c;
                 border-radius: 4px;
             }
+            QWidget {
+                background-color: transparent;
+                border: none;
+            }
         """)
-        self.equipment_edit.setMaximumHeight(90)
-        equipment_inner.addWidget(self.equipment_edit)
-
-        self.gen_equipment_btn = QPushButton("(Re)générer")
-        self.gen_equipment_btn.setIcon(QIcon.fromTheme("system-run"))
-        self.gen_equipment_btn.setToolTip(
-            "Régénère l'inventaire depuis la description et rééquilibre "
-            "toutes les stats (CA incluse) en fonction de l'équipement."
+        self.equipment_container = QWidget()
+        self.equipment_container.setStyleSheet(
+            "background: transparent; border: none;"
         )
-        self.gen_equipment_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
-        self.gen_equipment_btn.clicked.connect(self._regenerate_equipment)
-        equipment_btn_layout = QHBoxLayout()
-        equipment_btn_layout.addStretch()
-        equipment_btn_layout.addWidget(self.gen_equipment_btn)
-        equipment_inner.addLayout(equipment_btn_layout)
+        self.equipment_layout = QVBoxLayout(self.equipment_container)
+        self.equipment_layout.setContentsMargins(4, 4, 4, 4)
+        self.equipment_layout.setSpacing(8)
+        self.equipment_layout.addStretch()
 
-        section_vlayout.addWidget(self.equipment_content)
+        self.equipment_empty_label = QLabel(
+            "Aucun objet — cliquez sur \"Nouvel objet\" ou (Re)générez-les "
+            "depuis la description."
+        )
+        self.equipment_empty_label.setStyleSheet(
+            "color: #7a8aa0; font-style: italic; "
+            "background: transparent; border: none;"
+        )
+        self.equipment_empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.equipment_layout.insertWidget(0, self.equipment_empty_label)
 
-        self._apply_equipment_toggle_state()
-        return section_widget
+        self.equipment_scroll.setWidget(self.equipment_container)
+        equipment_vlayout.addWidget(self.equipment_scroll, stretch=1)
 
-    def _toggle_equipment(self):
-        """Affiche ou masque la section équipement."""
-        self._equipment_expanded = not self._equipment_expanded
-        self._apply_equipment_toggle_state()
+        # Bouton d'ajout, centré sous la liste
+        equipment_control_layout = QHBoxLayout()
+        equipment_control_layout.addStretch()
+        self.add_equipment_btn = QPushButton("Nouvel objet")
+        self.add_equipment_btn.setToolTip("Ajouter un nouvel objet à l'inventaire")
+        self.add_equipment_btn.setStyleSheet(
+            SECONDARY_BUTTON_STYLE.replace(
+                "min-height: 0px;", "min-height: 20px; padding: 6px 12px;"
+            )
+        )
+        self.add_equipment_btn.setFixedHeight(36)
+        self.add_equipment_btn.clicked.connect(self.add_equipment_item)
+        equipment_control_layout.addWidget(self.add_equipment_btn)
+        equipment_control_layout.addStretch()
+        equipment_vlayout.addLayout(equipment_control_layout)
 
-    def _apply_equipment_toggle_state(self):
-        """Applique l'état replié/déplié de la section équipement."""
-        self.equipment_content.setVisible(self._equipment_expanded)
-        self.equipment_toggle_header.set_expanded(self._equipment_expanded)
+        layout.addWidget(equipment_frame, stretch=1)
+
+        return tab
+
+    def add_equipment_item(self):
+        """Ajoute une carte d'objet vide à l'inventaire."""
+        self.add_equipment_to_list("")
+        self._update_equipment_empty_label()
+        self._schedule_preview()
+
+    def add_equipment_to_list(self, item: str):
+        """Ajoute un widget d'objet éditable (nom + effets) à la liste."""
+        from src.ui.action_editor import ActionEditorWidget
+        from src.models.monster import Action
+        widget = ActionEditorWidget(Action(name=item, description=""))
+        widget.changed.connect(self._schedule_preview)
+        widget.removeRequested.connect(self._on_remove_equipment)
+        self.equipment_layout.insertWidget(
+            self.equipment_layout.count() - 1, widget
+        )
+        self._update_equipment_empty_label()
+
+    def _on_remove_equipment(self, widget):
+        """Supprime l'objet dont la croix a été cliquée."""
+        self.equipment_layout.removeWidget(widget)
+        widget.deleteLater()
+        self._update_equipment_empty_label()
+        self._schedule_preview()
+
+    def get_equipment_widgets(self) -> list:
+        """Widgets d'objets actuellement dans la liste."""
+        from src.ui.action_editor import ActionEditorWidget
+        return [
+            self.equipment_layout.itemAt(i).widget()
+            for i in range(self.equipment_layout.count())
+            if self.equipment_layout.itemAt(i).widget()
+            and isinstance(
+                self.equipment_layout.itemAt(i).widget(), ActionEditorWidget
+            )
+        ]
+
+    def _update_equipment_empty_label(self):
+        """Affiche le message de liste vide si aucun objet n'est présent."""
+        self.equipment_empty_label.setVisible(not self.get_equipment_widgets())
+
+    def set_equipment_to_form(self, notes: str):
+        """Remplit la liste de cartes d'objets depuis le texte d'inventaire
+        (format « objet (effets) » ou « objet », séparés par virgules ou
+        retours à la ligne — les séparateurs internes aux parenthèses
+        sont préservés)."""
+        self.clear_equipment_items()
+        self.equipment_edit.setPlainText(notes or "")
+
+        # Découpe en objets : virgules/retours à la ligne hors parenthèses
+        items = []
+        depth = 0
+        current = ""
+        for ch in notes or "":
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth = max(0, depth - 1)
+            if ch in ",\n" and depth == 0:
+                items.append(current)
+                current = ""
+            else:
+                current += ch
+        if current.strip():
+            items.append(current)
+
+        import re
+        for chunk in items:
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            match = re.match(r"(.+?)\s*\((.*)\)\s*$", chunk, flags=re.S)
+            if match:
+                name, effects = match.group(1).strip(), match.group(2).strip()
+            else:
+                name, effects = chunk, ""
+            self.add_equipment_to_list(name)
+            widget = self.get_equipment_widgets()[-1]
+            widget.description_edit.setPlainText(effects)
+        self._update_equipment_empty_label()
+
+    def clear_equipment_items(self):
+        """Retire toutes les cartes d'objets."""
+        for widget in self.get_equipment_widgets():
+            self.equipment_layout.removeWidget(widget)
+            widget.deleteLater()
+        self._update_equipment_empty_label()
+
+    def _sync_equipment_field(self):
+        """Reconstruit le texte d'inventaire (monster.notes) depuis les
+        cartes d'objets : chaque carte est une ligne \"nom : effets\"."""
+        parts = []
+        for widget in self.get_equipment_widgets():
+            name = widget.name_edit.text().strip()
+            effects = widget.description_edit.toPlainText().strip()
+            if name and effects:
+                parts.append(f"{name} ({effects})")
+            elif name:
+                parts.append(name)
+        self.equipment_edit.setText("\n".join(parts))
 
     def create_preview_panel(self) -> QWidget:
         """Crée le panneau d'aperçu."""
@@ -1035,6 +1171,7 @@ class MainWindow(QMainWindow):
             if action.name:
                 monster.actions.append(action)
 
+        self._sync_equipment_field()
         monster.notes = self.equipment_edit.toPlainText().strip() or None
         monster.include_equipment = self.include_equipment_check.isChecked()
 
@@ -1075,7 +1212,7 @@ class MainWindow(QMainWindow):
         for action in monster.actions:
             self.add_action_to_list(action)
 
-        self.equipment_edit.setPlainText(monster.notes or "")
+        self.set_equipment_to_form(monster.notes or "")
         self.include_equipment_check.setChecked(monster.include_equipment)
 
         if not keep_scenario:
@@ -1174,6 +1311,7 @@ class MainWindow(QMainWindow):
         # Actions et équipement
         self.clear_actions()
         self.equipment_edit.clear()
+        self.clear_equipment_items()
         self.include_equipment_check.setChecked(False)
 
         self.update_preview()
