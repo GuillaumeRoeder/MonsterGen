@@ -256,32 +256,9 @@ MAGIC_AC_ITEMS = {
 }
 
 
-
 def _item_name(item: str) -> str:
     """Nom d'objet d'inventaire, sans le detail entre parentheses."""
     return item.strip().lower().split(" (")[0]
-
-def armor_class_detail(ac: int, equipment: Optional[str]) -> Optional[str]:
-    """Détail de la CA dérivé de l'équipement, pour l'affichage.
-
-    Retourne par ex. « armure de plates, bouclier » ou None si aucune
-    pièce d'équipement protectrice n'est identifiable.
-    """
-    if not equipment:
-        return None
-    items = [_item_name(i) for i in equipment.split(",")]
-    parts = []
-    for item in items:
-        if item in ARMOR_TYPES:
-            parts.append(item)
-    if "bouclier" in items:
-        parts.append("bouclier")
-    for item in items:
-        if item in MAGIC_AC_ITEMS:
-            parts.append(f"{item} (+1)")
-            break
-    return ", ".join(parts) if parts else None
-
 
 def build_armor_class(cr: float, dex_mod: int, rng: random.Random,
                       equipment: Optional[str] = None) -> int:
@@ -458,44 +435,6 @@ def build_balanced_monster(cr: float, base: Optional[Monster] = None,
                                     equipment=monster.notes)
 
     return monster
-
-
-# Effets détaillés des objets d'inventaire (armes, armures, magiques).
-EQUIPMENT_EFFECTS = {
-    "dague": "perforant 1d4, légère, lancer (portée 6/18 m)",
-    "épée courte": "perforant 1d6, légère, souple",
-    "épée longue": "tranchant 1d8, polyvalente (1d10)",
-    "rapière": "perforant 1d8, souple",
-    "hache de bataille": "tranchant 1d8, polyvalente (1d10)",
-    "marteau de guerre": "contondant 1d8, polyvalent (1d10)",
-    "lance": "perforant 1d6, lancer (portée 6/18 m)",
-    "arc long": "perforant 1d8, portée 45/180 m, deux mains",
-    "bouclier": "+2 à la CA",
-    "armure matelassée": "CA 11 + DEX",
-    "armure de peausserie": "CA 12 + DEX",
-    "armure de cuir": "CA 11 + DEX",
-    "armure cloutée": "CA 12 + DEX (max 2)",
-    "cotte de mailles": "CA 13 + DEX (max 2)",
-    "armure d'écailles": "CA 14 + DEX (max 2)",
-    "armure de plates": "CA 18, discrétion désavantagée",
-    "anneau magique": "objet magique, +1 à la CA",
-    "amulette": "objet magique, +1 à la CA",
-    "bâton magique": "objet magique, focaliseur arcanique, +1 à la CA",
-    "baguette": "objet magique, focaliseur arcanique",
-    "cape": "objet magique, +1 à la CA",
-    "grimoire": "livre de sorts",
-    "potion de soin": "2d4+2 PV restaurés",
-    "symbole sacré": "focaliseur divin",
-}
-
-
-def _describe_equipment(equipment: List[str]) -> str:
-    """Formate l'inventaire : « objet (effet) », une virgule par élément."""
-    parts = []
-    for item in equipment:
-        effect = EQUIPMENT_EFFECTS.get(item.lower())
-        parts.append(f"{item} ({effect})" if effect else item)
-    return ", ".join(parts)
 
 
 def proficiency_bonus(cr: float) -> int:
