@@ -241,7 +241,8 @@ def build_armor_class(cr: float, dex_mod: int, rng: random.Random) -> int:
 
 
 def build_actions(cr: float, scores: AbilityScores, rng: random.Random,
-                  traits: Optional[InferredTraits] = None) -> List[Action]:
+                  traits: Optional[InferredTraits] = None,
+                  equipment: Optional[str] = None) -> List[Action]:
     """Génère 2-3 actions de mélée/attaque équilibrées pour le CR.
 
     Si des traits inférés (race/description) sont fournis, les armes
@@ -253,6 +254,17 @@ def build_actions(cr: float, scores: AbilityScores, rng: random.Random,
     actions: List[Action] = []
 
     weapon_pool = list(traits.weapons) if traits and traits.weapons else []
+
+    # Les armes portees dans l'inventaire completent le pool.
+    if equipment:
+        natural = {"griffes", "morsure", "queue fouettante"}
+        for item in equipment.split(","):
+            item = item.strip().lower()
+            for weapon in WEAPONS:
+                if weapon[0] == item and weapon[0] not in natural \
+                        and weapon not in weapon_pool:
+                    weapon_pool.append(weapon)
+
     for i in range(min(num_attacks, len(WEAPONS))):
         if weapon_pool:
             weapon_name, damage_type, base_die = weapon_pool.pop(0)
@@ -340,8 +352,44 @@ def build_balanced_monster(cr: float, base: Optional[Monster] = None,
     if traits.immunities:
         monster.damage_immunities = list(traits.immunities)
 
-    monster.actions = build_actions(cr, scores, rng, traits=traits)
+    # Inventaire genere avant les actions : ces dernieres utilisent
+    # les armes portees.
+    monster.notes = build_equipment(traits, rng)
+    monster.actions = build_actions(cr, scores, rng, traits=traits,
+                                    equipment=monster.notes)
+
     return monster
+
+
+def build_equipment(traits, rng: random.Random) -> Optional[str]:
+    """Construit la ligne d'inventaire du monstre.
+
+    Priorité à l'équipement détecté dans la description ; sinon un
+    équipement standard selon l'archétype. Uniquement des éléments
+    importants (armes, armures, boucliers, objets magiques).
+    """
+    if traits.equipment:
+        return ", ".join(traits.equipment)
+
+    archetype_equipment = {
+        "brute": ["hache de bataille", "armure de cuir"],
+        "sneaky": ["dague", "arc long", "armure de cuir"],
+        "caster": ["bâton magique", "grimoire"],
+        "divin": ["symbole sacré", "armure matelassée"],
+        "charismatique": ["rapière", "armure de cuir"],
+    }
+    fallback = {
+        True: ["épée longue", "bouclier", "armure de cuir"],
+        False: ["griffes", "morsure"],
+    }
+    if traits.archetype and traits.archetype in archetype_equipment:
+        return ", ".join(archetype_equipment[traits.archetype])
+
+    # Bête (armes naturelles) : pas d'inventaire. Sinon équipement
+    # standard de créature civilisée.
+    if traits.weapons and all(w[0] in ("griffes", "morsure", "queue fouettante") for w in traits.weapons):
+        return None
+    return ", ".join(fallback[True])
 
 
 def proficiency_bonus(cr: float) -> int:
