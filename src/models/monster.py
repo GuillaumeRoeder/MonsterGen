@@ -146,6 +146,7 @@ class Monster:
     # Autres
     treasure: Optional[str] = None
     notes: str = ""
+    include_equipment: bool = False
     scenario: str = ""
     
     def to_dict(self) -> Dict:
@@ -200,6 +201,7 @@ class Monster:
             ],
             "treasure": self.treasure,
             "notes": self.notes,
+            "include_equipment": self.include_equipment,
             "scenario": self.scenario,
         }
     
@@ -296,5 +298,6 @@ class Monster:
             reactions=reactions,
             treasure=data.get("treasure"),
             notes=data.get("notes", ""),
+            include_equipment=data.get("include_equipment", False),
             scenario=data.get("scenario", ""),
         )

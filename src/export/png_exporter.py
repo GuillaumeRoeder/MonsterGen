@@ -203,6 +203,11 @@ class PNGExporter:
             for action in monster.reactions:
                 content.append(("action", action.name, action.description or ""))
 
+        if monster.notes and monster.include_equipment:
+            content.append(("rule",))
+            content.append(("section", "Équipement / Armements"))
+            content.append(("line", monster.notes, False))
+
         if monster.scenario:
             content.append(("rule",))
             content.append(("section", "Scénario de rencontre"))

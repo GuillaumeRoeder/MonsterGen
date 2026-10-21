@@ -214,8 +214,6 @@ class MainWindow(QMainWindow):
         actions_tab = self.create_actions_tab()
         tab_widget.addTab(actions_tab, "Actions")
 
-        equipment_tab = self.create_equipment_tab()
-        tab_widget.addTab(equipment_tab, "Équipement / Inventaire")
 
         layout.addWidget(tab_widget)
 
@@ -373,6 +371,8 @@ class MainWindow(QMainWindow):
         scenario_vlayout.addWidget(self.scenario_content)
 
         self._apply_scenario_toggle_state()
+
+        layout.addRow(self._create_equipment_section())
 
         layout.addRow(scenario_widget)
 
@@ -688,35 +688,54 @@ class MainWindow(QMainWindow):
 
         return tab
 
-    def create_equipment_tab(self) -> QWidget:
-        """Crée l'onglet de l'équipement et des armements."""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
+    def _create_equipment_section(self) -> QWidget:
+        """Section Équipement repliable et optionnelle (au-dessus du
+        scénario) : la case à cocher détermine si l'équipement figure
+        sur la fiche exportée."""
+        from PySide6.QtWidgets import QCheckBox
 
-        equipment_frame = QFrame()
-        equipment_frame.setFrameShape(QFrame.Shape.StyledPanel)
-        equipment_frame.setStyleSheet("""
-            QFrame {
+        section_widget = QWidget()
+        section_widget.setStyleSheet("background: transparent; border: none;")
+        section_vlayout = QVBoxLayout(section_widget)
+        section_vlayout.setContentsMargins(0, 0, 0, 0)
+        section_vlayout.setSpacing(0)
+
+        self._equipment_expanded = False
+        self.equipment_toggle_header = _CollapsibleHeader(
+            "Équipement / Inventaire (optionnel)"
+        )
+        self.equipment_toggle_header.setToolTip(
+            "Cliquer pour déplier ou replier la section équipement"
+        )
+        self.equipment_toggle_header.clicked.connect(self._toggle_equipment)
+        section_vlayout.addWidget(self.equipment_toggle_header)
+
+        self.equipment_content = QWidget()
+        self.equipment_content.setStyleSheet("""
+            QWidget {
                 background-color: #161f2a;
                 border: 1px solid #3e5a8a;
-                border-radius: 6px;
-            }
-            QLabel {
-                background: transparent;
-                border: none;
+                border-top: none;
+                border-bottom-left-radius: 6px;
+                border-bottom-right-radius: 6px;
             }
         """)
-        equipment_vlayout = QVBoxLayout(equipment_frame)
-        equipment_vlayout.setContentsMargins(8, 8, 8, 8)
-        equipment_vlayout.setSpacing(8)
+        equipment_inner = QVBoxLayout(self.equipment_content)
+        equipment_inner.setContentsMargins(8, 6, 8, 8)
+        equipment_inner.setSpacing(8)
 
-        equipment_title = QLabel("Équipement / Armements")
-        equipment_title.setStyleSheet(
-            "color: #bbdefb; font-weight: bold; background: transparent; border: none;"
+        self.include_equipment_check = QCheckBox(
+            "Inclure l'équipement dans la fiche"
         )
-        equipment_vlayout.addWidget(equipment_title)
+        self.include_equipment_check.setToolTip(
+            "Si coché, la section Équipement/Armements apparaît sur la "
+            "fiche exportée (PNG/PDF) ; sinon elle sert uniquement au "
+            "calcul des stats."
+        )
+        self.include_equipment_check.stateChanged.connect(
+            lambda state: self._schedule_preview()
+        )
+        equipment_inner.addWidget(self.include_equipment_check)
 
         self.equipment_edit = QTextEdit()
         self.equipment_edit.setPlaceholderText(
@@ -730,7 +749,8 @@ class MainWindow(QMainWindow):
                 border-radius: 4px;
             }
         """)
-        equipment_vlayout.addWidget(self.equipment_edit, stretch=1)
+        self.equipment_edit.setMaximumHeight(90)
+        equipment_inner.addWidget(self.equipment_edit)
 
         self.gen_equipment_btn = QPushButton("(Re)générer")
         self.gen_equipment_btn.setIcon(QIcon.fromTheme("system-run"))
@@ -743,11 +763,22 @@ class MainWindow(QMainWindow):
         equipment_btn_layout = QHBoxLayout()
         equipment_btn_layout.addStretch()
         equipment_btn_layout.addWidget(self.gen_equipment_btn)
-        equipment_vlayout.addLayout(equipment_btn_layout)
+        equipment_inner.addLayout(equipment_btn_layout)
 
-        layout.addWidget(equipment_frame, stretch=1)
+        section_vlayout.addWidget(self.equipment_content)
 
-        return tab
+        self._apply_equipment_toggle_state()
+        return section_widget
+
+    def _toggle_equipment(self):
+        """Affiche ou masque la section équipement."""
+        self._equipment_expanded = not self._equipment_expanded
+        self._apply_equipment_toggle_state()
+
+    def _apply_equipment_toggle_state(self):
+        """Applique l'état replié/déplié de la section équipement."""
+        self.equipment_content.setVisible(self._equipment_expanded)
+        self.equipment_toggle_header.set_expanded(self._equipment_expanded)
 
     def create_preview_panel(self) -> QWidget:
         """Crée le panneau d'aperçu."""
@@ -1005,6 +1036,7 @@ class MainWindow(QMainWindow):
                 monster.actions.append(action)
 
         monster.notes = self.equipment_edit.toPlainText().strip() or None
+        monster.include_equipment = self.include_equipment_check.isChecked()
 
         return monster
 
@@ -1044,6 +1076,7 @@ class MainWindow(QMainWindow):
             self.add_action_to_list(action)
 
         self.equipment_edit.setPlainText(monster.notes or "")
+        self.include_equipment_check.setChecked(monster.include_equipment)
 
         if not keep_scenario:
             self.scenario_edit.setPlainText(monster.scenario or "")
@@ -1141,6 +1174,7 @@ class MainWindow(QMainWindow):
         # Actions et équipement
         self.clear_actions()
         self.equipment_edit.clear()
+        self.include_equipment_check.setChecked(False)
 
         self.update_preview()
 
