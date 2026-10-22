@@ -29,7 +29,7 @@ Le fichier `.gguf` arrive dans `models/` à la racine. Alternative : laisser l'a
 
 ## Mode API (aucun modèle requis)
 
-**Fichier > Configuration > Mode IA : API distante**, renseignez une clé (gratuite sur console.mistral.ai), modèle `mistral-small-latest`, endpoint par défaut. Voir [Backends IA](Backends-IA.md).
+**Configuration > Mode IA : API distante**, renseignez une clé (gratuite sur console.mistral.ai), modèle `mistral-small-latest`, endpoint par défaut. Voir [Backends IA](Backends-IA.md).
 
 ## Dépannage
 

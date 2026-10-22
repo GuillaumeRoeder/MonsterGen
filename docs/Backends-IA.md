@@ -1,6 +1,6 @@
 # Backends IA
 
-Deux backends interchangeables, sélectionnés dans **Fichier > Configuration > Mode IA**. L'étiquette en haut de la fenêtre affiche le mode actif en permanence.
+Deux backends interchangeables, sélectionnés dans **Configuration > Mode IA**. L'étiquette en haut de la fenêtre affiche le mode actif en permanence.
 
 ## Modèle local (défaut)
 

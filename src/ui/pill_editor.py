@@ -121,7 +121,7 @@ class PillEditor(QWidget):
         """)
         add_layout.addWidget(self._combo, stretch=1)
         add_btn = QPushButton("+")
-        add_btn.setFixedSize(26, 24)
+        add_btn.setFixedSize(36, 24)
         add_btn.setToolTip("Ajouter la valeur sélectionnée")
         add_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         add_btn.setStyleSheet("""
@@ -170,7 +170,7 @@ class PillEditor(QWidget):
             pill = QWidget()
             pill.setStyleSheet("""
                 QWidget {
-                    background-color: #005f8a;
+                    background-color: #1e5fa8;
                     color: #ffffff;
                     border-radius: 9px;
                 }

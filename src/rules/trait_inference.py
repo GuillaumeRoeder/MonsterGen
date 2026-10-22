@@ -9,6 +9,7 @@ monstre décrit par l'utilisateur.
 """
 
 from dataclasses import dataclass, field
+import re
 from typing import List, Optional, Tuple
 
 
@@ -25,6 +26,7 @@ class InferredTraits:
     skills: List[str] = field(default_factory=list)
     resistances: List[str] = field(default_factory=list)
     immunities: List[str] = field(default_factory=list)
+    equipment: List[str] = field(default_factory=list)
 
 
 # Mots-clés (minuscules, sans accents pour le match) -> archétype.
@@ -61,7 +63,10 @@ ARCHETYPE_KEYWORDS: List[Tuple[str, List[str]]] = [
 # Mots-clés -> arme (nom, type de dégâts, dé). L'ordre compte.
 WEAPON_KEYWORDS: List[Tuple[List[str], Tuple[str, str, int]]] = [
     (["dague", "poignard"], ("dague", "perforant", 4)),
-    (["epee", "sabre", "rapiere", "katana"], ("épée longue", "tranchant", 8)),
+    (["epee courte", "epees courtes"], ("épée courte", "perforant", 6)),
+    (["epee longue", "epees longues", "sabre", "rapiere", "katana"],
+     ("épée longue", "tranchant", 8)),
+    ([r"re:\bepees?\b(?!\s+courtes?)"], ("épée longue", "tranchant", 8)),
     (["hache", "hachoir"], ("hache de bataille", "tranchant", 10)),
     (["marteau", "masse", "gourdin"], ("marteau de guerre", "contondant", 8)),
     (["lance", "javelot", "pieu", "harpon", "trident"], ("lance", "perforant", 6)),
@@ -71,6 +76,36 @@ WEAPON_KEYWORDS: List[Tuple[List[str], Tuple[str, str, int]]] = [
     (["queue", "tentacule", "fouet"], ("queue fouettante", "contondant", 6)),
     (["bouclier", "ecusson"], ("coup de bouclier", "contondant", 4)),
 ]
+
+# Objets d'inventaire portés (armes réelles, armures, boucliers, objets
+# magiques) — uniquement les éléments importants, pas le butin.
+EQUIPMENT_KEYWORDS: List[Tuple[List[str], str]] = [
+    (["dague", "poignard"], "dague"),
+    (["epee courte", "epees courtes"], "épée courte"),
+    (["epee longue", "epees longues", "sabre", "rapiere", "katana"], "épée longue"),
+    ([r"re:\bepees?\b(?!\s+courtes?)"], "épée longue"),
+    (["hache"], "hache de bataille"),
+    (["marteau", "masse d'arme"], "marteau de guerre"),
+    (["lance", "javelot", "trident"], "lance"),
+    (["arc ", "arc", "arbalete"], "arc long"),
+    (["bouclier", "ecusson"], "bouclier"),
+    (["armure de cuir", "cuir"], "armure de cuir"),
+    (["armure matelassee", "matelass"], "armure matelassée"),
+    (["armure de peau", "peausserie"], "armure de peausserie"),
+    (["cotte de maille", "maille"], "cotte de mailles"),
+    (["cloutee", "clouté"], "armure cloutée"),
+    (["ecailles", "armure d'ecaille"], "armure d'écailles"),
+    (["plate", "harnois"], "armure de plates"),
+    (["anneau magique", "anneau"], "anneau magique"),
+    (["amulette", "talisman"], "amulette"),
+    (["potion"], "potion de soin"),
+    (["baguette", "wand"], "baguette"),
+    (["baton", "sceptre"], "bâton magique"),
+    (["cape", "manteau"], "cape"),
+    (["livre", "grimoire", "tom"], "grimoire"),
+]
+# Note : les attaques naturelles (griffes, morsure, queue) ne font pas
+# partie de l'inventaire — elles sont déjà des actions.
 
 # Mots-clés -> type de dégâts de l'action spéciale.
 SPECIAL_DAMAGE_KEYWORDS: List[Tuple[List[str], str]] = [
@@ -164,6 +199,13 @@ def _normalize(text: str) -> str:
     return lowered.translate(str.maketrans("àâäéèêëîïôöùûüçñ", "aaaeeeeiioouuucn"))
 
 
+
+def _kw_match(keyword: str, text: str) -> bool:
+    """Matche un mot-clé : sous-chaîne simple, ou regex si préfixé re:."""
+    if keyword.startswith("re:"):
+        return re.search(keyword[3:], text) is not None
+    return keyword in text
+
 def _count_matches(text: str, keywords: List[str]) -> int:
     """Nombre de mots-clés présents dans le texte."""
     return sum(1 for kw in keywords if kw in text)
@@ -199,11 +241,19 @@ def infer_traits(race: Optional[str], description: Optional[str]) -> InferredTra
     # Armes : premiers mots-clés trouvés (max 3).
     weapons: List[Tuple[str, str, int]] = []
     for keywords, weapon in WEAPON_KEYWORDS:
-        if any(kw in combined_for_weapons for kw in keywords):
+        if any(_kw_match(kw, combined_for_weapons) for kw in keywords) \
+                and weapon not in weapons:
             weapons.append(weapon)
         if len(weapons) >= 3:
             break
     traits.weapons = weapons
+
+    # Équipement porté : armes réelles, armures, boucliers, objets magiques.
+    equipment: List[str] = []
+    for keywords, item in EQUIPMENT_KEYWORDS:
+        if any(_kw_match(kw, combined) for kw in keywords) and item not in equipment:
+            equipment.append(item)
+    traits.equipment = equipment[:6]
 
     # Type de dégâts de l'action spéciale.
     for keywords, damage_type in SPECIAL_DAMAGE_KEYWORDS:
@@ -228,7 +278,12 @@ def infer_traits(race: Optional[str], description: Optional[str]) -> InferredTra
 
     # Vitesse de base ajustée au concept.
     if traits.speed is None:
-        if any(kw in combined for kw in _FAST):
+        # Intensité de vitesse : « très rapide » / comparaisons animales
+        # (guépard, éclair...) = 18 m ; « rapide » standard = 12 m.
+        very_fast = any(kw in combined for kw in ("tres rapide", "aussi vite", "extremement rapide"))
+        if very_fast or "guepard" in combined:
+            traits.speed = "18 m (12 cases)"
+        elif any(kw in combined for kw in _FAST):
             traits.speed = "12 m (8 cases)"
         elif any(kw in combined for kw in _SLOW):
             traits.speed = "6 m (4 cases)"

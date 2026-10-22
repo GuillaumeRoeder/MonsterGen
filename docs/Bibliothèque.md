@@ -13,7 +13,13 @@ Menu **Bibliothèque > Gérer les monstres sauvegardés** : mini gestionnaire de
 |---|---|
 | 💾 **Sauvegarder le monstre actuel** | Nom de fichier pré-rempli avec le nom du monstre, **éditable** ; confirmation avant écrasement |
 | 📂 **Charger** (ou double-clic) | Remplit l'éditeur ; confirmation si le monstre courant n'est pas sauvegardé |
+| 📥 **Importer** | Importe des monstres depuis un fichier (export groupé `{"monsters": [...]}`, liste JSON, ou fichier monstre individuel) |
 | 🗑 **Supprimer** | Confirmation avant suppression définitive du fichier |
+
+## Export / import de bibliothèque
+
+- Menu **Export > Exporter la bibliothèque...** : cochage des monstres à exporter (tous décochés par défaut) puis écriture dans un **fichier unique** au format `{"monsters": [...]}`.
+- Menu **Bibliothèque > Importer une bibliothèque...** (ou bouton 📥 de la popup) : copie les monstres du fichier dans le dossier de sauvegarde, un JSON par monstre (nom du monstre comme nom de fichier), avec avertissement en cas d'écrasement.
 
 ## Format des fichiers
 

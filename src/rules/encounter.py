@@ -65,11 +65,19 @@ def party_xp_budget(party_size: int, avg_level: int, difficulty: str) -> int:
 
 
 def budget_to_cr(budget: int) -> float:
-    """CR le plus proche dont les PX ne dépassent pas le budget."""
+    """CR dont les PX sont les plus proches du budget.
+
+    Un monstre unique doit consommer le budget complet de la
+    rencontre : on arrondit au CR le plus proche (par défaut ou\n    excès), pas au CR inférieur — sinon le monstre n'utilise que
+    la moitié du budget quand les CR adjacents sont éloignés.
+    """
     best = 0.0
+    best_diff = float("inf")
     for frac, _ in CR_ENTRIES:
         cr = float(frac)
-        if cr_xp(cr) <= budget:
+        diff = abs(cr_xp(cr) - budget)
+        if diff < best_diff:
+            best_diff = diff
             best = cr
     return best
 

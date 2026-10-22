@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QTextEdit, QComboBox, QPushButton, QSpinBox,
     QFormLayout, QMessageBox, QFileDialog, QTabWidget,
-    QScrollArea, QInputDialog
+    QScrollArea, QInputDialog, QFrame, QMenu, QSizePolicy
 )
 from PySide6.QtCore import Qt, Signal, QObject, QTimer
 from PySide6.QtGui import QFont, QIcon
@@ -24,6 +24,7 @@ from src.rules.stat_builder import (
 )
 from src.ui.languages_editor import LanguagesEditor
 from src.ui.pill_editor import PillEditor
+from src.ui.styles import ACCENT_BUTTON_STYLE, SECONDARY_BUTTON_STYLE
 
 # Compétences DnD 5e (suggestions pour l'éditeur en pills).
 DND5_SKILLS = [
@@ -31,6 +32,25 @@ DND5_SKILLS = [
     "Histoire", "Intimidation", "Intuition", "Investigation", "Médecine",
     "Nature", "Perception", "Perspicacité", "Persuasion", "Représentation",
     "Religion", "Supercherie", "Survie",
+]
+
+# Races DnD 5e (liste hardcodée pour le champ Race).
+DND5_RACES = [
+    'Aasimar', 'Aboleth', 'Ange', 'Basilic',
+    'Bugbear', 'Béhir', 'Centaure', 'Chimère',
+    'Dem elfe', 'Dem-orc', 'Diable', 'Dragon',
+    'Drakéide (Dragonborn)', 'Dryade', 'Démon', 'Elfe',
+    'Elfe des bois', 'Elfe noir (Drow)', 'Fée', 'Genasi',
+    'Gnoll', 'Gnome', 'Gnome des forêts', 'Gnome des roches',
+    'Gobelin', "Golem d'argile", 'Golem de chair', 'Golem de fer',
+    'Golem de pierre', 'Goliath', 'Goule', 'Griffon',
+    'Géant', 'Halfelin', 'Haut-elfe', 'Hippogriffe',
+    'Hobgobelin', 'Homme-lézard', 'Humain', 'Hydre',
+    'Kobold', 'Kraken', 'Liche', 'Manticore',
+    'Minotaure', 'Méduse', 'Nain', 'Nain des collines',
+    'Nain des montagnes', 'Ogre', 'Orc', 'Satyre',
+    'Spectre', 'Sphinx', 'Squelette', 'Tiefling',
+    'Troll', 'Wyverne', 'Zombie'
 ]
 
 # Types de dégâts DnD 5e (résistances/immunités).
@@ -42,6 +62,54 @@ from src.ui.action_editor import ActionEditorWidget
 from src.export.pdf_exporter import pdf_exporter
 from src.export.png_exporter import png_exporter
 from config.config_manager import config_manager
+
+
+class _CollapsibleHeader(QFrame):
+    """Barre de titre cliquable et repliable (style Attribute Editor Maya).
+
+    Flèche et texte sont des labels séparés : le titre reste toujours
+    visible, quel que soit l'état de la section.
+    """
+
+    clicked = Signal()
+
+    def __init__(self, title: str, parent=None):
+        super().__init__(parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setStyleSheet("""
+            QFrame {
+                background-color: #212b38;
+                border: 1px solid #3e5a8a;
+                border-radius: 3px;
+            }
+            QFrame:hover {
+                background-color: #212b38;
+            }
+            QLabel {
+                background: transparent;
+                border: none;
+                color: #bbdefb;
+                font-weight: bold;
+            }
+        """)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(10, 6, 10, 6)
+        layout.setSpacing(8)
+
+        self._arrow_label = QLabel("▸")
+        self._arrow_label.setFixedWidth(14)
+        self._title_label = QLabel(title)
+        layout.addWidget(self._arrow_label)
+        layout.addWidget(self._title_label)
+        layout.addStretch()
+
+    def set_expanded(self, expanded: bool):
+        """Met à jour la flèche selon l'état de la section."""
+        self._arrow_label.setText("▾" if expanded else "▸")
+
+    def mousePressEvent(self, event):
+        self.clicked.emit()
+        super().mousePressEvent(event)
 
 
 class SignalEmitter(QObject):
@@ -114,7 +182,7 @@ class MainWindow(QMainWindow):
             if local_model.is_available():
                 status = "prêt"
                 bg = "#1e3a24"
-                fg = "#66bb6a"
+                fg = "#42a5f5"
             else:
                 status = "non téléchargé"
                 bg = "#3a2a1a"
@@ -138,32 +206,27 @@ class MainWindow(QMainWindow):
         tab_widget = QTabWidget()
 
         basic_tab = self.create_basic_tab()
-        tab_widget.addTab(basic_tab, "Informations de base")
+        tab_widget.addTab(basic_tab, "Description")
 
         stats_tab = self.create_stats_tab()
         tab_widget.addTab(stats_tab, "Statistiques")
 
         actions_tab = self.create_actions_tab()
-        tab_widget.addTab(actions_tab, "Actions et Équipement")
+        tab_widget.addTab(actions_tab, "Actions")
+
 
         layout.addWidget(tab_widget)
 
         control_layout = QHBoxLayout()
 
-        self.generate_btn = QPushButton("Générer les champs manquants")
+        self.generate_btn = QPushButton("Compléter les champs")
         self.generate_btn.setIcon(QIcon.fromTheme("system-run"))
+        self.generate_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         control_layout.addWidget(self.generate_btn)
-
-        self.export_btn = QPushButton("Exporter en PDF")
-        self.export_btn.setIcon(QIcon.fromTheme("document-export"))
-        control_layout.addWidget(self.export_btn)
-
-        self.export_png_btn = QPushButton("Exporter en PNG")
-        self.export_png_btn.setIcon(QIcon.fromTheme("image-x-generic"))
-        control_layout.addWidget(self.export_png_btn)
 
         self.reset_btn = QPushButton("Réinitialiser")
         self.reset_btn.setIcon(QIcon.fromTheme("document-new"))
+        self.reset_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         self.reset_btn.setToolTip("Effacer tous les champs : identité, stats, actions, scénario, équipement…")
         self.reset_btn.clicked.connect(self.reset_all_fields)
         control_layout.addWidget(self.reset_btn)
@@ -179,48 +242,164 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
 
+        layout.addRow("Groupe :", self._create_party_widgets())
+
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setStyleSheet("color: #3e5a8a; background: #3e5a8a; border: none; max-height: 1px;")
+        layout.addRow(separator)
+
         self.name_edit = QLineEdit()
         self.name_edit.setPlaceholderText("Nom du PNJ/Monstre")
         layout.addRow("Nom :", self.name_edit)
 
+        race_layout = QHBoxLayout()
+        race_layout.setSpacing(4)
         self.race_edit = QLineEdit()
         self.race_edit.setPlaceholderText("Race ou type de créature")
-        layout.addRow("Race :", self.race_edit)
+        race_layout.addWidget(self.race_edit, stretch=1)
+
+        self.race_menu_btn = QPushButton("▾")
+        self.race_menu_btn.setFixedSize(24, 24)
+        self.race_menu_btn.setToolTip("Choisir une race DnD 5e")
+        self.race_menu_btn.setStyleSheet(SECONDARY_BUTTON_STYLE)
+        self.race_menu_btn.clicked.connect(self._show_race_menu)
+        race_layout.addWidget(self.race_menu_btn)
+
+        layout.addRow("Race :", race_layout)
 
         self.languages_edit = LanguagesEditor()
-        layout.addRow("Langues :", self.languages_edit)
+        languages_frame = QFrame()
+        languages_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        languages_frame.setStyleSheet("""
+            QFrame {
+                background-color: #161f2a;
+                border: 1px solid #3e5a8a;
+                border-radius: 6px;
+            }
+            QLabel {
+                background: transparent;
+                border: none;
+            }
+        """)
+        languages_layout = QVBoxLayout(languages_frame)
+        languages_layout.setContentsMargins(8, 6, 8, 8)
+        languages_layout.setSpacing(6)
+
+        languages_header = QLabel(
+            "Langues parlées — cliquez sur ▾ puis + pour ajouter une langue, "
+            "✕ pour la retirer :"
+        )
+        languages_header.setStyleSheet(
+            "color: #90caf9; font-size: 11px; background: transparent; border: none;"
+        )
+        languages_layout.addWidget(languages_header)
+        languages_layout.addWidget(self.languages_edit)
+
+        layout.addRow("Langues :", languages_frame)
 
         self.description_edit = QTextEdit()
         self.description_edit.setPlaceholderText("Description du PNJ/Monstre")
         self.description_edit.setMaximumHeight(100)
         layout.addRow("Description :", self.description_edit)
 
+        scenario_widget = QWidget()
+        scenario_widget.setStyleSheet("background: transparent; border: none;")
+        scenario_vlayout = QVBoxLayout(scenario_widget)
+        scenario_vlayout.setContentsMargins(0, 0, 0, 0)
+        scenario_vlayout.setSpacing(0)
+
+        # Barre de titre repliable façon Attribute Editor de Maya
+        self._scenario_expanded = False
+        self.scenario_toggle_header = _CollapsibleHeader(
+            "Scénario de rencontre (optionnel)"
+        )
+        self.scenario_toggle_header.setToolTip(
+            "Cliquer pour déplier ou replier la section scénario"
+        )
+        self.scenario_toggle_header.clicked.connect(self._toggle_scenario)
+        scenario_vlayout.addWidget(self.scenario_toggle_header)
+
+        self.scenario_content = QWidget()
+        self.scenario_content.setStyleSheet("""
+            QWidget {
+                background-color: #161f2a;
+                border: 1px solid #3e5a8a;
+                border-top: none;
+                border-bottom-left-radius: 6px;
+                border-bottom-right-radius: 6px;
+            }
+        """)
+        scenario_inner = QVBoxLayout(self.scenario_content)
+        scenario_inner.setContentsMargins(8, 6, 8, 8)
+        scenario_inner.setSpacing(6)
+
+        scenario_header = QLabel(
+            "Décrivez le contexte de la rencontre, ou générez-le "
+            "automatiquement à partir des stats actuelles du monstre :"
+        )
+        scenario_header.setStyleSheet(
+            "color: #90caf9; font-size: 11px; background: transparent; border: none;"
+        )
+        scenario_inner.addWidget(scenario_header)
+
         scenario_layout = QHBoxLayout()
+        scenario_layout.setSpacing(6)
         self.scenario_edit = QTextEdit()
         self.scenario_edit.setPlaceholderText(
-            "Scénario de rencontre — cliquez sur le bouton pour le générer "
-            "à partir des stats actuelles du monstre."
+            "Scénario de rencontre (lieu, circonstances, motivation du monstre...)"
         )
+        self.scenario_edit.setStyleSheet("""
+            QTextEdit {
+                background-color: #1e2632;
+                color: #dce4ee;
+                border: 1px solid #39485c;
+                border-radius: 4px;
+                font-size: 11px;
+            }
+        """)
         scenario_layout.addWidget(self.scenario_edit, stretch=1)
 
         self.gen_scenario_btn = QPushButton("Générer\nscénario")
         self.gen_scenario_btn.setIcon(QIcon.fromTheme("system-run"))
+        self.gen_scenario_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         self.gen_scenario_btn.setMaximumWidth(110)
         self.gen_scenario_btn.clicked.connect(self._generate_scenario)
         scenario_layout.addWidget(self.gen_scenario_btn)
 
-        layout.addRow("Scénario :", scenario_layout)
+        scenario_inner.addLayout(scenario_layout)
+        scenario_vlayout.addWidget(self.scenario_content)
+
+        self._apply_scenario_toggle_state()
+
+        layout.addRow(self.create_equipment_tab())
+        layout.addRow(scenario_widget)
 
         return tab
 
-    def create_stats_tab(self) -> QWidget:
-        """Crée l'onglet des statistiques."""
-        tab = QWidget()
-        layout = QFormLayout(tab)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
+    def _toggle_scenario(self):
+        """Affiche ou masque la section scénario."""
+        self._scenario_expanded = not self._scenario_expanded
+        self._apply_scenario_toggle_state()
 
-        # --- Ligne 1 : groupe de joueurs + difficulté de la rencontre ---
+    def _apply_scenario_toggle_state(self):
+        """Applique l'état replié/déplié de la section scénario."""
+        self.scenario_content.setVisible(self._scenario_expanded)
+        self.scenario_toggle_header.set_expanded(self._scenario_expanded)
+
+    def _show_race_menu(self):
+        """Affiche le menu déroulant des races DnD 5e sous la flèche."""
+        menu = QMenu(self)
+        for race in DND5_RACES:
+            action = menu.addAction(race)
+            action.triggered.connect(
+                lambda *args, r=race: self.race_edit.setText(r)
+            )
+        btn_pos = self.race_menu_btn.mapToGlobal(self.race_menu_btn.rect().bottomLeft())
+        menu.exec(btn_pos)
+
+    def _create_party_widgets(self) -> QHBoxLayout:
+        """Crée la ligne 'groupe de joueurs + difficulté' (tab Informations)."""
         party_layout = QHBoxLayout()
         party_layout.setSpacing(6)
 
@@ -243,22 +422,70 @@ class MainWindow(QMainWindow):
         party_layout.addWidget(QLabel("Difficulté :"))
         party_layout.addWidget(self.difficulty_combo)
 
-        self.gen_stats_btn = QPushButton("Équilibrer les stats")
-        self.gen_stats_btn.setIcon(QIcon.fromTheme("system-run"))
-        self.gen_stats_btn.clicked.connect(self._fill_balanced_stats)
-        party_layout.addWidget(self.gen_stats_btn)
-
-        layout.addRow("Groupe :", party_layout)
-
-        # --- Label dynamique coloré : CR résultant de la combinaison ---
         self.difficulty_result_label = QLabel("")
-        self.difficulty_result_label.setStyleSheet("font-weight: bold;")
-        layout.addRow("Difficulté résultante :", self.difficulty_result_label)
+        self.difficulty_result_label.setStyleSheet(
+            "font-weight: bold; margin-top: -4px; margin-bottom: -4px;"
+        )
 
         self.party_size_spin.valueChanged.connect(self._update_difficulty_label)
         self.party_level_spin.valueChanged.connect(self._update_difficulty_label)
         self.difficulty_combo.currentIndexChanged.connect(self._update_difficulty_label)
         self._update_difficulty_label()
+
+        group_layout = QVBoxLayout()
+        group_layout.setContentsMargins(0, 0, 0, 0)
+        group_layout.setSpacing(2)
+        group_layout.addLayout(party_layout)
+        group_layout.addWidget(self.difficulty_result_label)
+
+        return group_layout
+
+    def create_stats_tab(self) -> QWidget:
+        """Crée l'onglet des statistiques (défilable : le contenu dépasse
+        la hauteur disponible de la fenêtre)."""
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+
+        tab = QWidget()
+        tab.setObjectName("statsTabContent")
+        tab.setStyleSheet("""
+            #statsTabContent {
+                background: transparent;
+                border: none;
+            }
+            #statsTabContent QWidget {
+                background: transparent;
+                border: none;
+            }
+            #statsTabContent QLineEdit, #statsTabContent QTextEdit,
+            #statsTabContent QComboBox, #statsTabContent QSpinBox,
+            #statsTabContent QDoubleSpinBox {
+                background-color: #1e2632;
+                color: #dce4ee;
+                border: 1px solid #39485c;
+                border-radius: 4px;
+                padding: 6px;
+                selection-background-color: #1e88e5;
+                selection-color: #ffffff;
+            }
+            #statsTabContent QLineEdit:focus, #statsTabContent QTextEdit:focus,
+            #statsTabContent QComboBox:focus, #statsTabContent QSpinBox:focus,
+            #statsTabContent QDoubleSpinBox:focus {
+                border: 1px solid #42a5f5;
+                background-color: #1e2632;
+            }
+        """)
+        layout = QFormLayout(tab)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
+
+        self.gen_stats_btn = QPushButton("Équilibrer les stats")
+        self.gen_stats_btn.setIcon(QIcon.fromTheme("system-run"))
+        self.gen_stats_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        self.gen_stats_btn.clicked.connect(self._fill_balanced_stats)
+        layout.addRow(self.gen_stats_btn)
 
         self.ac_spin = QSpinBox()
         self.ac_spin.setRange(0, 50)
@@ -345,48 +572,348 @@ class MainWindow(QMainWindow):
                                           empty_text="Aucune immunité")
         layout.addRow("Immunités :", self.immunities_edit)
 
-        return tab
+        scroll.setWidget(tab)
+        return scroll
 
     def create_actions_tab(self) -> QWidget:
-        """Crée l'onglet des actions et équipements."""
+        """Crée l'onglet des actions."""
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
 
-        layout.addWidget(QLabel("Actions :"))
+        # --- Section Actions : cadre délimité ---
+        actions_frame = QFrame()
+        actions_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        actions_frame.setStyleSheet("""
+            QFrame {
+                background-color: #161f2a;
+                border: 1px solid #3e5a8a;
+                border-radius: 6px;
+            }
+            QLabel {
+                background: transparent;
+                border: none;
+            }
+        """)
+        actions_vlayout = QVBoxLayout(actions_frame)
+        actions_vlayout.setContentsMargins(8, 8, 8, 8)
+        actions_vlayout.setSpacing(8)
+
+        actions_title = QLabel("Actions :")
+        actions_title.setStyleSheet(
+            "color: #bbdefb; font-weight: bold; background: transparent; border: none;"
+        )
+        actions_vlayout.addWidget(actions_title)
 
         gen_actions_btn = QPushButton("Générer des actions")
         gen_actions_btn.setIcon(QIcon.fromTheme("system-run"))
+        gen_actions_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         gen_actions_btn.clicked.connect(self._generate_actions)
-        layout.addWidget(gen_actions_btn)
+        actions_vlayout.addWidget(gen_actions_btn)
 
+        # Sous-fonction : description libre des actions souhaitées,
+        # présentée comme sous-action compacte de la génération automatique.
+        prompt_row = QHBoxLayout()
+        prompt_row.setContentsMargins(14, 0, 0, 0)   # indentation visuelle
+        prompt_row.setSpacing(6)
+        self.actions_prompt_edit = QTextEdit()
+        self.actions_prompt_edit.setPlaceholderText(
+            "Ou décrivez vos actions ici (ex : tir à l'arc, morsure empoisonnée…)"
+        )
+        self.actions_prompt_edit.setMaximumHeight(34)
+        self.actions_prompt_edit.setAcceptRichText(False)
+        self.actions_prompt_edit.setStyleSheet("font-size: 11px; padding: 2px 6px;")
+        prompt_row.addWidget(self.actions_prompt_edit, stretch=1)
+        self.gen_actions_prompt_btn = QPushButton("Générer")
+        self.gen_actions_prompt_btn.setToolTip(
+            "Génère les actions décrites à gauche, avec les stats équilibrées pour le CR"
+        )
+        self.gen_actions_prompt_btn.setStyleSheet(SECONDARY_BUTTON_STYLE)
+        self.gen_actions_prompt_btn.clicked.connect(self._generate_actions_from_prompt)
+        prompt_row.addWidget(self.gen_actions_prompt_btn)
+        actions_vlayout.addLayout(prompt_row)
+
+        # Liste d'actions : contour délimité, même vide
         self.actions_scroll = QScrollArea()
         self.actions_scroll.setWidgetResizable(True)
-        self.actions_scroll.setMinimumHeight(200)
+        self.actions_scroll.setMinimumHeight(120)
+        self.actions_scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.actions_scroll.setStyleSheet("""
+            QScrollArea {
+                background-color: #141b26;
+                border: 1px solid #39485c;
+                border-radius: 4px;
+            }
+            QWidget {
+                background-color: transparent;
+                border: none;
+            }
+        """)
         self.actions_container = QWidget()
+        self.actions_container.setStyleSheet("background: transparent; border: none;")
         self.actions_layout = QVBoxLayout(self.actions_container)
         self.actions_layout.setContentsMargins(4, 4, 4, 4)
         self.actions_layout.setSpacing(8)
         self.actions_layout.addStretch()
+
+        self.actions_empty_label = QLabel(
+            "Aucune action — cliquez sur \"Nouvelle action\" ou générez-les automatiquement."
+        )
+        self.actions_empty_label.setStyleSheet(
+            "color: #7a8aa0; font-style: italic; background: transparent; border: none;"
+        )
+        self.actions_empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.actions_layout.insertWidget(0, self.actions_empty_label)
+
         self.actions_scroll.setWidget(self.actions_container)
-        layout.addWidget(self.actions_scroll)
+        actions_vlayout.addWidget(self.actions_scroll, stretch=1)
 
         actions_control_layout = QHBoxLayout()
+        actions_control_layout.addStretch()
 
-        self.add_action_btn = QPushButton("Ajouter une action")
-        self.add_action_btn.setIcon(QIcon.fromTheme("list-add"))
+        self.add_action_btn = QPushButton("Nouvelle action")
+        self.add_action_btn.setToolTip("Ajouter une nouvelle action à la liste")
+        self.add_action_btn.setStyleSheet(
+            SECONDARY_BUTTON_STYLE.replace("min-height: 0px;", "min-height: 20px; padding: 6px 12px;")
+        )
+        self.add_action_btn.setFixedHeight(36)
         actions_control_layout.addWidget(self.add_action_btn)
+        actions_control_layout.addStretch()
 
-        layout.addLayout(actions_control_layout)
+        actions_vlayout.addLayout(actions_control_layout)
 
-        layout.addWidget(QLabel("Équipement/Armements :"))
-        self.equipment_edit = QTextEdit()
-        self.equipment_edit.setPlaceholderText("Ex: Épée longue, Arc court, Armure de cuir")
-        self.equipment_edit.setMinimumHeight(80)
-        layout.addWidget(self.equipment_edit)
+        layout.addWidget(actions_frame, stretch=1)
 
         return tab
+
+    def create_equipment_tab(self) -> QWidget:
+        """Crée la section Équipement repliable : cartes d'objets
+        (nom + effets), interface similaire à celle des actions."""
+        tab = QWidget()
+        tab.setStyleSheet("background: transparent; border: none;")
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # Barre de titre repliable (comme la section Scénario)
+        self._equipment_expanded = False
+        self.equipment_toggle_header = _CollapsibleHeader(
+            "Équipement / Inventaire (optionnel)"
+        )
+        self.equipment_toggle_header.setToolTip(
+            "Cliquer pour déplier ou replier la section équipement"
+        )
+        self.equipment_toggle_header.clicked.connect(self._toggle_equipment)
+        layout.addWidget(self.equipment_toggle_header)
+
+        self.equipment_content = QWidget()
+        self.equipment_content.setStyleSheet("""
+            QWidget {
+                background-color: #161f2a;
+                border: 1px solid #3e5a8a;
+                border-top: none;
+                border-bottom-left-radius: 6px;
+                border-bottom-right-radius: 6px;
+            }
+        """)
+        equipment_vlayout = QVBoxLayout(self.equipment_content)
+        equipment_vlayout.setContentsMargins(8, 8, 8, 8)
+        equipment_vlayout.setSpacing(8)
+
+        equipment_title = QLabel("Équipement / Inventaire :")
+        equipment_title.setStyleSheet(
+            "color: #bbdefb; font-weight: bold; background: transparent; border: none;"
+        )
+        equipment_vlayout.addWidget(equipment_title)
+
+        # Stockage texte de l'inventaire (champ caché, synchronisé avec
+        # les cartes d'objets)
+        self.equipment_edit = QTextEdit()
+        self.equipment_edit.setAcceptRichText(False)
+        self.equipment_edit.setVisible(False)
+        equipment_vlayout.addWidget(self.equipment_edit)
+
+        # Liste d'objets : contour délimité, même vide
+        self.equipment_scroll = QScrollArea()
+        self.equipment_scroll.setWidgetResizable(True)
+        self.equipment_scroll.setMinimumHeight(120)
+        self.equipment_scroll.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        self.equipment_scroll.setStyleSheet("""
+            QScrollArea {
+                background-color: #141b26;
+                border: 1px solid #39485c;
+                border-radius: 4px;
+            }
+            QWidget {
+                background-color: transparent;
+                border: none;
+            }
+        """)
+        self.equipment_container = QWidget()
+        self.equipment_container.setStyleSheet(
+            "background: transparent; border: none;"
+        )
+        self.equipment_layout = QVBoxLayout(self.equipment_container)
+        self.equipment_layout.setContentsMargins(4, 4, 4, 4)
+        self.equipment_layout.setSpacing(8)
+        self.equipment_layout.addStretch()
+
+        self.equipment_empty_label = QLabel(
+            "Aucun objet — cliquez sur \"Nouvel objet\" pour ajouter du "
+            "matériel à l'inventaire."
+        )
+        self.equipment_empty_label.setStyleSheet(
+            "color: #7a8aa0; font-style: italic; "
+            "background: transparent; border: none;"
+        )
+        self.equipment_empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.equipment_layout.insertWidget(0, self.equipment_empty_label)
+
+        self.equipment_scroll.setWidget(self.equipment_container)
+        equipment_vlayout.addWidget(self.equipment_scroll, stretch=1)
+
+        # Bouton d'ajout, centré sous la liste
+        equipment_control_layout = QHBoxLayout()
+        equipment_control_layout.addStretch()
+        self.add_equipment_btn = QPushButton("Nouvel objet")
+        self.add_equipment_btn.setToolTip("Ajouter un nouvel objet à l'inventaire")
+        self.add_equipment_btn.setStyleSheet(
+            SECONDARY_BUTTON_STYLE.replace(
+                "min-height: 0px;", "min-height: 20px; padding: 6px 12px;"
+            )
+        )
+        self.add_equipment_btn.setFixedHeight(36)
+        self.add_equipment_btn.clicked.connect(self.add_equipment_item)
+        equipment_control_layout.addWidget(self.add_equipment_btn)
+        equipment_control_layout.addStretch()
+        equipment_vlayout.addLayout(equipment_control_layout)
+
+        layout.addWidget(self.equipment_content)
+        self._apply_equipment_toggle_state()
+
+        return tab
+
+    def _toggle_equipment(self):
+        """Affiche ou masque la section équipement."""
+        self._equipment_expanded = not self._equipment_expanded
+        self._apply_equipment_toggle_state()
+
+    def _apply_equipment_toggle_state(self):
+        """Applique l'état replié/déplié de la section équipement."""
+        self.equipment_content.setVisible(self._equipment_expanded)
+        self.equipment_toggle_header.set_expanded(self._equipment_expanded)
+
+    def add_equipment_item(self):
+        """Ajoute une carte d'objet vide à l'inventaire."""
+        self.add_equipment_to_list("")
+        self._update_equipment_empty_label()
+        self._schedule_preview()
+
+    def add_equipment_to_list(self, item: str):
+        """Ajoute un widget d'objet éditable (nom + effets) à la liste."""
+        from src.ui.action_editor import ActionEditorWidget
+        from src.models.monster import Action
+        widget = ActionEditorWidget(
+            Action(name=item, description=""),
+            name_placeholder="Nom de l'objet",
+            remove_tooltip="Supprimer cet objet",
+            description_placeholder=(
+                "Effets de l'objet : dégâts, CA, pouvoir…\n"
+                "Ex : +2 à la CA, ou perforant 1d6, légère."
+            ),
+        )
+        widget.changed.connect(self._schedule_preview)
+        widget.removeRequested.connect(self._on_remove_equipment)
+        self.equipment_layout.insertWidget(
+            self.equipment_layout.count() - 1, widget
+        )
+        self._update_equipment_empty_label()
+
+    def _on_remove_equipment(self, widget):
+        """Supprime l'objet dont la croix a été cliquée."""
+        self.equipment_layout.removeWidget(widget)
+        widget.deleteLater()
+        self._update_equipment_empty_label()
+        self._schedule_preview()
+
+    def get_equipment_widgets(self) -> list:
+        """Widgets d'objets actuellement dans la liste."""
+        from src.ui.action_editor import ActionEditorWidget
+        return [
+            self.equipment_layout.itemAt(i).widget()
+            for i in range(self.equipment_layout.count())
+            if self.equipment_layout.itemAt(i).widget()
+            and isinstance(
+                self.equipment_layout.itemAt(i).widget(), ActionEditorWidget
+            )
+        ]
+
+    def _update_equipment_empty_label(self):
+        """Affiche le message de liste vide si aucun objet n'est présent."""
+        self.equipment_empty_label.setVisible(not self.get_equipment_widgets())
+
+    def set_equipment_to_form(self, notes: str):
+        """Remplit la liste de cartes d'objets depuis le texte d'inventaire
+        (format « objet (effets) » ou « objet », séparés par virgules ou
+        retours à la ligne — les séparateurs internes aux parenthèses
+        sont préservés)."""
+        self.clear_equipment_items()
+        self.equipment_edit.setPlainText(notes or "")
+
+        # Découpe en objets : virgules/retours à la ligne hors parenthèses
+        items = []
+        depth = 0
+        current = ""
+        for ch in notes or "":
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth = max(0, depth - 1)
+            if ch in ",\n" and depth == 0:
+                items.append(current)
+                current = ""
+            else:
+                current += ch
+        if current.strip():
+            items.append(current)
+
+        import re
+        for chunk in items:
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            match = re.match(r"(.+?)\s*\((.*)\)\s*$", chunk, flags=re.S)
+            if match:
+                name, effects = match.group(1).strip(), match.group(2).strip()
+            else:
+                name, effects = chunk, ""
+            self.add_equipment_to_list(name)
+            widget = self.get_equipment_widgets()[-1]
+            widget.description_edit.setPlainText(effects)
+        self._update_equipment_empty_label()
+
+    def clear_equipment_items(self):
+        """Retire toutes les cartes d'objets."""
+        for widget in self.get_equipment_widgets():
+            self.equipment_layout.removeWidget(widget)
+            widget.deleteLater()
+        self._update_equipment_empty_label()
+
+    def _sync_equipment_field(self):
+        """Reconstruit le texte d'inventaire (monster.notes) depuis les
+        cartes d'objets : chaque carte est une ligne \"nom : effets\"."""
+        parts = []
+        for widget in self.get_equipment_widgets():
+            name = widget.name_edit.text().strip()
+            effects = widget.description_edit.toPlainText().strip()
+            if name and effects:
+                parts.append(f"{name} ({effects})")
+            elif name:
+                parts.append(name)
+        self.equipment_edit.setText("\n".join(parts))
 
     def create_preview_panel(self) -> QWidget:
         """Crée le panneau d'aperçu."""
@@ -413,6 +940,7 @@ class MainWindow(QMainWindow):
 
         refresh_btn = QPushButton("Rafraîchir l'aperçu")
         refresh_btn.setIcon(QIcon.fromTheme("view-refresh"))
+        refresh_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         refresh_btn.clicked.connect(self.refresh_preview)
         layout.addWidget(refresh_btn)
 
@@ -421,10 +949,14 @@ class MainWindow(QMainWindow):
     def setup_connections(self):
         """Configure les connexions des signaux."""
         self.generate_btn.clicked.connect(self.generate_missing_fields)
-        self.export_btn.clicked.connect(self.export_to_pdf)
-        self.export_png_btn.clicked.connect(self.export_to_png)
 
         self.add_action_btn.clicked.connect(self.add_action)
+
+        # Les pills (langues, compétences, résistances, immunités) mettent
+        # à jour l'aperçu dès qu'une valeur est ajoutée ou retirée.
+        for pill_editor in (self.languages_edit, self.skills_edit,
+                            self.resistances_edit, self.immunities_edit):
+            pill_editor.valuesChanged.connect(self._schedule_preview)
 
         self.signal_emitter.show_options.connect(self.show_options_dialog)
         self.signal_emitter.generation_complete.connect(self.on_generation_complete)
@@ -466,11 +998,14 @@ class MainWindow(QMainWindow):
         return ", ".join(parts)
 
     def _clear_preview(self):
-        """Efface l'aperçu actuel."""
+        """Efface l'aperçu actuel (widgets et items de layout)."""
         for i in reversed(range(self.preview_layout.count())):
-            widget = self.preview_layout.itemAt(i).widget()
+            item = self.preview_layout.itemAt(i)
+            widget = item.widget()
             if widget:
                 widget.deleteLater()
+            else:
+                self.preview_layout.takeAt(i)
 
     def _get_modifier(self, score: int) -> int:
         """Calcule le modificateur pour une caractéristique."""
@@ -567,7 +1102,8 @@ class MainWindow(QMainWindow):
         color = DIFFICULTY_COLORS.get(difficulty_key, "#e0e0e0")
         self.difficulty_result_label.setText(f"● {summary}")
         self.difficulty_result_label.setStyleSheet(
-            f"font-weight: bold; color: {color};"
+            f"font-weight: bold; color: {color}; "
+            "margin-top: -4px; margin-bottom: -4px;"
         )
 
     def _fill_balanced_stats(self):
@@ -627,6 +1163,7 @@ class MainWindow(QMainWindow):
             if action.name:
                 monster.actions.append(action)
 
+        self._sync_equipment_field()
         monster.notes = self.equipment_edit.toPlainText().strip() or None
 
         return monster
@@ -666,7 +1203,7 @@ class MainWindow(QMainWindow):
         for action in monster.actions:
             self.add_action_to_list(action)
 
-        self.equipment_edit.setPlainText(monster.notes or "")
+        self.set_equipment_to_form(monster.notes or "")
 
         if not keep_scenario:
             self.scenario_edit.setPlainText(monster.scenario or "")
@@ -677,6 +1214,7 @@ class MainWindow(QMainWindow):
         widget.changed.connect(self.on_action_changed)
         widget.removeRequested.connect(self._on_remove_action)
         self.actions_layout.insertWidget(self.actions_layout.count() - 1, widget)
+        self._update_actions_empty_label()
 
     def _on_remove_action(self, widget: ActionEditorWidget):
         """Supprime l'action dont la croix a été cliquée."""
@@ -687,6 +1225,12 @@ class MainWindow(QMainWindow):
         """Retire un widget d'action de la liste."""
         self.actions_layout.removeWidget(widget)
         widget.deleteLater()
+        self._update_actions_empty_label()
+
+    def _update_actions_empty_label(self):
+        """Affiche le message de liste vide si aucune action n'est présente."""
+        has_actions = bool(self.get_action_widgets())
+        self.actions_empty_label.setVisible(not has_actions)
 
     def get_action_widgets(self) -> list:
         """Liste des widgets d'action présents dans la liste."""
@@ -757,12 +1301,38 @@ class MainWindow(QMainWindow):
         # Actions et équipement
         self.clear_actions()
         self.equipment_edit.clear()
+        self.clear_equipment_items()
 
         self.update_preview()
 
     def add_action(self):
         """Ajoute une nouvelle action (widget vide éditable)."""
         self.add_action_to_list(Action(name="", description=""))
+
+    def _generate_actions_from_prompt(self):
+        """Génère les actions décrites dans la zone de description libre."""
+        prompt = self.actions_prompt_edit.toPlainText().strip()
+        if not prompt:
+            QMessageBox.information(
+                self,
+                "Description vide",
+                "Décrivez d'abord brièvement les actions souhaitées "
+                "dans la zone de texte à gauche du bouton.",
+            )
+            return
+        if not self._check_backend():
+            return
+
+        monster = self.get_monster_from_form()
+
+        try:
+            actions = ai_generator.generate_actions(monster, actions_prompt=prompt)
+            self.clear_actions()
+            for action in actions:
+                self.add_action_to_list(action)
+            self.update_preview()
+        except Exception as e:
+            QMessageBox.critical(self, "Erreur", f"Erreur lors de la génération : {str(e)}")
 
     def _check_backend(self) -> bool:
         """Vérifie le backend IA actif (local ou API), sinon guide l'utilisateur."""
@@ -776,7 +1346,7 @@ class MainWindow(QMainWindow):
                 self,
                 "Configuration API incomplète",
                 "Le mode API est sélectionné mais la clé API est manquante.\n\n"
-                "Fichier > Configuration : renseignez la clé API,\n"
+                "Configuration : renseignez la clé API,\n"
                 "ou repassez sur le modèle local."
             )
             return False
@@ -792,7 +1362,7 @@ class MainWindow(QMainWindow):
                 "llama-cpp-python n'est pas installé : le modèle local ne peut pas "
                 "fonctionner.\n\n"
                 "Basculer maintenant en mode API ?\n"
-                "(Vous pourrez renseigner la clé API dans Fichier > Configuration.)",
+                "(Vous pourrez renseigner la clé API dans Configuration.)",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if switch == QMessageBox.StandardButton.Yes:
@@ -808,7 +1378,7 @@ class MainWindow(QMainWindow):
             "Le modèle IA local n'est pas encore prêt.\n\n"
             f"Modèle sélectionné : {info['label']}\n\n"
             "Voulez-vous le télécharger maintenant ?\n\n"
-            "(Astuce : Fichier > Configuration permet aussi de basculer\n"
+            "(Astuce : Configuration permet aussi de basculer\n"
             "sur une API distante avec clé API.)",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
@@ -860,13 +1430,13 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Erreur", f"Erreur lors de la génération : {str(e)}")
 
     def generate_missing_fields(self):
-        """Génère les champs manquants avec le modèle local/API.
+        """Complète les champs manquants (bouton « Compléter les champs »).
 
-        Remplit aussi la tab Statistiques : les champs vides (CA, PV, dés de
-        vie, vitesse, caractéristiques, actions) sont complétés avec des
-        valeurs équilibrées pour le CR courant, sans toucher aux champs que
-        l'utilisateur a déjà remplis. Les langues sont proposées depuis la
-        liste hardcodée DnD 5e.
+        La race est choisie depuis la liste hardcodée des races DnD 5e
+        (détection dans le texte, sinon hasard — sans IA). Le nom et la
+        description sont générés par IA si le backend est disponible.
+        Les stats sont ensuite équilibrées pour le CR courant, et les
+        langues suggérées en dernier selon la race et l'INT finales.
         """
         monster = self.get_monster_from_form()
 
@@ -874,8 +1444,6 @@ class MainWindow(QMainWindow):
         if self._check_backend():
             # (champ, texte actuel, application du corrigé)
             correctable = [
-                ("race", monster.race or "",
-                 lambda v: self.race_edit.setText(v)),
                 ("description", monster.description or "",
                  lambda v: self.description_edit.setPlainText(v)),
                 ("scenario", monster.scenario or "",
@@ -891,12 +1459,15 @@ class MainWindow(QMainWindow):
                 except Exception:
                     continue
 
+        # --- Race : remplie automatiquement depuis la liste hardcodée ---
+        if not monster.race:
+            self.race_edit.setText(self._suggest_race(monster))
+            monster.race = self.race_edit.text()
+
         # --- Champs IA : uniquement s'il en manque, et backend disponible ---
         missing_fields = []
         if not monster.name:
             missing_fields.append("name")
-        if not monster.race:
-            missing_fields.append("race")
         if not monster.description:
             missing_fields.append("description")
 
@@ -942,7 +1513,84 @@ class MainWindow(QMainWindow):
                     "Les actions issues des tables DMG sont conservées."
                 )
 
+        # --- Langues : en tout dernier, pour s'adapter à la race et aux
+        # stats choisies/générées au cours du remplissage (le fallback
+        # dépend de l'INT équilibrée) ---
+        fresh = self.get_monster_from_form()
+        if not fresh.languages:
+            self.languages_edit.set_values(self._suggest_languages(fresh))
+
         self.update_preview()
+
+    def _suggest_race(self, monster: Monster) -> str:
+        """Race DnD 5e pour le monstre : détectée dans le nom/description
+        si mentionnée, sinon tirée au hasard dans la liste hardcodée."""
+        import random
+        haystack = (f"{monster.name or ''} {monster.description or ''}").lower()
+        for race in DND5_RACES:
+            base = race.split(" (")[0].lower()
+            if base in haystack:
+                return race
+        return random.choice(DND5_RACES)
+
+    def _suggest_languages(self, monster: Monster) -> List[str]:
+        """Langues DnD 5e cohérentes avec la race et l'alignement du monstre."""
+        race = (monster.race or "").lower()
+        desc = (monster.description or "").lower()
+
+        race_languages = {
+            "drow": ["Elfique", "Commun", "Chtonien"],
+            "elfe noir": ["Elfique", "Commun", "Chtonien"],
+            "elfe": ["Commun", "Elfique"],
+            "haut-elfe": ["Commun", "Elfique"],
+            "elfe des bois": ["Commun", "Elfique"],
+            "nain": ["Commun", "Nain"],
+            "gnome": ["Commun", "Gnome"],
+            "halfelin": ["Commun"],
+            "dem-orc": ["Commun", "Orque"],
+            "orc": ["Orque"],
+            "tiefling": ["Commun", "Infernal"],
+            "drakéide": ["Commun", "Draconique"],
+            "gobelin": ["Gobelin"],
+            "hobgobelin": ["Gobelin"],
+            "bugbear": ["Gobelin"],
+            "kobold": ["Draconique"],
+            "gnoll": ["Abyssal"],
+            "homme-lézard": ["Draconique"],
+            "ogre": ["Commun", "Géant"],
+            "troll": ["Géant"],
+            "géant": ["Géant"],
+            "squelette": ["—"],
+            "zombie": ["—"],
+            "goule": ["Commun"],
+            "liche": ["Commun"],
+            "diable": ["Infernal"],
+            "démon": ["Abyssal"],
+            "ange": ["Céleste"],
+            "fée": ["Sylvestre"],
+            "dryade": ["Sylvestre", "Elfique"],
+            "satyre": ["Sylvestre", "Commun"],
+            "méduse": ["Commun"],
+            "minotaure": ["Abyssal"],
+            "hydre": ["—"],
+            "basilic": ["—"],
+            "dragon": ["Draconique", "Commun"],
+            "wyverne": ["Draconique"],
+            "griffon": ["Commun", "Auran"],
+            "sphinx": ["Commun"],
+            "aboleth": ["Aquatique", "Chtonien"],
+            "spectre": ["—"],
+        }
+
+        for key, languages in race_languages.items():
+            if key in race or key in desc:
+                return languages
+
+        intelligence = monster.ability_scores.intelligence
+        if intelligence >= 8:
+            return ["Commun"]
+        # INT animale : pas de langage, mais le champ reste explicite
+        return ["—"]
 
     def show_options_dialog(self, field_name: str, options: List[str]):
         """Affiche une boîte de dialogue pour sélectionner une option."""
@@ -1006,7 +1654,7 @@ class MainWindow(QMainWindow):
             field_layout = QHBoxLayout()
 
             label = QLabel({
-                "name": "Nom", "race": "Race", "description": "Description",
+                "name": "Nom", "description": "Description",
             }.get(field_name, field_name) + " :")
             field_layout.addWidget(label)
 
@@ -1040,7 +1688,6 @@ class MainWindow(QMainWindow):
         """Définit la valeur d'un champ dans le formulaire."""
         field_mapping = {
             "name": lambda v: self.name_edit.setText(v),
-            "race": lambda v: self.race_edit.setText(v),
             "description": lambda v: self.description_edit.setPlainText(v),
             "hit_dice": lambda v: self.hit_dice_edit.setText(v),
             "speed": lambda v: self.speed_edit.setText(v),
@@ -1166,6 +1813,71 @@ class MainWindow(QMainWindow):
             parent=self,
         )
         dialog.exec()
+
+    def export_library(self):
+        """Ouvre le dialogue d'export de la bibliothèque vers un fichier."""
+        from src.ui.monster_library import LibraryExportDialog
+        dialog = LibraryExportDialog(parent=self)
+        dialog.exec()
+
+    def import_library(self):
+        """Importe des monstres depuis un fichier d'export de bibliothèque."""
+        from src.ui.monster_library import import_library_file
+        import_library_file(self)
+
+    def save_to_library(self):
+        """Sauvegarde le monstre courant dans la bibliothèque, sans ouvrir
+        l'interface de gestion (nom de fichier éditable, confirmation en
+        cas d'écrasement)."""
+        import json
+        from pathlib import Path
+        from config.config_manager import config_manager
+
+        monster = self.get_monster_from_form()
+        if not monster.name:
+            QMessageBox.warning(
+                self, "Nom manquant",
+                "Le monstre actuel n'a pas de nom. Donnez-lui un nom avant "
+                "de le sauvegarder."
+            )
+            return
+
+        filename, ok = QInputDialog.getText(
+            self, "Sauvegarder le monstre",
+            "Nom de la sauvegarde :",
+            text=monster.name,
+        )
+        if not ok or not filename.strip():
+            return
+
+        safe = filename.strip().replace(" ", "_")
+        library_dir = Path(config_manager.get_save_path())
+        library_dir.mkdir(parents=True, exist_ok=True)
+        target = library_dir / f"{safe}.json"
+
+        if target.exists():
+            confirm = QMessageBox.question(
+                self, "Écraser la sauvegarde",
+                f"Une sauvegarde « {filename.strip()} » existe déjà.\n"
+                "Voulez-vous l'écraser ?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if confirm != QMessageBox.StandardButton.Yes:
+                return
+
+        try:
+            target.write_text(
+                json.dumps(monster.to_dict(), indent=4, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        except OSError as e:
+            QMessageBox.critical(self, "Erreur", f"Échec de la sauvegarde :\n{e}")
+            return
+
+        QMessageBox.information(
+            self, "Sauvegarde réussie",
+            f"« {monster.name} » a été sauvegardé dans la bibliothèque."
+        )
 
     def _load_monster_from_library(self, monster: Monster):
         """Charge un monstre depuis la bibliothèque."""

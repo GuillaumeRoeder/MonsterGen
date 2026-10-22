@@ -1,6 +1,6 @@
 # Configuration
 
-Accessible via **Fichier > Configuration**. Persistée dans `config/config.json` (chemin absolu, indépendant du répertoire de lancement).
+Accessible via **Configuration**. Persistée dans `config/config.json` (chemin absolu, indépendant du répertoire de lancement).
 
 ## Mode IA
 

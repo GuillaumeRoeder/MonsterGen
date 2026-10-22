@@ -34,25 +34,11 @@ def _backend_generate(prompt: str, max_tokens: int, temperature: float = 0.7) ->
 
 # Liste fixe des langues DnD 5e
 DND5_LANGUAGES = [
-    "Commun",
-    "Auran",
-    "Céleste",
-    "Draconique",
-    "Elfique",
-    "Géant",
-    "Gnome",
-    "Gobelin",
-    "Infernal",
-    "Nain",
-    "Orque",
-    "Primordial",
-    "Sylvestre",
-    "Abyssal",
-    "Aklo",
-    "Aquatique",
-    "Chtonien",
-    "Ignan",
-    "Terran",
+    'Abyssal', 'Aklo', 'Aquatique', 'Auran',
+    'Chtonien', 'Commun', 'Céleste', 'Draconique',
+    'Elfique', 'Gnome', 'Gobelin', 'Géant',
+    'Ignan', 'Infernal', 'Nain', 'Orque',
+    'Primordial', 'Sylvestre', 'Terran'
 ]
 
 def monster_stats_summary(monster: Monster) -> str:
@@ -98,7 +84,6 @@ class AIGenerator:
 
         prompts = {
             "name": "Propose 3 noms de fantaisie adaptés, un seul nom par proposition, sans guillemets ni numérotation, séparés par des points-virgules.",
-            "race": "Propose 3 races DnD 5e (ex: Gobelin, Orc, Elfe Noir, Tiefling), séparées par des points-virgules.",
             "description": (
                 "Propose 3 descriptions courtes (1 phrase chacune) pour cette créature, "
                 "séparées par des points-virgules."
@@ -122,19 +107,31 @@ class AIGenerator:
         options = [opt.strip() for opt in raw.replace('\n', ';').split(';') if opt.strip()]
         return options[:3]
 
-    def generate_actions(self, monster: Monster) -> List[Action]:
-        """Génère des actions complètes (nom + description + stats) pour le monstre."""
+    def generate_actions(self, monster: Monster,
+                          actions_prompt: Optional[str] = None) -> List[Action]:
+        """Génère des actions complètes (nom + description + stats) pour le monstre.
+
+        actions_prompt : description libre des actions souhaitées par l'utilisateur ;
+        si fournie, elle oriente fortement la génération.
+        """
         context = f"{monster_stats_summary(monster)}"
         if monster.race:
             context += f"\nRace : {monster.race}"
         if monster.description:
             context += f"\nDescription : {monster.description}"
+        if actions_prompt:
+            context += (
+                f"\nActions demandées par l'utilisateur (à générer telles quelles, "
+                f"enrichies des stats équilibrées) : {actions_prompt}"
+            )
         prompt = (
             f"Fiche de PNJ/Monstre DnD 5e. {context}\n"
             "Génère 3 actions de combat cohérentes avec ces statistiques "
             "et la description ci-dessus — les armes et aptitudes mentionnées "
             "dans la description sont OBLIGATOIRES (ex. doué à l'arc -> au "
             "moins une attaque à distance à l'arc). "
+            "Si des actions sont demandées par l'utilisateur, génère exactement "
+            "celles-là, une action par demande. "
             "(bonus d'attaque et dégâts équilibrés pour ce CR).\n"
             "OBLIGATOIRE : la description de chaque action doit contenir les "
             "chiffres du jeu — pour une attaque, écris par exemple : 'Attaque "
@@ -247,7 +244,6 @@ class AIGenerator:
         """
         labels = {
             "name": "Nom du monstre",
-            "race": "Race",
             "description": "Description",
             "scenario": "Scénario de rencontre",
         }
