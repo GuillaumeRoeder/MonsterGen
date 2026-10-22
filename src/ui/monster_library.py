@@ -225,7 +225,7 @@ class MonsterLibraryDialog(QDialog):
 
 
 class LibraryExportDialog(QDialog):
-    """Sélection des monstres à exporter : un fichier par monstre."""
+    """Sélection des monstres à exporter vers un fichier de bibliothèque."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -238,7 +238,7 @@ class LibraryExportDialog(QDialog):
         layout.setSpacing(10)
 
         intro = QLabel("Cochez les monstres à exporter, puis choisissez "
-                       "le dossier de destination (un fichier par monstre) :")
+                       "l'emplacement du fichier :")
         intro.setStyleSheet("color: #dce4ee;")
         layout.addWidget(intro)
 
@@ -271,8 +271,7 @@ class LibraryExportDialog(QDialog):
         layout.addLayout(buttons)
 
     def _export(self):
-        """Écrit un fichier par monstre coché dans le dossier choisi,
-        chaque fichier portant le nom du monstre."""
+        """Écrit les monstres cochés dans un fichier unique choisi."""
         files = [f for check, f in self._checks if check.isChecked()]
         if not files:
             QMessageBox.information(
@@ -280,29 +279,34 @@ class LibraryExportDialog(QDialog):
             )
             return
 
-        target_dir = QFileDialog.getExistingDirectory(
-            self, "Choisir le dossier d'export"
+        default = "bibliotheque_monstres.json"
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Exporter la bibliothèque", default,
+            "Fichier de bibliothèque (*.json)"
         )
-        if not target_dir:
+        if not path:
             return
 
-        exported = 0
+        monsters = []
         errors = []
         for file in files:
             try:
                 data = json.loads(file.read_text(encoding="utf-8"))
-                name = (data.get("name") or file.stem).strip()
-                safe = name.replace(" ", "_")
-                target = Path(target_dir) / f"{safe}.json"
-                target.write_text(
-                    json.dumps(data, indent=4, ensure_ascii=False),
-                    encoding="utf-8",
-                )
-                exported += 1
+                monsters.append(data)
             except (json.JSONDecodeError, OSError) as e:
                 errors.append(f"{file.stem} : {e}")
 
-        msg = f"{exported} monstre(s) exporté(s) vers :\n{target_dir}"
+        try:
+            payload = {"monsters": monsters}
+            Path(path).write_text(
+                json.dumps(payload, indent=4, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        except OSError as e:
+            QMessageBox.critical(self, "Erreur", f"Échec de l'export :\n{e}")
+            return
+
+        msg = f"{len(monsters)} monstre(s) exporté(s) vers :\n{path}"
         if errors:
             msg += "\n\nFichiers ignorés :\n" + "\n".join(errors)
         QMessageBox.information(self, "Export réussi", msg)
