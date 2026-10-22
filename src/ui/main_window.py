@@ -576,7 +576,7 @@ class MainWindow(QMainWindow):
         return scroll
 
     def create_actions_tab(self) -> QWidget:
-        """Crée l'onglet des actions et équipements."""
+        """Crée l'onglet des actions."""
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -762,8 +762,8 @@ class MainWindow(QMainWindow):
         self.equipment_layout.addStretch()
 
         self.equipment_empty_label = QLabel(
-            "Aucun objet — cliquez sur \"Nouvel objet\" ou (Re)générez-les "
-            "depuis la description."
+            "Aucun objet — cliquez sur \"Nouvel objet\" pour ajouter du "
+            "matériel à l'inventaire."
         )
         self.equipment_empty_label.setStyleSheet(
             "color: #7a8aa0; font-style: italic; "
@@ -1430,14 +1430,13 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Erreur", f"Erreur lors de la génération : {str(e)}")
 
     def generate_missing_fields(self):
-        """Génère les champs manquants avec le modèle local/API.
+        """Complète les champs manquants (bouton « Compléter les champs »).
 
-        Remplit aussi la tab Statistiques : les champs vides (CA, PV, dés de
-        vie, vitesse, caractéristiques, actions) sont complétés avec des
-        valeurs équilibrées pour le CR courant, sans toucher aux champs que
-        l'utilisateur a déjà remplis. Les langues sont proposées depuis la
-        liste hardcodée DnD 5e, la race depuis la liste hardcodée des races
-        DnD 5e (sans passer par l'IA).
+        La race est choisie depuis la liste hardcodée des races DnD 5e
+        (détection dans le texte, sinon hasard — sans IA). Le nom et la
+        description sont générés par IA si le backend est disponible.
+        Les stats sont ensuite équilibrées pour le CR courant, et les
+        langues suggérées en dernier selon la race et l'INT finales.
         """
         monster = self.get_monster_from_form()
 
