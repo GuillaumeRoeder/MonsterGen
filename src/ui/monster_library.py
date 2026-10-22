@@ -225,12 +225,12 @@ class MonsterLibraryDialog(QDialog):
 
 
 class LibraryExportDialog(QDialog):
-    """Sélection des monstres à exporter vers un fichier de bibliothèque."""
+    """Sélection des monstres à exporter : un fichier par monstre."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Exporter la bibliothèque")
-        self.setMinimumSize(420, 380)
+        self.setMinimumSize(380, 340)
         self.setStyleSheet(LIBRARY_STYLE)
 
         layout = QVBoxLayout(self)
@@ -238,12 +238,11 @@ class LibraryExportDialog(QDialog):
         layout.setSpacing(10)
 
         intro = QLabel("Cochez les monstres à exporter, puis choisissez "
-                       "l'emplacement du fichier :")
+                       "le dossier de destination (un fichier par monstre) :")
         intro.setStyleSheet("color: #dce4ee;")
         layout.addWidget(intro)
 
         self._checks = []
-        scroll_list = QListWidget()
         library_dir = Path(config_manager.get_save_path())
         library_dir.mkdir(parents=True, exist_ok=True)
         for file in sorted(library_dir.glob("*.json")):
@@ -256,12 +255,10 @@ class LibraryExportDialog(QDialog):
             except (json.JSONDecodeError, OSError):
                 label = f"{file.stem} — (fichier illisible)"
             check = QCheckBox(label)
-            check.setChecked(True)
             self._checks.append((check, file))
-            scroll_list.addItem(label)
-        layout.addWidget(scroll_list, stretch=1)
-        for check, _ in self._checks:
             layout.addWidget(check)
+
+        layout.addStretch()
 
         buttons = QHBoxLayout()
         buttons.addStretch()
@@ -274,7 +271,8 @@ class LibraryExportDialog(QDialog):
         layout.addLayout(buttons)
 
     def _export(self):
-        """Écrit les monstres cochés dans un fichier unique choisi."""
+        """Écrit un fichier par monstre coché dans le dossier choisi,
+        chaque fichier portant le nom du monstre."""
         files = [f for check, f in self._checks if check.isChecked()]
         if not files:
             QMessageBox.information(
@@ -282,34 +280,29 @@ class LibraryExportDialog(QDialog):
             )
             return
 
-        default = "bibliotheque_monstres.json"
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Exporter la bibliothèque", default,
-            "Fichier de bibliothèque (*.json)"
+        target_dir = QFileDialog.getExistingDirectory(
+            self, "Choisir le dossier d'export"
         )
-        if not path:
+        if not target_dir:
             return
 
-        monsters = []
+        exported = 0
         errors = []
         for file in files:
             try:
                 data = json.loads(file.read_text(encoding="utf-8"))
-                monsters.append(data)
+                name = (data.get("name") or file.stem).strip()
+                safe = name.replace(" ", "_")
+                target = Path(target_dir) / f"{safe}.json"
+                target.write_text(
+                    json.dumps(data, indent=4, ensure_ascii=False),
+                    encoding="utf-8",
+                )
+                exported += 1
             except (json.JSONDecodeError, OSError) as e:
                 errors.append(f"{file.stem} : {e}")
 
-        try:
-            payload = {"monsters": monsters}
-            Path(path).write_text(
-                json.dumps(payload, indent=4, ensure_ascii=False),
-                encoding="utf-8",
-            )
-        except OSError as e:
-            QMessageBox.critical(self, "Erreur", f"Échec de l'export :\n{e}")
-            return
-
-        msg = f"{len(monsters)} monstre(s) exporté(s) vers :\n{path}"
+        msg = f"{exported} monstre(s) exporté(s) vers :\n{target_dir}"
         if errors:
             msg += "\n\nFichiers ignorés :\n" + "\n".join(errors)
         QMessageBox.information(self, "Export réussi", msg)
@@ -333,16 +326,20 @@ def import_library_file(parent) -> int:
         QMessageBox.critical(parent, "Erreur", f"Fichier illisible :\n{e}")
         return 0
 
-    # Formats acceptés : {"monsters": [...]} ou liste de monstres
+    # Formats acceptés : monstre seul (fichier individuel),
+    # {"monsters": [...]} ou liste de monstres
     if isinstance(payload, dict) and "monsters" in payload:
         entries = payload["monsters"]
     elif isinstance(payload, list):
         entries = payload
+    elif isinstance(payload, dict) and payload.get("name"):
+        entries = [payload]
     else:
         QMessageBox.critical(
             parent, "Erreur",
-            "Format non reconnu : le fichier doit contenir une liste de "
-            "monstres (export de bibliothèque MonsterGen)."
+            "Format non reconnu : le fichier doit être un monstre "
+            "exporté (fichier individuel ou export de bibliothèque "
+            "MonsterGen)."
         )
         return 0
 
