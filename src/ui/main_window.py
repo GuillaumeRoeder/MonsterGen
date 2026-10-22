@@ -208,9 +208,6 @@ class MainWindow(QMainWindow):
         basic_tab = self.create_basic_tab()
         tab_widget.addTab(basic_tab, "Description")
 
-        equipment_tab = self.create_equipment_tab()
-        tab_widget.addTab(equipment_tab, "Équipement")
-
         stats_tab = self.create_stats_tab()
         tab_widget.addTab(stats_tab, "Statistiques")
 
@@ -375,6 +372,7 @@ class MainWindow(QMainWindow):
 
         self._apply_scenario_toggle_state()
 
+        layout.addRow(self.create_equipment_tab())
         layout.addRow(scenario_widget)
 
         return tab
@@ -690,27 +688,36 @@ class MainWindow(QMainWindow):
         return tab
 
     def create_equipment_tab(self) -> QWidget:
-        """Crée l'onglet Équipement : cartes d'objets (nom + effets),
-        interface similaire à celle des actions."""
+        """Crée la section Équipement repliable : cartes d'objets
+        (nom + effets), interface similaire à celle des actions."""
         tab = QWidget()
+        tab.setStyleSheet("background: transparent; border: none;")
         layout = QVBoxLayout(tab)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        equipment_frame = QFrame()
-        equipment_frame.setFrameShape(QFrame.Shape.StyledPanel)
-        equipment_frame.setStyleSheet("""
-            QFrame {
+        # Barre de titre repliable (comme la section Scénario)
+        self._equipment_expanded = False
+        self.equipment_toggle_header = _CollapsibleHeader(
+            "Équipement / Inventaire (optionnel)"
+        )
+        self.equipment_toggle_header.setToolTip(
+            "Cliquer pour déplier ou replier la section équipement"
+        )
+        self.equipment_toggle_header.clicked.connect(self._toggle_equipment)
+        layout.addWidget(self.equipment_toggle_header)
+
+        self.equipment_content = QWidget()
+        self.equipment_content.setStyleSheet("""
+            QWidget {
                 background-color: #161f2a;
                 border: 1px solid #3e5a8a;
-                border-radius: 6px;
-            }
-            QLabel {
-                background: transparent;
-                border: none;
+                border-top: none;
+                border-bottom-left-radius: 6px;
+                border-bottom-right-radius: 6px;
             }
         """)
-        equipment_vlayout = QVBoxLayout(equipment_frame)
+        equipment_vlayout = QVBoxLayout(self.equipment_content)
         equipment_vlayout.setContentsMargins(8, 8, 8, 8)
         equipment_vlayout.setSpacing(8)
 
@@ -784,9 +791,20 @@ class MainWindow(QMainWindow):
         equipment_control_layout.addStretch()
         equipment_vlayout.addLayout(equipment_control_layout)
 
-        layout.addWidget(equipment_frame, stretch=1)
+        layout.addWidget(self.equipment_content)
+        self._apply_equipment_toggle_state()
 
         return tab
+
+    def _toggle_equipment(self):
+        """Affiche ou masque la section équipement."""
+        self._equipment_expanded = not self._equipment_expanded
+        self._apply_equipment_toggle_state()
+
+    def _apply_equipment_toggle_state(self):
+        """Applique l'état replié/déplié de la section équipement."""
+        self.equipment_content.setVisible(self._equipment_expanded)
+        self.equipment_toggle_header.set_expanded(self._equipment_expanded)
 
     def add_equipment_item(self):
         """Ajoute une carte d'objet vide à l'inventaire."""
@@ -933,6 +951,12 @@ class MainWindow(QMainWindow):
         self.generate_btn.clicked.connect(self.generate_missing_fields)
 
         self.add_action_btn.clicked.connect(self.add_action)
+
+        # Les pills (langues, compétences, résistances, immunités) mettent
+        # à jour l'aperçu dès qu'une valeur est ajoutée ou retirée.
+        for pill_editor in (self.languages_edit, self.skills_edit,
+                            self.resistances_edit, self.immunities_edit):
+            pill_editor.valuesChanged.connect(self._schedule_preview)
 
         self.signal_emitter.show_options.connect(self.show_options_dialog)
         self.signal_emitter.generation_complete.connect(self.on_generation_complete)
