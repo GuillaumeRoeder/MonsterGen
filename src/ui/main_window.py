@@ -393,7 +393,7 @@ class MainWindow(QMainWindow):
         for race in DND5_RACES:
             action = menu.addAction(race)
             action.triggered.connect(
-                lambda checked, r=race: self.race_edit.setText(r)
+                lambda *args, r=race: self.race_edit.setText(r)
             )
         btn_pos = self.race_menu_btn.mapToGlobal(self.race_menu_btn.rect().bottomLeft())
         menu.exec(btn_pos)
