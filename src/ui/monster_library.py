@@ -310,7 +310,6 @@ class LibraryExportDialog(QDialog):
         if errors:
             msg += "\n\nFichiers ignorés :\n" + "\n".join(errors)
         QMessageBox.information(self, "Export réussi", msg)
-        self.accept()
 
 
 def import_library_file(parent) -> int:
