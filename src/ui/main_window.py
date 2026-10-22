@@ -1815,6 +1815,17 @@ class MainWindow(QMainWindow):
         )
         dialog.exec()
 
+    def export_library(self):
+        """Ouvre le dialogue d'export de la bibliothèque vers un fichier."""
+        from src.ui.monster_library import LibraryExportDialog
+        dialog = LibraryExportDialog(parent=self)
+        dialog.exec()
+
+    def import_library(self):
+        """Importe des monstres depuis un fichier d'export de bibliothèque."""
+        from src.ui.monster_library import import_library_file
+        import_library_file(self)
+
     def save_to_library(self):
         """Sauvegarde le monstre courant dans la bibliothèque, sans ouvrir
         l'interface de gestion (nom de fichier éditable, confirmation en
