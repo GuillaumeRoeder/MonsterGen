@@ -1500,13 +1500,15 @@ class MainWindow(QMainWindow):
         self.update_preview()
 
     def _suggest_race(self, monster: Monster) -> str:
-        """Devine une race DnD 5e depuis le nom et la description (liste hardcodée)."""
+        """Race DnD 5e pour le monstre : détectée dans le nom/description
+        si mentionnée, sinon tirée au hasard dans la liste hardcodée."""
+        import random
         haystack = (f"{monster.name or ''} {monster.description or ''}").lower()
         for race in DND5_RACES:
             base = race.split(" (")[0].lower()
             if base in haystack:
                 return race
-        return "Humain"
+        return random.choice(DND5_RACES)
 
     def _suggest_languages(self, monster: Monster) -> List[str]:
         """Langues DnD 5e cohérentes avec la race et l'alignement du monstre."""
