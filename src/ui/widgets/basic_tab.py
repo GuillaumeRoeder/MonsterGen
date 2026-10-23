@@ -1,6 +1,5 @@
 """Onglet « Description » : identité, langues, scénario, équipement."""
 
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QLineEdit, QMenu, QPushButton,

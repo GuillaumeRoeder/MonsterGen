@@ -2,7 +2,7 @@
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QLabel, QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
+    QLabel, QPushButton, QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
 )
 
 from src.models.monster import Action
@@ -110,10 +110,8 @@ class CardListWidget(QWidget):
         self.empty_label.setVisible(not self.get_cards())
 
 
-def card_add_button(label: str, tooltip: str) -> "QPushButton":
+def card_add_button(label: str, tooltip: str) -> QPushButton:
     """Bouton d'ajout de carte, stylé comme dans les onglets existants."""
-    from PySide6.QtWidgets import QPushButton
-
     btn = QPushButton(label)
     btn.setToolTip(tooltip)
     btn.setStyleSheet(

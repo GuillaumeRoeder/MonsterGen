@@ -2,7 +2,7 @@
 
 import re
 
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QTextEdit, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from src.models.monster import Action
 from src.ui.widgets.card_list import CardListWidget, card_add_button
@@ -58,13 +58,6 @@ class EquipmentWidget(QWidget):
         )
         equipment_vlayout.addWidget(equipment_title)
 
-        # Stockage texte de l'inventaire (champ caché, synchronisé avec
-        # les cartes d'objets)
-        self.equipment_edit = QTextEdit()
-        self.equipment_edit.setAcceptRichText(False)
-        self.equipment_edit.setVisible(False)
-        equipment_vlayout.addWidget(self.equipment_edit)
-
         self.cards = CardListWidget(
             empty_text=(
                 "Aucun objet — cliquez sur \"Nouvel objet\" pour ajouter du "
@@ -119,7 +112,6 @@ class EquipmentWidget(QWidget):
         retours à la ligne — les séparateurs internes aux parenthèses
         sont préservés)."""
         self.clear_items()
-        self.equipment_edit.setPlainText(notes or "")
 
         items = []
         depth = 0
@@ -142,10 +134,7 @@ class EquipmentWidget(QWidget):
             if not chunk:
                 continue
             match = re.match(r"(.+?)\s*\((.*)\)\s*$", chunk, flags=re.S)
-            if match:
-                name, effects = match.group(1).strip(), match.group(2).strip()
-            else:
-                name, effects = chunk, ""
+            effects = match.group(2).strip() if match else ""
             cards = self.cards.get_cards()
             if cards:
                 cards[-1].description_edit.setPlainText(effects)

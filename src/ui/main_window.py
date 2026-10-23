@@ -15,13 +15,15 @@ from PySide6.QtWidgets import (
     QComboBox, QDialog, QFileDialog, QHBoxLayout, QInputDialog, QLabel,
     QMainWindow, QMessageBox, QPushButton, QTabWidget, QVBoxLayout, QWidget,
 )
-from PySide6.QtCore import QObject, Qt, QTimer, Signal
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QIcon
 
 from config.config_manager import config_manager
 from src.ai.ai_generator import ai_generator
 from src.ai.api_client import api_client
 from src.ai.local_model import local_model, ModelNotAvailableError
 from src.core.monster_manager import MonsterManager
+from src.library.library_manager import library_manager
 from src.models.monster import AbilityScores, Action, Monster, Skill
 from src.rules.encounter import encounter_cr
 from src.rules.stat_builder import build_balanced_monster
@@ -37,13 +39,6 @@ from src.ui.widgets.preview_panel import PreviewPanel
 from src.ui.widgets.stats_tab import StatsTab
 
 
-class SignalEmitter(QObject):
-    """Émetteur de signaux pour la communication entre threads."""
-    update_status = Signal(str)
-    show_options = Signal(str, list)
-    generation_complete = Signal(object)
-
-
 class MainWindow(QMainWindow):
     """Fenêtre principale : assemble les onglets et orchestre la génération."""
 
@@ -53,7 +48,6 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 900, 700)
 
         self.monster_manager = MonsterManager(self)
-        self.signal_emitter = SignalEmitter()
         self._preview_timer = QTimer(self)
         self._preview_timer.setSingleShot(True)
         self._preview_timer.setInterval(250)
@@ -113,7 +107,6 @@ class MainWindow(QMainWindow):
         control_layout = QHBoxLayout()
 
         self.generate_btn = QPushButton("Compléter les champs")
-        from PySide6.QtGui import QIcon
         self.generate_btn.setIcon(QIcon.fromTheme("system-run"))
         self.generate_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         control_layout.addWidget(self.generate_btn)
@@ -163,9 +156,6 @@ class MainWindow(QMainWindow):
 
         self.preview_panel.refresh_requested.connect(self.update_preview)
 
-        self.signal_emitter.show_options.connect(self.show_options_dialog)
-        self.signal_emitter.generation_complete.connect(self.on_generation_complete)
-
     # ------------------------------------------------------------------
     # Statut du backend IA
     # ------------------------------------------------------------------
@@ -212,10 +202,6 @@ class MainWindow(QMainWindow):
         """Met à jour l'aperçu avec les données actuelles du formulaire."""
         monster = self.get_monster_from_form()
         self.preview_panel.update_preview(monster)
-
-    def refresh_preview(self):
-        """Rafraîchit l'aperçu de la fiche."""
-        self.update_preview()
 
     # ------------------------------------------------------------------
     # Conversion formulaire <-> monstre
@@ -867,8 +853,6 @@ class MainWindow(QMainWindow):
         """Sauvegarde le monstre courant dans la bibliothèque, sans ouvrir
         l'interface de gestion (nom de fichier éditable, confirmation en
         cas d'écrasement)."""
-        from src.library.library_manager import library_manager
-
         monster = self.get_monster_from_form()
         if not monster.name:
             QMessageBox.warning(
