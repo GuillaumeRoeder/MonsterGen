@@ -147,7 +147,12 @@ class Monster:
     treasure: Optional[str] = None
     notes: str = ""
     scenario: str = ""
-    
+
+    # Groupe cible (utilisé pour équilibrer le CR)
+    party_size: Optional[int] = None
+    party_level: Optional[int] = None
+    difficulty: Optional[str] = None
+
     def to_dict(self) -> Dict:
         """Convertit le monstre en dictionnaire."""
         return {
@@ -201,6 +206,9 @@ class Monster:
             "treasure": self.treasure,
             "notes": self.notes,
             "scenario": self.scenario,
+            "party_size": self.party_size,
+            "party_level": self.party_level,
+            "difficulty": self.difficulty,
         }
     
     @classmethod
@@ -297,4 +305,7 @@ class Monster:
             treasure=data.get("treasure"),
             notes=data.get("notes", ""),
             scenario=data.get("scenario", ""),
+            party_size=data.get("party_size"),
+            party_level=data.get("party_level"),
+            difficulty=data.get("difficulty"),
         )

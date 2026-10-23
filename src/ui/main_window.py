@@ -1087,10 +1087,6 @@ class MainWindow(QMainWindow):
             self.difficulty_combo.currentData() or "medium",
         )
 
-    def _ensure_difficulty(self) -> Optional[float]:
-        """Le CR est toujours dérivé du groupe ; aucun dialogue nécessaire."""
-        return self._get_selected_cr()
-
     def _update_difficulty_label(self):
         """Met à jour le label coloré de la difficulté résultante."""
         difficulty_key = self.difficulty_combo.currentData() or "medium"
@@ -1108,7 +1104,7 @@ class MainWindow(QMainWindow):
 
     def _fill_balanced_stats(self):
         """Remplit directement un monstre équilibré pour le CR choisi."""
-        cr = self._ensure_difficulty()
+        cr = self._get_selected_cr()
         if cr is None:
             return
 
@@ -1136,6 +1132,9 @@ class MainWindow(QMainWindow):
 
         selected_cr = self._get_selected_cr()
         monster.challenge_rating = selected_cr
+        monster.party_size = self.party_size_spin.value()
+        monster.party_level = self.party_level_spin.value()
+        monster.difficulty = self.difficulty_combo.currentData() or "medium"
         prof_value = self.proficiency_spin.value()
         monster.proficiency_bonus = prof_value if prof_value > 0 else None
 
@@ -1204,6 +1203,16 @@ class MainWindow(QMainWindow):
             self.add_action_to_list(action)
 
         self.set_equipment_to_form(monster.notes or "")
+
+        if monster.party_size is not None:
+            self.party_size_spin.setValue(monster.party_size)
+        if monster.party_level is not None:
+            self.party_level_spin.setValue(monster.party_level)
+        if monster.difficulty:
+            index = self.difficulty_combo.findData(monster.difficulty)
+            if index >= 0:
+                self.difficulty_combo.setCurrentIndex(index)
+        self._update_difficulty_label()
 
         if not keep_scenario:
             self.scenario_edit.setPlainText(monster.scenario or "")
