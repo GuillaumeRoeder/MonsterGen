@@ -1,15 +1,11 @@
-"""
-Bibliothèque de monstres : mini gestionnaire de sauvegardes.
+"""Fenêtre de dialogue unique de la bibliothèque de monstres.
 
-Liste les monstres enregistrés dans le dossier de sauvegarde (éditable
-dans la configuration) et permet de sauvegarder le monstre courant (nom
-de fichier éditable), de charger ou de supprimer une sauvegarde.
+Toute la logique de persistance vit dans
+src/library/library_manager.py ; ce module ne contient que les
+dialogues Qt (sauvegarder/charger/supprimer, exporter, importer).
 """
 
-import json
-from datetime import datetime
 from pathlib import Path
-from typing import Callable, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -17,14 +13,13 @@ from PySide6.QtWidgets import (
     QListWidget, QListWidgetItem, QMessageBox, QPushButton, QVBoxLayout
 )
 
-from config.config_manager import config_manager
-from src.models.monster import Monster
+from src.library.library_manager import library_manager
 
 LIBRARY_STYLE = """
     QListWidget {
         background-color: #4a4a4a;
         color: #e0e0e0;
-        border: 1px solid #5a5a5a;
+        border: 1px solid #5a5a6a;
         border-radius: 4px;
         padding: 4px;
     }
@@ -42,8 +37,7 @@ LIBRARY_STYLE = """
 class MonsterLibraryDialog(QDialog):
     """Popup de gestion de la bibliothèque de monstres sauvegardés."""
 
-    def __init__(self, get_current_monster: Callable[[], Monster],
-                 load_monster_callback: Callable[[Monster], None], parent=None):
+    def __init__(self, get_current_monster, load_monster_callback, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Bibliothèque de monstres")
         self.setMinimumSize(520, 420)
@@ -69,20 +63,19 @@ class MonsterLibraryDialog(QDialog):
         buttons = QHBoxLayout()
         buttons.setSpacing(8)
 
-        save_btn = QPushButton("💾 Sauvegarder le monstre actuel")
+        save_btn = QPushButton("\U0001F4BE Sauvegarder le monstre actuel")
         save_btn.clicked.connect(self._save_current)
         buttons.addWidget(save_btn)
 
-        load_btn = QPushButton("📂 Charger")
+        load_btn = QPushButton("\U0001F4C2 Charger")
         load_btn.clicked.connect(self._load_selected)
         buttons.addWidget(load_btn)
 
         import_btn = QPushButton("\U0001F4E5 Importer")
-        import_btn.setToolTip("Importe des monstres depuis un fichier d'export de bibliothèque")
         import_btn.clicked.connect(self._import_from_file)
         buttons.addWidget(import_btn)
 
-        delete_btn = QPushButton("🗑 Supprimer")
+        delete_btn = QPushButton("\U0001F5D1 Supprimer")
         delete_btn.setStyleSheet("color: #ff8888;")
         delete_btn.clicked.connect(self._delete_selected)
         buttons.addWidget(delete_btn)
@@ -95,32 +88,17 @@ class MonsterLibraryDialog(QDialog):
 
         self._refresh()
 
-    def _library_dir(self) -> Path:
-        """Dossier de sauvegarde (config), créé s'il n'existe pas."""
-        path = Path(config_manager.get_save_path())
-        path.mkdir(parents=True, exist_ok=True)
-        return path
-
     def _refresh(self):
         """Recharge la liste des monstres sauvegardés."""
-        self._path_label.setText(f"Dossier : {self._library_dir()}")
+        self._path_label.setText(f"Dossier : {library_manager.library_dir}")
         self._list.clear()
-        for file in sorted(self._library_dir().glob("*.json")):
-            try:
-                data = json.loads(file.read_text(encoding="utf-8"))
-                name = data.get("name") or file.stem
-                cr = data.get("challenge_rating")
-                modified = datetime.fromtimestamp(file.stat().st_mtime)
-                date_str = modified.strftime("%d/%m/%Y %H:%M")
-                cr_str = f"CR {cr}" if cr is not None else "sans CR"
-                label = f"{name} — {cr_str} — {date_str}"
-            except (json.JSONDecodeError, OSError):
-                label = f"{file.stem} — (fichier illisible)"
+        for entry in library_manager.list_entries():
+            label = entry.label if entry.readable else f"{entry.file.stem} — (fichier illisible)"
             item = QListWidgetItem(label)
-            item.setData(Qt.ItemDataRole.UserRole, str(file))
+            item.setData(Qt.ItemDataRole.UserRole, str(entry.file))
             self._list.addItem(item)
 
-    def _selected_file(self) -> Optional[Path]:
+    def _selected_file(self):
         item = self._list.currentItem()
         if not item:
             return None
@@ -137,18 +115,15 @@ class MonsterLibraryDialog(QDialog):
             )
             return
 
-        default_name = monster.name
         filename, ok = QInputDialog.getText(
             self, "Sauvegarder le monstre",
             "Nom de la sauvegarde :",
-            text=default_name,
+            text=monster.name,
         )
         if not ok or not filename.strip():
             return
 
-        safe = filename.strip().replace(" ", "_")
-        target = self._library_dir() / f"{safe}.json"
-
+        target = library_manager.target_path(filename)
         if target.exists():
             confirm = QMessageBox.question(
                 self, "Écraser la sauvegarde",
@@ -160,10 +135,7 @@ class MonsterLibraryDialog(QDialog):
                 return
 
         try:
-            target.write_text(
-                json.dumps(monster.to_dict(), indent=4, ensure_ascii=False),
-                encoding="utf-8",
-            )
+            library_manager.save(monster, filename)
         except OSError as e:
             QMessageBox.critical(self, "Erreur", f"Échec de la sauvegarde :\n{e}")
             return
@@ -177,9 +149,8 @@ class MonsterLibraryDialog(QDialog):
             QMessageBox.information(self, "Charger", "Sélectionnez un monstre dans la liste.")
             return
         try:
-            data = json.loads(file.read_text(encoding="utf-8"))
-            monster = Monster.from_dict(data)
-        except (json.JSONDecodeError, OSError, KeyError) as e:
+            monster = library_manager.load(file)
+        except (ValueError, KeyError, OSError) as e:
             QMessageBox.critical(self, "Erreur", f"Fichier illisible :\n{e}")
             return
 
@@ -211,7 +182,7 @@ class MonsterLibraryDialog(QDialog):
             return
 
         try:
-            file.unlink()
+            library_manager.delete(file)
         except OSError as e:
             QMessageBox.critical(self, "Erreur", f"Échec de la suppression :\n{e}")
             return
@@ -243,19 +214,11 @@ class LibraryExportDialog(QDialog):
         layout.addWidget(intro)
 
         self._checks = []
-        library_dir = Path(config_manager.get_save_path())
-        library_dir.mkdir(parents=True, exist_ok=True)
-        for file in sorted(library_dir.glob("*.json")):
-            try:
-                data = json.loads(file.read_text(encoding="utf-8"))
-                name = data.get("name") or file.stem
-                cr = data.get("challenge_rating")
-                cr_str = f"CR {cr}" if cr is not None else "sans CR"
-                label = f"{name} — {cr_str}"
-            except (json.JSONDecodeError, OSError):
-                label = f"{file.stem} — (fichier illisible)"
+        for entry in library_manager.list_entries():
+            label = entry.label if entry.readable else f"{entry.file.stem} — (fichier illisible)"
+            label = label.rsplit(" — ", 1)[0]
             check = QCheckBox(label)
-            self._checks.append((check, file))
+            self._checks.append((check, entry.file))
             layout.addWidget(check)
 
         layout.addStretch()
@@ -287,22 +250,17 @@ class LibraryExportDialog(QDialog):
         if not path:
             return
 
-        monsters = []
         errors = []
+        monsters = []
         for file in files:
             try:
-                data = json.loads(file.read_text(encoding="utf-8"))
-                monsters.append(data)
-            except (json.JSONDecodeError, OSError) as e:
+                monsters.append(library_manager.read_raw(file))
+            except (ValueError, OSError) as e:
                 errors.append(f"{file.stem} : {e}")
 
         try:
-            payload = {"monsters": monsters}
-            Path(path).write_text(
-                json.dumps(payload, indent=4, ensure_ascii=False),
-                encoding="utf-8",
-            )
-        except OSError as e:
+            library_manager.export_entries(files, Path(path))
+        except (ValueError, OSError) as e:
             QMessageBox.critical(self, "Erreur", f"Échec de l'export :\n{e}")
             return
 
@@ -315,7 +273,8 @@ class LibraryExportDialog(QDialog):
 def import_library_file(parent) -> int:
     """Importe les monstres d'un fichier d'export dans la bibliothèque.
 
-    Retourne le nombre de monstres importés."""
+    Retourne le nombre de monstres importés.
+    """
     path, _ = QFileDialog.getOpenFileName(
         parent, "Importer une bibliothèque", "",
         "Fichier de bibliothèque (*.json);;Tous les fichiers (*)"
@@ -324,51 +283,14 @@ def import_library_file(parent) -> int:
         return 0
 
     try:
-        payload = json.loads(Path(path).read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError) as e:
+        result = library_manager.import_file(Path(path))
+    except (ValueError, OSError) as e:
         QMessageBox.critical(parent, "Erreur", f"Fichier illisible :\n{e}")
         return 0
 
-    # Formats acceptés : monstre seul (fichier individuel),
-    # {"monsters": [...]} ou liste de monstres
-    if isinstance(payload, dict) and "monsters" in payload:
-        entries = payload["monsters"]
-    elif isinstance(payload, list):
-        entries = payload
-    elif isinstance(payload, dict) and payload.get("name"):
-        entries = [payload]
-    else:
-        QMessageBox.critical(
-            parent, "Erreur",
-            "Format non reconnu : le fichier doit être un monstre "
-            "exporté (fichier individuel ou export de bibliothèque "
-            "MonsterGen)."
-        )
-        return 0
-
-    library_dir = Path(config_manager.get_save_path())
-    library_dir.mkdir(parents=True, exist_ok=True)
-
-    imported = 0
-    overwritten = 0
-    for data in entries:
-        name = (data.get("name") or "Monstre").strip()
-        safe = name.replace(" ", "_")
-        target = library_dir / f"{safe}.json"
-        if target.exists():
-            overwritten += 1
-        try:
-            target.write_text(
-                json.dumps(data, indent=4, ensure_ascii=False),
-                encoding="utf-8",
-            )
-            imported += 1
-        except OSError:
-            pass
-
-    msg = f"{imported} monstre(s) importé(s) dans la bibliothèque."
-    if overwritten:
-        msg += f"\n({overwritten} sauvegarde(s) existante(s) écrasée(s) "
+    msg = f"{result.imported} monstre(s) importé(s) dans la bibliothèque."
+    if result.overwritten:
+        msg += f"\n({result.overwritten} sauvegarde(s) existante(s) écrasée(s) "
         msg += "— portant le même nom.)"
     QMessageBox.information(parent, "Import réussi", msg)
-    return imported
+    return result.imported
