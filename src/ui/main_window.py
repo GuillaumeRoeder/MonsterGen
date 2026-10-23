@@ -820,12 +820,54 @@ class MainWindow(QMainWindow):
             )
 
     def export_to_pdf(self):
-        """Exporte le monstre en PDF."""
+        """Exporte le monstre courant en PDF."""
         self._export_monster("pdf", "Exporter en PDF", "Fichiers PDF (*.pdf)")
 
     def export_to_png(self):
-        """Exporte la fiche en PNG au style officiel DnD 5e."""
+        """Exporte la fiche courante en PNG au style officiel DnD 5e."""
         self._export_monster("png", "Exporter en PNG", "Images PNG (*.png)")
+
+    def _export_saved_monster(self, monster: Monster, format_key: str):
+        """Exporte un monstre déjà construit (bibliothèque) en PDF/PNG.
+
+        Contrairement à export_to_pdf/png, ne lit pas le formulaire :
+        le monstre vient d'une sauvegarde, l'éditeur n'est pas touché.
+        """
+        if not monster.name:
+            QMessageBox.warning(
+                self, "Nom manquant",
+                "La sauvegarde n'a pas de nom : export impossible."
+            )
+            return
+
+        save_path = config_manager.get_save_path()
+        default_filename = f"{monster.name.replace(' ', '_')}_fiche_DnD.{format_key}"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            f"Exporter en {format_key.upper()}",
+            f"{save_path}/{default_filename}",
+            f"Fichiers {format_key.upper()} (*.{format_key})"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            if format_key == "pdf":
+                self.monster_manager.export_to_pdf(monster, file_path)
+            else:
+                self.monster_manager.export_to_png(monster, file_path)
+            QMessageBox.information(
+                self,
+                "Export réussi",
+                f"La fiche a été exportée avec succès vers :\n{file_path}"
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Erreur d'export",
+                f"Erreur lors de l'export {format_key.upper()} : {str(e)}"
+            )
 
     # ------------------------------------------------------------------
     # Bibliothèque (déléguée au LibraryManager)
@@ -836,6 +878,10 @@ class MainWindow(QMainWindow):
         dialog = MonsterLibraryDialog(
             get_current_monster=self.get_monster_from_form,
             load_monster_callback=self._load_monster_from_library,
+            export_callbacks={
+                "pdf": lambda m: self._export_saved_monster(m, "pdf"),
+                "png": lambda m: self._export_saved_monster(m, "png"),
+            },
             parent=self,
         )
         dialog.exec()

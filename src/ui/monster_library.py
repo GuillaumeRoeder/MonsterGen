@@ -37,7 +37,8 @@ LIBRARY_STYLE = """
 class MonsterLibraryDialog(QDialog):
     """Popup de gestion de la bibliothèque de monstres sauvegardés."""
 
-    def __init__(self, get_current_monster, load_monster_callback, parent=None):
+    def __init__(self, get_current_monster, load_monster_callback, parent=None,
+                 export_callbacks=None):
         super().__init__(parent)
         self.setWindowTitle("Bibliothèque de monstres")
         self.setMinimumSize(520, 420)
@@ -45,6 +46,7 @@ class MonsterLibraryDialog(QDialog):
 
         self._get_current_monster = get_current_monster
         self._load_monster_callback = load_monster_callback
+        self._export_callbacks = export_callbacks or {}
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(15, 15, 15, 15)
@@ -70,6 +72,22 @@ class MonsterLibraryDialog(QDialog):
         load_btn = QPushButton("\U0001F4C2 Charger")
         load_btn.clicked.connect(self._load_selected)
         buttons.addWidget(load_btn)
+
+        pdf_btn = QPushButton("\U0001F4C4 PDF")
+        pdf_btn.setToolTip(
+            "Exporter la sauvegarde sélectionnée en PDF "
+            "(sans charger le monstre dans l'éditeur)"
+        )
+        pdf_btn.clicked.connect(lambda: self._export_selected("pdf"))
+        buttons.addWidget(pdf_btn)
+
+        png_btn = QPushButton("\U0001F5BC PNG")
+        png_btn.setToolTip(
+            "Exporter la sauvegarde sélectionnée en PNG "
+            "(sans charger le monstre dans l'éditeur)"
+        )
+        png_btn.clicked.connect(lambda: self._export_selected("png"))
+        buttons.addWidget(png_btn)
 
         import_btn = QPushButton("\U0001F4E5 Importer")
         import_btn.clicked.connect(self._import_from_file)
@@ -165,6 +183,26 @@ class MonsterLibraryDialog(QDialog):
 
         self._load_monster_callback(monster)
         self.accept()
+
+    def _export_selected(self, format_key: str):
+        """Exporte directement la sauvegarde sélectionnée en PDF/PNG,
+        sans charger le monstre dans l'éditeur."""
+        callback = self._export_callbacks.get(format_key)
+        if callback is None:
+            return
+        file = self._selected_file()
+        if not file:
+            QMessageBox.information(
+                self, "Exporter",
+                "Sélectionnez un monstre dans la liste."
+            )
+            return
+        try:
+            monster = library_manager.load(file)
+        except (ValueError, KeyError, OSError) as e:
+            QMessageBox.critical(self, "Erreur", f"Fichier illisible :\n{e}")
+            return
+        callback(monster)
 
     def _delete_selected(self):
         """Supprime la sauvegarde sélectionnée (avec confirmation)."""
