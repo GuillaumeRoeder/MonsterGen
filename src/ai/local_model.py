@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 from config.config_manager import config_manager
+from src.paths import models_dir
 
 # Panel hardcodé des modèles locaux embarquables (<= 6 Go).
 LOCAL_MODELS = {
@@ -31,7 +32,7 @@ LOCAL_MODELS = {
     },
 }
 DEFAULT_MODEL_SIZE = "2gb"
-MODELS_DIR = Path(__file__).resolve().parent.parent.parent / "models"
+MODELS_DIR = models_dir()
 
 
 class ModelNotAvailableError(RuntimeError):

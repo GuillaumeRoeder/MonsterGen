@@ -12,6 +12,8 @@ import subprocess
 import sys
 from typing import List, Optional, Tuple
 
+from src.paths import is_frozen
+
 # (nom du module importable, spécification pip)
 DEPENDENCIES: List[Tuple[str, str]] = [
     ("PySide6", "PySide6>=6.5.0"),
@@ -66,6 +68,8 @@ def install_llama_cpp() -> bool:
     """Installe llama-cpp-python : wheel précompilé d'abord, compilation ensuite."""
     if _is_installed(LLAMA_CPP_MODULE):
         return True
+    if is_frozen():
+        return False
 
     _log("Installation de llama-cpp-python (wheel précompilé)…")
     if _pip_install(LLAMA_CPP_SPEC, [
@@ -80,6 +84,8 @@ def install_llama_cpp() -> bool:
 
 def ensure_dependencies() -> None:
     """Installe les dépendances indispensables ; lève BootstrapError sinon."""
+    if is_frozen():
+        return
     for module, spec in DEPENDENCIES:
         if _is_installed(module):
             continue
