@@ -106,7 +106,7 @@ jobs:
         run: |
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
           chmod +x appimagetool
-          ARCH=x86_64 ./appimagetool AppDir MonsterGen-x86_64.AppImage
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir MonsterGen-x86_64.AppImage
 
       - name: Attacher l'AppImage à la release GitHub
         uses: softprops/action-gh-release@v2
