@@ -158,7 +158,13 @@ Le résultat est dans `dist/MonsterGen/` (mode *onedir* : garder le dossier comp
 - **Données utilisateur** : en mode empaqueté, config (`config.json`), modèles GGUF (`models/`) et exports (`fiches/`) vivent dans `~/.monstergen/` — le répertoire d'installation peut ne pas être inscriptible
 - **Mode IA** : le binaire fonctionne en mode API sans rien d'autre ; le modèle local se télécharge au premier lancement comme d'habitude
 - **llama-cpp-python** : s'il n'est pas présent dans le binaire (pas de wheel pour l'OS cible), l'app propose le mode API comme en développement
-- **Linux** : `libgl1-mesa-glx` doit être installé sur le système hôte (voir ci-dessus)
+- **Linux** : préférez l'**AppImage** — il embarque aussi `libGL` et fonctionne sur n'importe quelle distro récente sans installation :
+  ```bash
+  chmod +x MonsterGen-x86_64.AppImage
+  ./MonsterGen-x86_64.AppImage
+  ```
+  L'archive `tar.gz` nécessite `libgl1-mesa-glx` (voir ci-dessus) mais reste utile si votre distro refuse les AppImages (sandboxing FUSE, etc.)
+- **Icône / menu** : l'AppImage s'intègre au menu d'applications avec son icône (assets/icon.svg) via AppImageLauncher ou une entrée .desktop manuelle
 
 ## Contribution
 
