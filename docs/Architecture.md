@@ -10,6 +10,10 @@ MonsterGen/
 │   ├── bootstrap.py         # Auto-installation des dépendances
 │   ├── models/
 │   │   └── monster.py       # Dataclass Monster + Action, (dé)sérialisation
+│   ├── core/                # Systèmes métier (sans UI)
+│   │   └── monster_manager.py  # Monstre courant + exports PNG/PDF
+│   ├── library/             # Système bibliothèque (sans UI)
+│   │   └── library_manager.py  # Sauvegardes : liste/load/save/delete/import/export
 │   ├── rules/               # Moteur de règles DnD 5e (aucune IA)
 │   │   ├── stat_builder.py  # Tables DMG : CA, PV, dés de vie, actions
 │   │   ├── encounter.py     # Budget de PX, CR selon groupe/difficulté
@@ -19,12 +23,22 @@ MonsterGen/
 │   │   ├── local_model.py   # Client GGUF via llama-cpp-python
 │   │   └── api_client.py    # Client API distante (OpenAI/Mistral)
 │   ├── ui/
-│   │   ├── main_window.py   # Fenêtre principale, tabs, orchestration
+│   │   ├── main_window.py   # Orchestrateur : assemble les widgets, génération
 │   │   ├── config_dialog.py # Configuration
-│   │   ├── monster_library.py  # Popup bibliothèque de sauvegardes
+│   │   ├── monster_library.py  # Dialogues bibliothèque (appelle LibraryManager)
+│   │   ├── dnd_data.py     # Listes de référence DnD 5e (races, skills, dégâts)
 │   │   ├── action_editor.py    # Carte d'action éditable
 │   │   ├── pill_editor.py      # Éditeur en pills générique
-│   │   └── languages_editor.py
+│   │   ├── languages_editor.py
+│   │   └── widgets/         # Compartiments de l'UI, appelés par MainWindow
+│   │       ├── basic_tab.py        # Onglet Description (identité, scénario)
+│   │       ├── stats_tab.py        # Onglet Statistiques
+│   │       ├── actions_tab.py      # Onglet Actions
+│   │       ├── equipment_widget.py # Section Équipement repliable
+│   │       ├── preview_panel.py    # Aperçu de la fiche (moitié droite)
+│   │       ├── party_widget.py     # Groupe joueurs + difficulté
+│   │       ├── card_list.py        # Liste scrollable de cartes (générique)
+│   │       └── collapsible_header.py  # Barre de titre repliable
 │   └── export/
 │       ├── png_exporter.py  # Fiche PNG style stat block officiel
 │       └── pdf_exporter.py  # Export PDF
@@ -44,3 +58,10 @@ Toute génération passe par `_backend_generate()` (`ai_generator.py`) qui consu
 
 ### Widgets composites
 Les actions, langues, compétences et résistances utilisent des widgets riches (cartes éditable, pills détachables) plutôt que des champs texte plats — les valeurs structurées restent lisibles et manipulables.
+
+### Compartimentation UI / systèmes
+Chaque système est une classe à part, appelée par l'UI :
+- **`MonsterManager`** (`src/core/`) détient le monstre courant et délègue les exports PNG/PDF ; l'UI ne touche jamais les exporteurs directement.
+- **`LibraryManager`** (`src/library/`) concentre toute la persistance des sauvegardes (liste, chargement, écriture, suppression, import/export de fichiers) ; les dialogues de `monster_library.py` ne sont que des coquilles Qt.
+- **Un widget par compartiment d'UI** (`src/ui/widgets/`) : chaque onglet et le panneau d'aperçu sont des classes autonomes avec leurs signaux ; `MainWindow` se réduit à un orchestrateur (assemblage, conversion formulaire ↔ `Monster`, orchestration règles + IA).
+- Les widgets génériques (`card_list.py`, `collapsible_header.py`, `party_widget.py`) sont réutilisés par plusieurs onglets.
