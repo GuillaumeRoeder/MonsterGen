@@ -130,6 +130,36 @@ MonsterGen/
 └── requirements.txt
 ```
 
+## Déploiement — binaire autonome (PyInstaller)
+
+L'application peut être empaquetée en exécutable autonome sans Python installé.
+
+### En continu (recommandé)
+
+À chaque tag `v*`, la workflow [Release](.github/workflows/release.yml) construit automatiquement les binaires **Windows**, **Linux** et **macOS** et les attache à la release GitHub. Il suffit donc de :
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+### En local
+
+```bash
+pip install pyinstaller
+pip install -r requirements.txt
+pyinstaller monstergen.spec --noconfirm
+```
+
+Le résultat est dans `dist/MonsterGen/` (mode *onedir* : garder le dossier complet).
+
+### Notes sur le binaire
+
+- **Données utilisateur** : en mode empaqueté, config (`config.json`), modèles GGUF (`models/`) et exports (`fiches/`) vivent dans `~/.monstergen/` — le répertoire d'installation peut ne pas être inscriptible
+- **Mode IA** : le binaire fonctionne en mode API sans rien d'autre ; le modèle local se télécharge au premier lancement comme d'habitude
+- **llama-cpp-python** : s'il n'est pas présent dans le binaire (pas de wheel pour l'OS cible), l'app propose le mode API comme en développement
+- **Linux** : `libgl1-mesa-glx` doit être installé sur le système hôte (voir ci-dessus)
+
 ## Contribution
 
 Les contributions sont les bienvenues ! Ouvrez une issue ou une pull request sur GitHub.

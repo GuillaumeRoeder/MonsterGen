@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Dict, Any
 
+from src.paths import config_file
+
 
 class ConfigManager:
     """Gère la configuration de l'application."""
@@ -20,14 +22,13 @@ class ConfigManager:
         "api_key": "",
         "api_endpoint": "https://api.mistral.ai/v1/chat/completions",
         "api_model": "mistral-small-latest",
-        "default_save_path": "./fiches",
+        "default_save_path": "fiches",
         "language": "fr"
     }
 
     def __init__(self, config_path: str = None):
         if config_path is None:
-            base = Path(__file__).resolve().parent
-            config_path = base / "config.json"
+            config_path = config_file()
         self.config_path = Path(config_path)
         self.config: Dict[str, Any] = self.DEFAULT_CONFIG.copy()
         self.load_config()
@@ -125,7 +126,10 @@ class ConfigManager:
 
     def get_save_path(self) -> str:
         """Récupère le chemin de sauvegarde par défaut."""
-        return self.config.get("default_save_path", "./fiches")
+        path = str(self.config.get("default_save_path", "fiches"))
+        if path.startswith("./"):
+            path = path[2:]
+        return path
 
     def set_save_path(self, path: str) -> None:
         """Définit le chemin de sauvegarde par défaut."""
