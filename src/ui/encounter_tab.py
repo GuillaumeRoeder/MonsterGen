@@ -87,16 +87,7 @@ class EncounterTab(QWidget):
         )
         desc_label.setStyleSheet("color: #90caf9;")
 
-        desc_header = QHBoxLayout()
-        desc_header.addWidget(desc_label, stretch=1)
-        self.gen_description_btn = QPushButton("\u2728 G\u00e9n\u00e9rer")
-        self.gen_description_btn.setToolTip(
-            "G\u00e9n\u00e8re des propositions de description par IA "
-            "\u00e0 partir des monstres de la rencontre"
-        )
-        self.gen_description_btn.clicked.connect(self._generate_description)
-        desc_header.addWidget(self.gen_description_btn)
-        layout.addLayout(desc_header)
+        layout.addWidget(desc_label)
 
         self.description_edit = QTextEdit()
         self.description_edit.setPlaceholderText(
