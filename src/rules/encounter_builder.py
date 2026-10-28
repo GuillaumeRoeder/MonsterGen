@@ -85,6 +85,7 @@ class Encounter:
     party_size: int = 4
     party_level: int = 2
     difficulty: str = "medium"
+    description: str = ""
     monsters: List[EncounterMonster] = field(default_factory=list)
     scenario: str = ""
 
@@ -121,6 +122,7 @@ class Encounter:
             "party_size": self.party_size,
             "party_level": self.party_level,
             "difficulty": self.difficulty,
+            "description": self.description,
             "monsters": [
                 {"name": m.name, "challenge_rating": m.challenge_rating,
                  "count": m.count}
@@ -145,6 +147,7 @@ class Encounter:
             party_size=max(1, int(data.get("party_size", 4) or 4)),
             party_level=max(1, min(20, int(data.get("party_level", 2) or 2))),
             difficulty=data.get("difficulty", "medium"),
+            description=data.get("description", ""),
             monsters=monsters,
             scenario=data.get("scenario", ""),
         )

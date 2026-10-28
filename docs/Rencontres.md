@@ -21,6 +21,24 @@ automatique selon les règles du Guide du Maître (ch. 9).
 
 ## Deux façons de construire une rencontre
 
+### Description de la rencontre (contexte)
+
+Le champ **« Description de la rencontre »** laisse le MJ décrire librement
+le contexte : lieu, circonstances, composition des forces, armes des
+monstres, éléments de décor... Cette description :
+
+- est **intégrée telle quelle dans le prompt du scénario** : l'IA doit
+  rendre le scénario cohérent avec ce contexte (armes mentionnées,
+  disposition décrite, ambiance...) ;
+- est **sauvegardée avec la rencontre** et restaurée au chargement ;
+- est **optionnelle** : sans description, le scénario s'appuie uniquement
+  sur les monstres, le groupe et la difficulté.
+
+Exemple : « Embuscade de gobelins à l'arc dans un col montagneux au
+ crépuscule ; leur chef brandit un totem tribal et crie des ordres en
+ gobelin » → le scénario reprendra le col, les arcs, le crépuscule et
+ le chef au totem.
+
 ### 1. Depuis la bibliothèque
 
 1. Réglez le groupe (joueurs, niveau moyen, difficulté).

@@ -17,7 +17,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QHBoxLayout, QHeaderView, QInputDialog, QLabel,
     QMessageBox, QPushButton, QSpinBox, QTableWidget, QTableWidgetItem,
-    QVBoxLayout, QWidget,
+    QTextEdit, QVBoxLayout, QWidget,
 )
 
 from src.library.encounter_manager import encounter_manager
@@ -71,6 +71,22 @@ class EncounterTab(QWidget):
         self.summary_label = QLabel("")
         self.summary_label.setStyleSheet("font-weight: bold;")
         layout.addWidget(self.summary_label)
+
+        # --- Description libre de la rencontre (contexte pour le MJ) ---
+        desc_label = QLabel(
+            "Description de la rencontre (contexte optionnel — lieu, "
+            "composition, armes, circonstances...) :"
+        )
+        desc_label.setStyleSheet("color: #90caf9;")
+        layout.addWidget(desc_label)
+        self.description_edit = QTextEdit()
+        self.description_edit.setPlaceholderText(
+            "Ex. : Embuscade de gobelins à l'arc dans un col montagneux au "
+            "crépuscule ; leur chef brandit un totem tribal et crie des "
+            "ordres en gobelin..."
+        )
+        self.description_edit.setFixedHeight(72)
+        layout.addWidget(self.description_edit)
 
         # --- Table des monstres de la rencontre ---
         self.table = QTableWidget(0, 4)
@@ -167,6 +183,7 @@ class EncounterTab(QWidget):
             party_size=self.party_size_spin.value(),
             party_level=self.party_level_spin.value(),
             difficulty=self.difficulty_combo.currentData() or "medium",
+            description=self.description_edit.toPlainText().strip(),
             monsters=[EncounterMonster(m.name, m.challenge_rating, m.count)
                       for m in self._monsters],
         )
@@ -471,6 +488,7 @@ class EncounterTab(QWidget):
             index = self.difficulty_combo.findData(encounter.difficulty)
             if index >= 0:
                 self.difficulty_combo.setCurrentIndex(index)
+            self.description_edit.setPlainText(encounter.description or "")
             self._refresh_table()
 
     def _export_pdfs(self):

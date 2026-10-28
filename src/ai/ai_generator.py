@@ -360,24 +360,35 @@ class AIGenerator:
         actual = DIFFICULTY_LABELS.get(encounter.actual_difficulty,
                                        encounter.actual_difficulty)
 
+        context_line = ""
+        if encounter.description:
+            context_line = (
+                f"Description de la rencontre fournie par le MJ (contexte "
+                f"à rendre cohérent, éléments à intégrer tels quels) :\n"
+                f"{encounter.description}\n\n"
+            )
+
         prompt = (
             f"Rencontre DnD 5e pour un groupe de {encounter.party_size} "
             f"joueurs de niveau moyen {encounter.party_level}.\n"
             f"Difficulté visée : {target} (difficulté réelle calculée : "
             f"{actual}, {encounter.adjusted_xp} PX ajustés).\n"
             f"Monstres :\n{monsters_detail}\n\n"
+            f"{context_line}"
             "Écris, en français, un scénario de RENCONTRE DE COMBAT pour le MJ, "
             "structuré ainsi, avec ces titres exacts en gras :\n"
-            "**Contexte** : 1 à 2 phrases (lieu, circonstances, pourquoi le combat éclate).\n"
+            "**Contexte** : 1 à 2 phrases (lieu, circonstances, pourquoi le combat éclate — "
+            "reprend le contexte décrit par le MJ s'il est fourni).\n"
             "**Disposition** : 1 à 2 phrases (placement des monstres, terrain, "
-            "déclencheur de l'initiative).\n"
+            "déclencheur de l'initiative — reprend les armes, compositions et "
+            "détails décrits par le MJ s'ils sont fournis).\n"
             "**Tactique** : 3 à 5 phrases (qui ouvre le combat, ciblage prioritaire, "
             "coordination entre les monstres, réaction à mi-PV, conditions de "
             "repli ou de reddition).\n"
             "**Récompense** : 1 phrase (butin, information ou objet récupéré).\n"
             "N'invente pas de stats nouvelles : appuie-toi uniquement sur les "
             "monstres listés ci-dessus. "
-            "Réponds UNIQUEMENT avec le texte du scénario, sans préambule."
+            "R\u00e9ponds UNIQUEMENT avec le texte du scénario, sans préambule."
         )
 
         raw = _backend_generate(prompt, max_tokens=600, temperature=0.8)
