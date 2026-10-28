@@ -28,6 +28,7 @@ from src.rules.encounter_builder import (
 from src.rules.stat_builder import cr_display
 from src.ui.styles import ACCENT_BUTTON_STYLE
 from src.ui.widgets.row_buttons import RowButton, RowButtons
+from src.ui.widgets.monster_edit_dialog import MonsterEditDialog
 
 
 class EncounterTab(QWidget):
@@ -38,6 +39,7 @@ class EncounterTab(QWidget):
         self._parent = parent_window
         self._monsters = []          # [EncounterMonster]
         self._monster_files = {}     # nom -> chemin de fiche bibliothèque
+        self._temp_monsters = {}     # nom -> Monster temporaire (non bibliothèque)
 
         root = QHBoxLayout(self)
         root.setContentsMargins(10, 10, 10, 10)
@@ -245,8 +247,20 @@ class EncounterTab(QWidget):
             count_item.setData(Qt.ItemDataRole.DisplayRole, m.count)
             count_item.setFlags(count_item.flags() | Qt.ItemFlag.ItemIsEditable)
             self.table.setItem(row, 2, count_item)
-            has_sheet = "✓" if m.name in self._monster_files else "—"
+            if m.name in self._monster_files:
+                has_sheet = "✓"
+            elif m.name in self._temp_monsters:
+                has_sheet = "temp"
+            else:
+                has_sheet = "—"
             self.table.setItem(row, 3, QTableWidgetItem(has_sheet))
+            edit_btn = RowButton(
+                "📝", "Éditer la fiche de ce monstre",
+                normal_color="#9aa0b4", hover_color="#90caf9",
+            )
+            edit_btn.clicked.connect(
+                lambda *args, r=row: self._edit_row_monster(r)
+            )
             lib_btn = RowButton(
                 "📖",
                 "Remplacer cette ligne par un monstre de la bibliothèque",
@@ -263,7 +277,7 @@ class EncounterTab(QWidget):
                 lambda *args, r=row: self._remove_row(r)
             )
             self.table.setCellWidget(
-                row, 4, RowButtons([lib_btn, remove_btn])
+                row, 4, RowButtons([edit_btn, lib_btn, remove_btn])
             )
         self.table.blockSignals(False)
         self._refresh_summary()
@@ -300,6 +314,11 @@ class EncounterTab(QWidget):
                 if name in self._monster_files:
                     self._monsters[row].challenge_rating = None
                 self._monsters[row].name = name
+                if old_name in self._temp_monsters:
+                    self._temp_monsters[name] = self._temp_monsters.pop(
+                        old_name
+                    )
+                    self._temp_monsters[name].name = name
                 if old_name in self._monster_files and old_name not in {
                     m.name for m in self._monsters
                 }:
@@ -362,6 +381,10 @@ class EncounterTab(QWidget):
         old_name = self._monsters[row].name
         self._monsters[row] = EncounterMonster(name, cr, self._monsters[row].count or 1)
         self._monster_files[name] = str(file)
+        if old_name and old_name in self._temp_monsters and old_name not in {
+            m.name for m in self._monsters
+        }:
+            self._temp_monsters.pop(old_name, None)
         if old_name and old_name in self._monster_files and old_name not in {
             m.name for m in self._monsters
         }:
@@ -375,6 +398,88 @@ class EncounterTab(QWidget):
         name = self._monsters[row].name
         del self._monsters[row]
         self._monster_files.pop(name, None)
+        if name not in {m.name for m in self._monsters}:
+            self._temp_monsters.pop(name, None)
+        self._refresh_table()
+
+    # ------------------------------------------------------------------
+    # Fiches temporaires : édition + intégration bibliothèque
+    # ------------------------------------------------------------------
+
+    def _edit_row_monster(self, row: int):
+        """Ouvre la fiche du monstre de la ligne en édition pure.
+
+        Fiche temporaire : éditée en mémoire. « Intégrer dans la
+        bibliothèque » la sauvegarde via le même dialogue et retire le
+        statut temporaire. Fiche bibliothèque : chargée puis rééditable
+        de la même façon.
+        """
+        if row < 0 or row >= len(self._monsters):
+            return
+        name = self._monsters[row].name
+        if not name:
+            QMessageBox.information(
+                self, "Fiche", "Donnez d'abord un nom au monstre."
+            )
+            return
+
+        monster = self._temp_monsters.get(name)
+        if monster is None:
+            file = self._monster_files.get(name)
+            if file:
+                from src.library.library_manager import library_manager
+                from pathlib import Path
+                try:
+                    monster = library_manager.load(Path(file))
+                except (OSError, ValueError) as e:
+                    QMessageBox.critical(
+                        self, "Erreur", f"Fiche illisible :\n{e}"
+                    )
+                    return
+            else:
+                from src.models.monster import Monster
+                from src.rules.stat_builder import build_balanced_monster
+                monster = build_balanced_monster(
+                    self._monsters[row].challenge_rating or 0,
+                    base=Monster(name=name),
+                )
+                self._temp_monsters[name] = monster
+
+        dialog = MonsterEditDialog(monster, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        dialog.apply_to_monster(monster)
+
+        new_name = monster.name
+        if new_name != name:
+            if any(m.name == new_name for m in self._monsters
+                   if m.name != name):
+                QMessageBox.warning(
+                    self, "Nom déjà pris",
+                    f"Un monstre « {new_name} » est déjà dans la rencontre. "
+                    "Le nom de la fiche est conservé mais pas la ligne."
+                )
+            else:
+                self._monsters[row].name = new_name
+                self._temp_monsters = {
+                    (new_name if k == name else k): v
+                    for k, v in self._temp_monsters.items()
+                }
+        self._monsters[row].challenge_rating = monster.challenge_rating
+
+        if dialog.integrate_requested:
+            from src.library.library_manager import library_manager
+            try:
+                final_name = self._monsters[row].name
+                library_manager.save(monster, final_name)
+                self._monster_files[final_name] = str(
+                    library_manager.target_path(final_name)
+                )
+                self._temp_monsters.pop(final_name, None)
+            except OSError as e:
+                QMessageBox.critical(
+                    self, "Erreur", f"Échec de la sauvegarde :\n{e}"
+                )
         self._refresh_table()
 
     # ------------------------------------------------------------------
@@ -456,13 +561,7 @@ class EncounterTab(QWidget):
             suffix += 1
         monster.name = name
 
-        try:
-            library_manager.save(monster, name)
-            self._monster_files[name] = str(library_manager.target_path(name))
-        except OSError as e:
-            if not silent:
-                QMessageBox.critical(self, "Erreur", f"Échec de la sauvegarde :\n{e}")
-            return
+        self._temp_monsters[name] = monster
 
         self._monsters.append(EncounterMonster(name, monster.challenge_rating, 0))
         self._adjust_counts(silent=True)
@@ -494,6 +593,7 @@ class EncounterTab(QWidget):
 
         self._monsters = []
         self._monster_files = {}
+        self._temp_monsters = {}
         for _ in range(how_many):
             self._generate_new_monster(silent=True)
 
@@ -520,22 +620,18 @@ class EncounterTab(QWidget):
             return
         self._adjust_counts(silent=True)
 
-        # Génère les fiches manquantes en mode monstre (une par une).
-        from src.library.library_manager import library_manager
+        # Fiches manquantes : stats équilibrées, gardées temporaires.
+        # Le MJ les intègre à la bibliothèque depuis la fiche (bouton 📝)
+        # s'il le souhaite — rien n'est écrit sur disque ici.
         from src.models.monster import Monster
         from src.rules.stat_builder import build_balanced_monster
 
         for m in self._monsters:
-            if m.name in self._monster_files:
+            if m.name in self._monster_files or m.name in self._temp_monsters:
                 continue
-            # Fiche manquante : stats équilibrées pour le CR du monstre.
             monster = build_balanced_monster(m.challenge_rating or 0,
                                              base=Monster(name=m.name))
-            try:
-                library_manager.save(monster, m.name)
-                self._monster_files[m.name] = str(library_manager.target_path(m.name))
-            except OSError:
-                pass
+            self._temp_monsters[m.name] = monster
 
         # Description : générée par IA si le champ est vide.
         if not self.description_edit.toPlainText().strip():
@@ -727,13 +823,14 @@ class EncounterTab(QWidget):
             return
         exported = 0
         for m in self._monsters:
-            target = library_manager.target_path(m.name)
-            monster = None
-            if target.exists():
-                try:
-                    monster = library_manager.load(target)
-                except (OSError, ValueError):
-                    monster = None
+            monster = self._temp_monsters.get(m.name)
+            if monster is None:
+                target = library_manager.target_path(m.name)
+                if target.exists():
+                    try:
+                        monster = library_manager.load(target)
+                    except (OSError, ValueError):
+                        monster = None
             if monster is None:
                 monster = build_balanced_monster(
                     m.challenge_rating or 0, base=Monster(name=m.name)
