@@ -802,27 +802,38 @@ class EncounterTab(QWidget):
             self._refresh_table()
 
     def _export_pdfs(self):
-        """Exporte chaque fiche de monstre de la rencontre en PDF."""
+        """Exporte la rencontre entière en un seul PDF minimaliste.
+
+        Tous les monstres de la rencontre (temporaires ou bibliothèque)
+        dans un document unique, un bloc compact par monstre, séparés
+        par une ligne horizontale.
+        """
         if not self._monsters:
             QMessageBox.information(
                 self, "Aucun monstre",
                 "Ajoutez d'abord des monstres à la rencontre."
             )
             return
+        from pathlib import Path
         from src.library.library_manager import library_manager
         from src.models.monster import Monster
         from src.rules.stat_builder import build_balanced_monster
+        from src.export.pdf_exporter import pdf_exporter
         from PySide6.QtWidgets import QFileDialog
         from config.config_manager import config_manager
 
-        folder = QFileDialog.getExistingDirectory(
-            self, "Dossier d'export des fiches",
-            config_manager.get_save_path(),
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Exporter la rencontre en PDF",
+            str(Path(config_manager.get_save_path()) / "rencontre.pdf"),
+            "Fichier PDF (*.pdf)",
         )
-        if not folder:
+        if not path:
             return
-        exported = 0
+
+        monsters = {}
         for m in self._monsters:
+            if not m.name:
+                continue
             monster = self._temp_monsters.get(m.name)
             if monster is None:
                 target = library_manager.target_path(m.name)
@@ -835,15 +846,20 @@ class EncounterTab(QWidget):
                 monster = build_balanced_monster(
                     m.challenge_rating or 0, base=Monster(name=m.name)
                 )
-            path = f"{folder}/{m.name.replace(' ', '_')}_fiche_DnD.pdf"
-            try:
-                self._parent.monster_manager.export_to_pdf(monster, path)
-                exported += 1
-            except Exception:
-                continue
+            monsters[m.name] = monster
+
+        try:
+            pdf_exporter.export_encounter_to_pdf(
+                monsters, self.current_encounter(), path
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Erreur", f"Échec de l'export PDF :\n{e}"
+            )
+            return
         QMessageBox.information(
             self, "Export terminé",
-            f"{exported} fiche(s) PDF exportée(s) vers :\n{folder}"
+            f"Rencontre exportée vers :\n{path}"
         )
 
 

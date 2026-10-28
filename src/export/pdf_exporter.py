@@ -420,5 +420,157 @@ class PDFExporter:
         return str(path)
 
 
+    def export_encounter_to_pdf(self, monsters, encounter, output_path: str) -> str:
+        """Exporte une rencontre complète en un PDF unique minimaliste.
+
+        Chaque monstre tient dans un bloc compact (nom + stats clés +
+        caractéristiques sur une ligne + actions), séparé du suivant
+        par une ligne horizontale. Objectif : lisible à la table, sans
+        fiche d'une page par monstre.
+        """
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        doc = SimpleDocTemplate(
+            str(path), pagesize=self.page_size,
+            topMargin=12 * mm, bottomMargin=12 * mm,
+            leftMargin=12 * mm, rightMargin=12 * mm,
+        )
+
+        base = ParagraphStyle(
+            "EncBase", fontName="Helvetica", fontSize=8.5, leading=10.5,
+        )
+        name_style = ParagraphStyle(
+            "EncName", parent=base, fontName="Helvetica-Bold", fontSize=12,
+            leading=14, spaceAfter=1,
+        )
+        label_style = ParagraphStyle(
+            "EncLabel", parent=base, fontName="Helvetica-Bold", fontSize=8.5,
+            textColor=colors.HexColor("#555555"),
+        )
+        header_style = ParagraphStyle(
+            "EncHeader", parent=base, fontName="Helvetica-Bold", fontSize=14,
+            leading=16, alignment=TA_CENTER, spaceAfter=2,
+        )
+        sub_style = ParagraphStyle(
+            "EncSub", parent=base, fontSize=8, leading=10,
+            textColor=colors.HexColor("#555555"), alignment=TA_CENTER,
+        )
+
+        from src.rules.stat_builder import cr_display
+
+        def mod(value):
+            return f"+{(value - 10) // 2}" if value >= 10 else f"{(value - 10) // 2}"
+
+        elements = []
+        if getattr(encounter, "name", ""):
+            elements.append(Paragraph(encounter.name, header_style))
+        subtitle = (
+            f"{encounter.party_size} joueurs · niveau {encounter.party_level} · "
+            f"{encounter.difficulty}"
+        )
+        elements.append(Paragraph(subtitle, sub_style))
+        elements.append(Spacer(1, 6))
+
+        if getattr(encounter, "description", ""):
+            elements.append(Paragraph(encounter.description, base))
+            elements.append(Spacer(1, 4))
+
+        from src.rules.encounter_builder import evaluate
+        info = evaluate(encounter)
+        elements.append(Paragraph(
+            f"{info['adjusted_xp']} PX ajustés — difficulté réelle : "
+            f"{info['actual_label']}", sub_style,
+        ))
+        elements.append(Spacer(1, 6))
+
+        for index, entry in enumerate(encounter.monsters):
+            monster = monsters.get(entry.name)
+            if monster is None:
+                continue
+            if index > 0:
+                elements.append(Spacer(1, 4))
+                elements.append(Table(
+                    [[""]],
+                    colWidths=[doc.width],
+                    style=TableStyle([
+                        ("LINEBELOW", (0, 0), (-1, -1), 0.75,
+                         colors.HexColor("#999999")),
+                        ("TOPPADDING", (0, 0), (-1, -1), 0),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                    ]),
+                ))
+                elements.append(Spacer(1, 4))
+
+            title = f"{monster.name or entry.name} ×{max(1, entry.count)}"
+            elements.append(Paragraph(title, name_style))
+            stats = (
+                f"CA {monster.armor_class or '-'} · "
+                f"PV {monster.hit_points or '-'} "
+                f"({monster.hit_dice or '-'}) · "
+                f"Vit {monster.speed or '-'} · "
+                f"CR {cr_display(monster.challenge_rating)}"
+            )
+            elements.append(Paragraph(stats, base))
+            abilities = monster.ability_scores
+            line = " · ".join(
+                f"{label} {getattr(abilities, key)} ({mod(getattr(abilities, key))})"
+                for key, label in [
+                    ("strength", "FOR"), ("dexterity", "DEX"),
+                    ("constitution", "CON"), ("intelligence", "INT"),
+                    ("wisdom", "SAG"), ("charisma", "CHA"),
+                ]
+            )
+            elements.append(Paragraph(line, base))
+            if monster.saving_throws:
+                saves = " · ".join(
+                    f"{s.ability} {s.modifier:+d}" if s.modifier else s.ability
+                    for s in monster.saving_throws
+                )
+                elements.append(Paragraph(
+                    f"Sauvegardes : {saves}", base,
+                ))
+            if monster.skills:
+                skills = " · ".join(
+                    f"{s.name} {self._skill_bonus(monster, s):+d}"
+                    for s in monster.skills
+                )
+                elements.append(Paragraph(f"Compétences : {skills}", base))
+            if monster.languages:
+                elements.append(Paragraph(
+                    f"Langues : {', '.join(monster.languages)}", base,
+                ))
+            if monster.description:
+                elements.append(Spacer(1, 2))
+                elements.append(Paragraph(monster.description, base))
+            for action in monster.actions:
+                if not action.name:
+                    continue
+                text = f"<b>{action.name}</b>"
+                if action.attack_bonus:
+                    text += f" {action.attack_bonus:+d}"
+                if action.damage:
+                    text += f" ({action.damage}"
+                    if action.damage_type:
+                        text += f" {action.damage_type}"
+                    text += ")"
+                if action.description:
+                    text += f" — {action.description}"
+                elements.append(Paragraph(text, base))
+
+        if getattr(encounter, "scenario", ""):
+            elements.append(Spacer(1, 6))
+            elements.append(Paragraph("Scénario", label_style))
+            elements.append(Paragraph(encounter.scenario, base))
+
+        doc.build(elements)
+        return str(path)
+
+    def _skill_bonus(self, monster: Monster, skill) -> int:
+        """Bonus de compétence affiché sur la fiche rencontre."""
+        return monster.skill_modifier(skill)
+
+
+
 # Instance globale de l'exporteur PDF
 pdf_exporter = PDFExporter()
