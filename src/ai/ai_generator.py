@@ -336,6 +336,39 @@ class AIGenerator:
         if not cleaned:
             raise RuntimeError("Le modèle n'a pas produit de scénario.")
         return cleaned
+    def generate_encounter_description(self, encounter: Encounter) -> List[str]:
+        """Génère des options de description de rencontre (champ vide).
+
+        Propose 3 descriptions courtes cohérentes avec la composition de
+        la rencontre : monstres, quantités, groupe cible et difficulté.
+        L'utilisateur en choisit une (ou saisit la sienne) dans l'UI.
+        """
+        from src.rules.encounter import DIFFICULTY_LABELS
+        from src.rules.encounter_builder import cr_display
+
+        monsters_detail = "; ".join(
+            f"{m.count} × {m.name} (CR {cr_display(m.challenge_rating)})"
+            for m in encounter.monsters
+        )
+        target = DIFFICULTY_LABELS.get(encounter.difficulty, encounter.difficulty)
+
+        prompt = (
+            f"Rencontre DnD 5e pour un groupe de {encounter.party_size} "
+            f"joueurs de niveau moyen {encounter.party_level}, difficulté "
+            f"visée : {target}.\n"
+            f"Monstres : {monsters_detail}\n\n"
+            "Propose 3 descriptions courtes (1 à 2 phrases chacune) de cette "
+            "rencontre pour le MJ : lieu, circonstances du combat, disposition "
+            "ou armes remarquables des monstres. Chaque description doit être "
+            "différente (ambiance, lieu ou déclencheur distinct).\n"
+            "Réponds UNIQUEMENT avec les 3 propositions, séparées par des "
+            "points-virgules, sans numérotation ni texte supplémentaire."
+        )
+
+        raw = _backend_generate(prompt, max_tokens=300)
+        options = [opt.strip() for opt in raw.replace('\n', ';').split(';') if opt.strip()]
+        return options[:3]
+
     def generate_encounter_scenario(self, encounter: Encounter,
                                     monster_files: Optional[dict] = None) -> str:
         """Génère un scénario de rencontre multi-monstres pour le MJ.

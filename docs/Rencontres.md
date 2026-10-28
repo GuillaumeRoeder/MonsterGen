@@ -32,7 +32,11 @@ monstres, éléments de décor... Cette description :
   disposition décrite, ambiance...) ;
 - est **sauvegardée avec la rencontre** et restaurée au chargement ;
 - est **optionnelle** : sans description, le scénario s'appuie uniquement
-  sur les monstres, le groupe et la difficulté.
+  sur les monstres, le groupe et la difficulté ;
+- est **générable si vide** : le bouton « ✨ Générer » propose 3
+  descriptions IA cohérentes avec la composition (monstres, quantités,
+  difficulté) — le MJ en choisit une. « 🎲 Génération complète » remplit
+  automatiquement une description vide avant de produire le scénario.
 
 Exemple : « Embuscade de gobelins à l'arc dans un col montagneux au
  crépuscule ; leur chef brandit un totem tribal et crie des ordres en

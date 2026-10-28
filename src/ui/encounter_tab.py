@@ -78,7 +78,18 @@ class EncounterTab(QWidget):
             "composition, armes, circonstances...) :"
         )
         desc_label.setStyleSheet("color: #90caf9;")
-        layout.addWidget(desc_label)
+
+        desc_header = QHBoxLayout()
+        desc_header.addWidget(desc_label, stretch=1)
+        self.gen_description_btn = QPushButton("\u2728 G\u00e9n\u00e9rer")
+        self.gen_description_btn.setToolTip(
+            "G\u00e9n\u00e8re des propositions de description par IA "
+            "\u00e0 partir des monstres de la rencontre"
+        )
+        self.gen_description_btn.clicked.connect(self._generate_description)
+        desc_header.addWidget(self.gen_description_btn)
+        layout.addLayout(desc_header)
+
         self.description_edit = QTextEdit()
         self.description_edit.setPlaceholderText(
             "Ex. : Embuscade de gobelins à l'arc dans un col montagneux au "
@@ -384,6 +395,10 @@ class EncounterTab(QWidget):
             except OSError:
                 pass
 
+        # Description : générée par IA si le champ est vide.
+        if not self.description_edit.toPlainText().strip():
+            self._generate_description(silent=True)
+
         # Scénario de rencontre (IA).
         if self._parent._check_backend():
             from src.ai.ai_generator import ai_generator
@@ -400,6 +415,76 @@ class EncounterTab(QWidget):
                     "Les fiches et quantités restent disponibles."
                 )
         self._refresh_table()
+
+    def _generate_description(self, silent: bool = False):
+        """Génère des propositions de description par IA (champ vide).
+
+        Affiche un dialogue de sélection : le MJ choisit une des
+        propositions ou annule (le champ reste vide). En mode silencieux
+        (génération complète), prend la première proposition sans dialog.
+        """
+        if not self._monsters:
+            QMessageBox.information(
+                self, "Aucun monstre",
+                "Ajoutez d'abord des monstres : la description est générée "
+                "à partir de la composition de la rencontre."
+            )
+            return
+        if self.description_edit.toPlainText().strip():
+            QMessageBox.information(
+                self, "Description déjà remplie",
+                "La description est déjà remplie. Effacez-la si vous voulez "
+                "en générer une nouvelle."
+            )
+            return
+        if not self._parent._check_backend():
+            return
+
+        from src.ai.ai_generator import ai_generator
+        encounter = self.current_encounter()
+        try:
+            options = ai_generator.generate_encounter_description(encounter)
+        except Exception as e:
+            if not silent:
+                QMessageBox.critical(
+                    self, "Erreur",
+                    f"La description n'a pas pu être générée :\n{e}"
+                )
+            return
+        if not options:
+            if not silent:
+                QMessageBox.warning(
+                    self, "Génération vide",
+                    "Le modèle n'a pas produit de description exploitable."
+                )
+            return
+
+        if silent:
+            self.description_edit.setPlainText(options[0])
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Description de la rencontre")
+        dialog.setMinimumWidth(450)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(QLabel("Sélectionnez une description générée :"))
+
+        combo = QComboBox()
+        combo.addItems(options)
+        layout.addWidget(combo, stretch=1)
+
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        ok_btn = QPushButton("Appliquer")
+        ok_btn.clicked.connect(dialog.accept)
+        buttons.addWidget(ok_btn)
+        cancel_btn = QPushButton("Annuler")
+        cancel_btn.clicked.connect(dialog.reject)
+        buttons.addWidget(cancel_btn)
+        layout.addLayout(buttons)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.description_edit.setPlainText(combo.currentText())
 
     def _generate_scenario(self):
         """Génère uniquement le scénario de la rencontre courante."""
