@@ -108,14 +108,16 @@ class EncounterTab(QWidget):
         layout.addWidget(self.description_edit)
 
         # --- Table des monstres de la rencontre ---
-        self.table = QTableWidget(0, 5)
+        self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(
-            ["Monstre", "CR", "Quantité", "Fiche", ""]
+            ["Monstre", "CR", "Quantité", "Fiche", "", ""]
         )
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
         self.table.setColumnWidth(4, 36)
+        self.table.setColumnWidth(5, 36)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         layout.addWidget(self.table, stretch=1)
@@ -124,10 +126,21 @@ class EncounterTab(QWidget):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
 
-        add_btn = QPushButton("＋ Ajouter depuis la bibliothèque")
-        add_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
-        add_btn.clicked.connect(self._add_from_library)
+        add_btn = QPushButton("＋ Ligne vide")
+        add_btn.setToolTip(
+            "Ajoute une ligne que vous remplissez à la main, ou via le "
+            "bouton 📖 qui choisit un monstre dans la bibliothèque"
+        )
+        add_btn.clicked.connect(self._add_empty_row)
         btn_layout.addWidget(add_btn)
+
+        library_btn = QPushButton("＋ Depuis la bibliothèque")
+        library_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        library_btn.setToolTip(
+            "Ajoute à la rencontre des monstres existants de la bibliothèque"
+        )
+        library_btn.clicked.connect(self._add_from_library)
+        btn_layout.addWidget(library_btn)
 
         new_btn = QPushButton("✨ Générer un monstre")
         new_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
@@ -138,14 +151,25 @@ class EncounterTab(QWidget):
         new_btn.clicked.connect(self._generate_new_monster)
         btn_layout.addWidget(new_btn)
 
-        random_btn = QPushButton("🎲 Génération complète")
+        random_btn = QPushButton("🎲 Générer tout de zéro")
         random_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
         random_btn.setToolTip(
-            "Choisir des monstres de la bibliothèque et générer fiches "
-            "manquantes + quantités + scénario"
+            "Part d'une rencontre vide : génère de nouveaux monstres par IA "
+            "(CR équilibrés pour la difficulté visée), les sauvegarde dans la "
+            "bibliothèque, puis calcule les quantités, la description et le "
+            "scénario"
         )
-        random_btn.clicked.connect(self._generate_full)
+        random_btn.clicked.connect(self._generate_full_from_scratch)
         btn_layout.addWidget(random_btn)
+
+        full_btn = QPushButton("📖 Générer depuis la bibliothèque")
+        full_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        full_btn.setToolTip(
+            "Choisir des monstres de la bibliothèque puis générer fiches "
+            "manquantes + quantités + description + scénario"
+        )
+        full_btn.clicked.connect(self._generate_full)
+        btn_layout.addWidget(full_btn)
 
         counts_btn = QPushButton("⚖ Ajuster les quantités")
         counts_btn.setToolTip(
@@ -228,20 +252,30 @@ class EncounterTab(QWidget):
         self.table.blockSignals(True)
         self.table.setRowCount(len(self._monsters))
         for row, m in enumerate(self._monsters):
-            self.table.setItem(row, 0, QTableWidgetItem(m.name))
-            self.table.setItem(row, 1, QTableWidgetItem(cr_display(m.challenge_rating)))
+            name_item = QTableWidgetItem(m.name)
+            name_item.setFlags(name_item.flags() | Qt.ItemFlag.ItemIsEditable)
+            self.table.setItem(row, 0, name_item)
+            cr_item = QTableWidgetItem(cr_display(m.challenge_rating))
+            cr_item.setFlags(cr_item.flags() | Qt.ItemFlag.ItemIsEditable)
+            cr_item.setToolTip("CR éditable (ex. 1/4, 2)")
+            self.table.setItem(row, 1, cr_item)
             count_item = QTableWidgetItem()
             count_item.setData(Qt.ItemDataRole.DisplayRole, m.count)
             count_item.setFlags(count_item.flags() | Qt.ItemFlag.ItemIsEditable)
             self.table.setItem(row, 2, count_item)
             has_sheet = "✓" if m.name in self._monster_files else "—"
             self.table.setItem(row, 3, QTableWidgetItem(has_sheet))
+            lib_btn = QPushButton("📖")
+            lib_btn.setFixedSize(28, 24)
+            lib_btn.setToolTip("Remplacer cette ligne par un monstre de la bibliothèque")
+            lib_btn.clicked.connect(lambda _, r=row: self._pick_library_for_row(r))
+            self.table.setCellWidget(row, 4, lib_btn)
             remove_btn = QPushButton("✕")
             remove_btn.setFixedSize(28, 24)
             remove_btn.setToolTip("Retirer cette ligne de la rencontre")
             remove_btn.setStyleSheet("color: #ff8888;")
             remove_btn.clicked.connect(lambda _, r=row: self._remove_row(r))
-            self.table.setCellWidget(row, 4, remove_btn)
+            self.table.setCellWidget(row, 5, remove_btn)
         self.table.blockSignals(False)
         self._refresh_summary()
 
@@ -265,11 +299,35 @@ class EncounterTab(QWidget):
         )
 
     def on_count_edited(self, item):
-        """Applique l'édition manuelle d'une quantité."""
+        """Applique l'édition manuelle d'une cellule (nom, CR ou quantité)."""
         row = item.row()
         if row < 0 or row >= len(self._monsters):
             return
-        if item.column() != 2:
+        column = item.column()
+        if column == 0:
+            name = item.text().strip()
+            old_name = self._monsters[row].name
+            if name and name != old_name:
+                if name in self._monster_files:
+                    self._monsters[row].challenge_rating = None
+                self._monsters[row].name = name
+                if old_name in self._monster_files and old_name not in {
+                    m.name for m in self._monsters
+                }:
+                    self._monster_files.pop(old_name, None)
+            self._refresh_summary()
+            return
+        if column == 1:
+            from src.rules.stat_builder import parse_cr
+            cr = parse_cr(item.text())
+            if cr is None:
+                item.setText(cr_display(self._monsters[row].challenge_rating))
+                return
+            self._monsters[row].challenge_rating = cr
+            item.setText(cr_display(cr))
+            self._refresh_summary()
+            return
+        if column != 2:
             return
         try:
             count = max(1, int(item.data(Qt.ItemDataRole.DisplayRole)))
@@ -293,6 +351,33 @@ class EncounterTab(QWidget):
                 self._monster_files[name] = str(file)
             self._adjust_counts(silent=True)
             self._refresh_table()
+
+    def _add_empty_row(self):
+        """Ajoute une ligne vide à remplir à la main."""
+        self._monsters.append(EncounterMonster("", None, 1))
+        self._refresh_table()
+        row = self.table.rowCount() - 1
+        if row >= 0:
+            self.table.editItem(self.table.item(row, 0))
+
+    def _pick_library_for_row(self, row: int):
+        """Remplit une ligne depuis un monstre choisi dans la bibliothèque."""
+        if row < 0 or row >= len(self._monsters):
+            return
+        dialog = LibraryPickDialog(self, single=True)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        if not dialog.selected:
+            return
+        file, name, cr = dialog.selected[0]
+        old_name = self._monsters[row].name
+        self._monsters[row] = EncounterMonster(name, cr, self._monsters[row].count or 1)
+        self._monster_files[name] = str(file)
+        if old_name and old_name in self._monster_files and old_name not in {
+            m.name for m in self._monsters
+        }:
+            self._monster_files.pop(old_name, None)
+        self._refresh_table()
 
     def _remove_row(self, row: int):
         """Retire la ligne demandée du tableau (bouton ✕ en bout de ligne)."""
@@ -337,7 +422,7 @@ class EncounterTab(QWidget):
     # Génération complète (fiches manquantes + scénario)
     # ------------------------------------------------------------------
 
-    def _generate_new_monster(self):
+    def _generate_new_monster(self, silent: bool = False):
         """Génère directement une fiche de monstre pour la difficulté visée.
 
         Le CR cible est calculé comme en mode monstre : budget de PX de
@@ -386,11 +471,54 @@ class EncounterTab(QWidget):
             library_manager.save(monster, name)
             self._monster_files[name] = str(library_manager.target_path(name))
         except OSError as e:
-            QMessageBox.critical(self, "Erreur", f"Échec de la sauvegarde :\n{e}")
+            if not silent:
+                QMessageBox.critical(self, "Erreur", f"Échec de la sauvegarde :\n{e}")
             return
 
         self._monsters.append(EncounterMonster(name, monster.challenge_rating, 0))
         self._adjust_counts(silent=True)
+        self._refresh_table()
+
+    def _generate_full_from_scratch(self):
+        """Génération complète de zéro : rencontre vidée, nouveaux monstres IA.
+
+        Crée plusieurs monstres inédits (CR équilibrés pour la difficulté
+        visée), les sauvegarde dans la bibliothèque, puis calcule les
+        quantités, la description et le scénario.
+        """
+        confirm = QMessageBox.question(
+            self, "Générer tout de zéro",
+            "La rencontre actuelle sera remplacée par des monstres "
+            "entièrement générés. Continuer ?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+
+        how_many, ok = QInputDialog.getInt(
+            self, "Générer tout de zéro",
+            "Nombre de types de monstres à générer :", 2, 1, 6, 1,
+        )
+        if not ok:
+            return
+
+        self._monsters = []
+        self._monster_files = {}
+        for _ in range(how_many):
+            self._generate_new_monster(silent=True)
+
+        self._adjust_counts(silent=True)
+        if not self.description_edit.toPlainText().strip():
+            self._generate_description(silent=True)
+        if self._parent._check_backend():
+            from src.ai.ai_generator import ai_generator
+            encounter = self.current_encounter()
+            try:
+                scenario = ai_generator.generate_encounter_scenario(encounter)
+                self._show_scenario(scenario)
+            except Exception:
+                pass
         self._refresh_table()
 
     def _generate_full(self):
@@ -636,9 +764,9 @@ class EncounterTab(QWidget):
 class LibraryPickDialog(QDialog):
     """Sélection multi-monstres dans la bibliothèque."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, single: bool = False):
         super().__init__(parent)
-        self.setWindowTitle("Choisir des monstres")
+        self.setWindowTitle("Choisir un monstre" if single else "Choisir des monstres")
         self.setMinimumSize(480, 400)
         self.selected = []   # [(file, name, cr)]
 
@@ -649,13 +777,17 @@ class LibraryPickDialog(QDialog):
         layout.setSpacing(8)
 
         layout.addWidget(QLabel(
-            "Sélectionnez un ou plusieurs monstres (Ctrl+clic) :"
+            "Sélectionnez un monstre :" if single
+            else "Sélectionnez un ou plusieurs monstres (Ctrl+clic) :"
         ))
 
         self.list = QTableWidget(0, 2)
         self.list.setHorizontalHeaderLabels(["Monstre", "CR"])
         self.list.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.list.setSelectionMode(QTableWidget.SelectionMode.MultiSelection)
+        self.list.setSelectionMode(
+            QTableWidget.SelectionMode.SingleSelection if single
+            else QTableWidget.SelectionMode.MultiSelection
+        )
         self.list.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.Stretch
         )
@@ -673,7 +805,7 @@ class LibraryPickDialog(QDialog):
 
         buttons = QHBoxLayout()
         buttons.addStretch()
-        ok_btn = QPushButton("Ajouter à la rencontre")
+        ok_btn = QPushButton("Choisir" if single else "Ajouter à la rencontre")
         ok_btn.clicked.connect(self._confirm)
         buttons.addWidget(ok_btn)
         cancel_btn = QPushButton("Annuler")
