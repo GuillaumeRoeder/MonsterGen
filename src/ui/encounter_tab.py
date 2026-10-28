@@ -108,13 +108,14 @@ class EncounterTab(QWidget):
         layout.addWidget(self.description_edit)
 
         # --- Table des monstres de la rencontre ---
-        self.table = QTableWidget(0, 4)
+        self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(
-            ["Monstre", "CR", "Quantité", "Fiche"]
+            ["Monstre", "CR", "Quantité", "Fiche", ""]
         )
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setStretchLastSection(True)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(4, 36)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         layout.addWidget(self.table, stretch=1)
@@ -152,10 +153,6 @@ class EncounterTab(QWidget):
         )
         counts_btn.clicked.connect(self._adjust_counts)
         btn_layout.addWidget(counts_btn)
-
-        remove_btn = QPushButton("✕ Retirer la ligne")
-        remove_btn.clicked.connect(self._remove_selected)
-        btn_layout.addWidget(remove_btn)
 
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
@@ -239,6 +236,12 @@ class EncounterTab(QWidget):
             self.table.setItem(row, 2, count_item)
             has_sheet = "✓" if m.name in self._monster_files else "—"
             self.table.setItem(row, 3, QTableWidgetItem(has_sheet))
+            remove_btn = QPushButton("✕")
+            remove_btn.setFixedSize(28, 24)
+            remove_btn.setToolTip("Retirer cette ligne de la rencontre")
+            remove_btn.setStyleSheet("color: #ff8888;")
+            remove_btn.clicked.connect(lambda _, r=row: self._remove_row(r))
+            self.table.setCellWidget(row, 4, remove_btn)
         self.table.blockSignals(False)
         self._refresh_summary()
 
@@ -291,9 +294,8 @@ class EncounterTab(QWidget):
             self._adjust_counts(silent=True)
             self._refresh_table()
 
-    def _remove_selected(self):
-        """Retire la ligne sélectionnée du tableau."""
-        row = self.table.currentRow()
+    def _remove_row(self, row: int):
+        """Retire la ligne demandée du tableau (bouton ✕ en bout de ligne)."""
         if row < 0 or row >= len(self._monsters):
             return
         name = self._monsters[row].name
