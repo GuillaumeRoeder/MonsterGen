@@ -702,7 +702,6 @@ class EncounterTab(QWidget):
                 XP_THRESHOLDS[party_level][index + 1] * party_size
                 if index < 3 else lower * 1.5
             )
-            gap = probe.adjusted_xp - lower
             if probe.adjusted_xp < lower:
                 score = (lower - probe.adjusted_xp) * 2
             elif probe.adjusted_xp > upper:
