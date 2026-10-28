@@ -261,7 +261,7 @@ class EncounterTab(QWidget):
             lib_btn.setFixedSize(20, 18)
             lib_btn.setStyleSheet("QPushButton { font-size: 10px; padding: 0; }")
             lib_btn.setToolTip("Remplacer cette ligne par un monstre de la bibliothèque")
-            lib_btn.clicked.connect(lambda _, r=row: self._pick_library_for_row(r))
+            lib_btn.clicked.connect(lambda *args, r=row: self._pick_library_for_row(r))
             self.table.setCellWidget(row, 4, lib_btn)
             remove_btn = QPushButton("✕")
             remove_btn.setFixedSize(20, 18)
@@ -269,7 +269,7 @@ class EncounterTab(QWidget):
             remove_btn.setStyleSheet(
                 "QPushButton { font-size: 10px; padding: 0; color: #ff8888; }"
             )
-            remove_btn.clicked.connect(lambda _, r=row: self._remove_row(r))
+            remove_btn.clicked.connect(lambda *args, r=row: self._remove_row(r))
             self.table.setCellWidget(row, 5, remove_btn)
         self.table.blockSignals(False)
         self._refresh_summary()
