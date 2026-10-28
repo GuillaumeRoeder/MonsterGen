@@ -445,9 +445,21 @@ class EncounterTab(QWidget):
                 )
                 self._temp_monsters[name] = monster
 
+        # Une fiche de la bibliothèque est gelée : les modifications ne
+        # s'appliquent (fiche + ligne) que si le MJ choisit explicitement
+        # « Intégrer dans la bibliothèque » (écrasement volontaire).
+        # Sans cela, l'édition est annulée et la fiche d'origine reste
+        # intacte sur disque comme en mémoire.
+        is_library = name in self._monster_files and name not in self._temp_monsters
+
         dialog = MonsterEditDialog(monster, self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
+
+        if is_library and not dialog.integrate_requested:
+            self._refresh_table()
+            return
+
         dialog.apply_to_monster(monster)
 
         new_name = monster.name
