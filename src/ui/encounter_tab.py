@@ -101,6 +101,19 @@ class EncounterTab(QWidget):
         self.description_edit.setFixedHeight(72)
         layout.addWidget(self.description_edit)
 
+        desc_btn_layout = QHBoxLayout()
+        self.gen_from_desc_btn = QPushButton("\U0001F4DD G\u00e9n\u00e9rer depuis la description")
+        self.gen_from_desc_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        self.gen_from_desc_btn.setToolTip(
+            "Compose la rencontre \u00e0 partir de la description : choisit "
+            "les cr\u00e9atures, leurs CR et quantit\u00e9s pour atteindre la "
+            "difficult\u00e9 vis\u00e9e, puis g\u00e9n\u00e8re leurs fiches"
+        )
+        self.gen_from_desc_btn.clicked.connect(self._generate_from_description)
+        desc_btn_layout.addWidget(self.gen_from_desc_btn)
+        desc_btn_layout.addStretch()
+        layout.addLayout(desc_btn_layout)
+
         # --- Table des monstres de la rencontre ---
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(
@@ -516,7 +529,62 @@ class EncounterTab(QWidget):
     # Génération complète (fiches manquantes + scénario)
     # ------------------------------------------------------------------
 
-    def _generate_new_monster(self, silent: bool = False):
+    def _generate_from_description(self):
+        """Compose la rencontre depuis la description, pour la difficult\u00e9 vis\u00e9e.
+
+        L'IA analyse la description et propose une composition (noms,
+        CR, quantit\u00e9s) \u00e9quilibr\u00e9e pour la difficult\u00e9 demand\u00e9e. Les
+        monstres existants de la biblioth\u00e8que sont r\u00e9utilis\u00e9s, les
+        autres re\u00e7oivent une fiche temporaire g\u00e9n\u00e9r\u00e9e. La rencontre
+        courante est remplac\u00e9e.
+        """
+        description = self.description_edit.toPlainText().strip()
+        if not description:
+            QMessageBox.information(
+                self, "Description vide",
+                "\u00c9crivez d'abord une description de la rencontre : "
+                "c'est elle qui d\u00e9termine les cr\u00e9atures."
+            )
+            return
+        if not self._parent._check_backend():
+            return
+
+        from src.ai.ai_generator import ai_generator
+        try:
+            composition = ai_generator.generate_encounter_from_description(
+                description,
+                self.party_size_spin.value(),
+                self.party_level_spin.value(),
+                self.difficulty_combo.currentData() or "medium",
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Erreur",
+                f"La composition n'a pas pu \u00eatre g\u00e9n\u00e9r\u00e9e :\n{e}"
+            )
+            return
+
+        from src.library.library_manager import library_manager
+        self._monsters = []
+        self._monster_files = {}
+        for name, cr, count in composition:
+            if any(m.name == name for m in self._monsters):
+                self._monsters[
+                    next(i for i, m in enumerate(self._monsters) if m.name == name)
+                ].count += count
+                continue
+            target = library_manager.target_path(name)
+            self._monsters.append(EncounterMonster(name, cr, count))
+            if target.exists():
+                self._monster_files[name] = str(target)
+        self._refresh_table()
+
+        # Ajuste les quantit\u00e9s vers la difficult\u00e9 vis\u00e9e, puis fiches
+        # temporaires pour les monstres sans fiche.
+        self._adjust_counts(silent=True)
+        self._generate_full()
+
+    def _generate_new_monster(self, silent: bool = False, cr=None):
         """Génère une fiche de monstre temporaire pour la difficulté visée.
 
         Le CR cible est calculé comme en mode monstre : budget de PX de
@@ -525,17 +593,20 @@ class EncounterTab(QWidget):
         backend est disponible, puis ajoutée à la rencontre. Elle reste
         temporaire : le MJ l'intègre à la bibliothèque depuis la fiche
         (bouton 📝) s'il le souhaite.
+
+        cr : CR cible explicite (sinon calculé depuis la difficulté).
         """
         from src.ai.ai_generator import ai_generator
         from src.models.monster import Monster
-        from src.rules.encounter import encounter_cr
+        from src.rules.encounter import budget_to_cr, party_xp_budget
         from src.rules.stat_builder import build_balanced_monster
 
-        party_size = self.party_size_spin.value()
-        party_level = self.party_level_spin.value()
-        difficulty = self.difficulty_combo.currentData() or "medium"
-
-        cr = encounter_cr(party_size, party_level, difficulty)
+        if cr is None:
+            cr = budget_to_cr(party_xp_budget(
+                self.party_size_spin.value(),
+                self.party_level_spin.value(),
+                self.difficulty_combo.currentData() or "medium",
+            ))
         monster = build_balanced_monster(cr, base=Monster(name=""))
 
         if self._parent._check_backend():
@@ -591,11 +662,26 @@ class EncounterTab(QWidget):
         if not ok:
             return
 
+        # Chaque type de monstre reçoit sa part du budget de la
+        # difficulté : budget / nombre de types → CR le plus proche.
+        # Les quantités sont ensuite affinées vers la difficulté
+        # visée par _adjust_counts.
+        from src.rules.encounter import budget_to_cr, party_xp_budget
+
+        budget = party_xp_budget(
+            self.party_size_spin.value(),
+            self.party_level_spin.value(),
+            self.difficulty_combo.currentData() or "medium",
+        )
+        per_monster_budget = max(1, round(budget / how_many))
+
         self._monsters = []
         self._monster_files = {}
         self._temp_monsters = {}
         for _ in range(how_many):
-            self._generate_new_monster(silent=True)
+            self._generate_new_monster(
+                silent=True, cr=budget_to_cr(per_monster_budget)
+            )
 
         self._adjust_counts(silent=True)
         if not self.description_edit.toPlainText().strip():

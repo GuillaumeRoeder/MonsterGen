@@ -430,6 +430,66 @@ class AIGenerator:
             raise RuntimeError("Le modèle n'a pas produit de scénario.")
         return cleaned
 
+    def generate_encounter_from_description(self, description: str,
+                                            party_size: int,
+                                            party_level: int,
+                                            difficulty: str) -> list:
+        """Compose une rencontre depuis la description libre du MJ.
+
+        Analyse la description et propose une composition (nom, CR,
+        quantité de chaque monstre) cohérente avec le texte, puis
+        équilibrée pour la difficulté visée : le CR et les quantités
+        doivent converger vers le budget de PX de la difficulté.
+
+        Retourne [(name, cr, count), ...] en respectant les monstres
+        explicitement mentionnés dans la description.
+        """
+        from src.rules.encounter import DIFFICULTY_LABELS
+
+        target = DIFFICULTY_LABELS.get(difficulty, difficulty)
+        prompt = (
+            f"Rencontre DnD 5e pour un groupe de {party_size} joueurs "
+            f"de niveau moyen {party_level}, difficulté visée : {target}.\n"
+            f"Description de la rencontre par le MJ :\n{description}\n\n"
+            "Compose la rencontre correspondant à cette description : "
+            "reprends les créatures explicitement mentionnées (même nom, "
+            "quantité conforme à la description) et, si la description "
+            "n'impose pas de créature précise, choisis-en de cohérentes. "
+            "Choisis le CR de chaque créature et les quantités pour que la "
+            "rencontre totale atteigne la difficulté visée (CR faibles = "
+            "grandes quantités, CR forts = 1 à 2 exemplaires).\n"
+            "Réponds UNIQUEMENT en JSON valide, format strict :\n"
+            '{"monsters": [{"name": "...", "cr": 0.25, "count": 4}]}\n'
+            "Le champ cr accepte 0, 0.125, 0.25, 0.5 ou un entier "
+            "(1 à 20). Pas de texte en dehors du JSON."
+        )
+
+        raw = _backend_generate(prompt, max_tokens=400)
+        data = self._parse_json(raw)
+        if not data or not isinstance(data.get("monsters"), list):
+            raise RuntimeError(
+                "Le modèle n'a pas produit de composition exploitable."
+            )
+
+        result = []
+        for entry in data["monsters"][:6]:
+            if not isinstance(entry, dict) or not entry.get("name"):
+                continue
+            try:
+                cr = float(entry.get("cr") or 0)
+            except (TypeError, ValueError):
+                cr = 0
+            try:
+                count = max(1, int(entry.get("count") or 1))
+            except (TypeError, ValueError):
+                count = 1
+            result.append((str(entry["name"]).strip(), cr, count))
+        if not result:
+            raise RuntimeError(
+                "Le modèle n'a pas produit de composition exploitable."
+            )
+        return result
+
 
 # Instance globale
 ai_generator = AIGenerator()
