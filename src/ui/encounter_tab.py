@@ -40,6 +40,7 @@ class EncounterTab(QWidget):
         self._monsters = []          # [EncounterMonster]
         self._monster_files = {}     # nom -> chemin de fiche bibliothèque
         self._temp_monsters = {}     # nom -> Monster temporaire (non bibliothèque)
+        self._creature_traits = {}   # nom -> caractéristiques extraites de la description
 
         root = QHBoxLayout(self)
         root.setContentsMargins(10, 10, 10, 10)
@@ -526,13 +527,17 @@ class EncounterTab(QWidget):
     # ------------------------------------------------------------------
 
     def _generate_from_description(self):
-        """Compose la rencontre depuis la description, pour la difficult\u00e9 vis\u00e9e.
+        """Pipeline description -> rencontre, en trois phases ordonn\u00e9es :
 
-        L'IA analyse la description et propose une composition (noms,
-        CR, quantit\u00e9s) \u00e9quilibr\u00e9e pour la difficult\u00e9 demand\u00e9e. Les
-        monstres existants de la biblioth\u00e8que sont r\u00e9utilis\u00e9s, les
-        autres re\u00e7oivent une fiche temporaire g\u00e9n\u00e9r\u00e9e. La rencontre
-        courante est remplac\u00e9e.
+        1. D\u00e9corticage IA de la description : races, nombre d'exemplaires
+           de chacune, caract\u00e9ristiques notables.
+        2. Assignation des CR individuels par les tables DMG : les CR
+           sont calcul\u00e9s APR\u00c8S connaissance des quantit\u00e9s pour que le
+           total (PX ajust\u00e9s, multiplicateur de groupe compris) tombe
+           dans la bande de la difficult\u00e9 demand\u00e9e.
+        3. Ajout au tableau : les fiches existantes de la biblioth\u00e8que
+           sont r\u00e9utilis\u00e9es, les autres sont g\u00e9n\u00e9r\u00e9es comme
+           temporaires \u00e9quilibr\u00e9es pour leur CR.
         """
         description = self.description_edit.toPlainText().strip()
         if not description:
@@ -545,41 +550,52 @@ class EncounterTab(QWidget):
         if not self._parent._check_backend():
             return
 
+        # --- Phase 1 : d\u00e9corticage de la description (races + nombres) ---
         from src.ai.ai_generator import ai_generator
         try:
-            composition = ai_generator.generate_encounter_from_description(
-                description,
-                self.party_size_spin.value(),
-                self.party_level_spin.value(),
-                self.difficulty_combo.currentData() or "medium",
+            creatures = ai_generator.extract_creatures_from_description(
+                description
             )
         except Exception as e:
             QMessageBox.critical(
                 self, "Erreur",
-                f"La composition n'a pas pu \u00eatre g\u00e9n\u00e9r\u00e9e :\n{e}"
+                f"La description n'a pas pu \u00eatre d\u00e9cortiqu\u00e9e :\n{e}"
             )
             return
 
+        # --- Phase 2 : CR individuels pour matcher la difficult\u00e9 ---
+        from src.rules.encounter_builder import assign_crs
+        party_size = self.party_size_spin.value()
+        party_level = self.party_level_spin.value()
+        difficulty = self.difficulty_combo.currentData() or "medium"
+        counts = [c["count"] for c in creatures]
+        crs = assign_crs(counts, party_size, party_level, difficulty)
+
+        # --- Phase 3 : ajout au tableau + fiches ---
         from src.library.library_manager import library_manager
         self._monsters = []
         self._monster_files = {}
-        for name, cr, count in composition:
+        self._temp_monsters = {}
+        self._creature_traits = {
+            c["name"]: c["traits"] for c in creatures if c.get("traits")
+        }
+        for creature, cr in zip(creatures, crs):
+            name = creature["name"]
             if any(m.name == name for m in self._monsters):
                 self._monsters[
-                    next(i for i, m in enumerate(self._monsters) if m.name == name)
-                ].count += count
+                    next(i for i, m in enumerate(self._monsters)
+                         if m.name == name)
+                ].count += creature["count"]
                 continue
+            self._monsters.append(
+                EncounterMonster(name, cr, creature["count"])
+            )
             target = library_manager.target_path(name)
-            self._monsters.append(EncounterMonster(name, cr, count))
             if target.exists():
                 self._monster_files[name] = str(target)
         self._refresh_table()
 
-        # Les quantit\u00e9s viennent de la description (une \u00ab cavalerie \u00bb =
-        # plusieurs exemplaires) : on ne les \u00e9crase pas par un calcul
-        # d'\u00e9quilibrage automatique. La difficult\u00e9 r\u00e9elle reste affich\u00e9e
-        # dans le label de synth\u00e8se ; le MJ ajuste \u00e0 la main ou via
-        # \u00ab Ajuster les quantit\u00e9s \u00bb.
+        # Fiches manquantes : temporaires, \u00e9quilibr\u00e9es pour leur CR.
         self._generate_full(keep_counts=True)
 
     def _generate_new_monster(self, silent: bool = False, cr=None):
@@ -751,11 +767,27 @@ class EncounterTab(QWidget):
         from src.models.monster import Monster
         from src.rules.stat_builder import build_balanced_monster
 
+        traits = getattr(self, "_creature_traits", {})
         for m in self._monsters:
             if m.name in self._monster_files or m.name in self._temp_monsters:
                 continue
-            monster = build_balanced_monster(m.challenge_rating or 0,
-                                             base=Monster(name=m.name))
+            base = Monster(name=m.name)
+            monster = build_balanced_monster(m.challenge_rating or 0, base=base)
+            trait_text = traits.get(m.name, "")
+            if trait_text and self._parent._check_backend():
+                from src.ai.ai_generator import ai_generator
+                try:
+                    if not monster.description:
+                        options = ai_generator.generate_options(
+                            monster, "description"
+                        )
+                        if options:
+                            monster.description = options[0]
+                    monster.actions = ai_generator.generate_actions(
+                        monster, actions_prompt=trait_text
+                    )
+                except Exception:
+                    pass
             self._temp_monsters[m.name] = monster
 
         # Description : générée par IA si le champ est vide.

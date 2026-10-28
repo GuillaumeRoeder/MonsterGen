@@ -430,69 +430,63 @@ class AIGenerator:
             raise RuntimeError("Le modèle n'a pas produit de scénario.")
         return cleaned
 
-    def generate_encounter_from_description(self, description: str,
-                                            party_size: int,
-                                            party_level: int,
-                                            difficulty: str) -> list:
-        """Compose une rencontre depuis la description libre du MJ.
+    def extract_creatures_from_description(self, description: str) -> list:
+        """Phase 1 du flux description -> rencontre : décorticage du texte.
 
-        Analyse la description et propose une composition (nom, CR,
-        quantité de chaque monstre) cohérente avec le texte, puis
-        équilibrée pour la difficulté visée : le CR et les quantités
-        doivent converger vers le budget de PX de la difficulté.
+        Extrait les créatures de la description SANS leur attribuer de
+        difficulté (c'est le moteur de règles qui la calcule ensuite) :
+        pour chaque type de créature, son nom, le nombre d'exemplaires
+        qu'implique le texte (un pluriel ou un collectif = plusieurs) et
+        ses caractéristiques notables (armes, aptitudes, ambiance).
 
-        Retourne [(name, cr, count), ...] en respectant les monstres
-        explicitement mentionnés dans la description.
+        Retourne [{"name": str, "count": int, "traits": str}, ...].
         """
-        from src.rules.encounter import DIFFICULTY_LABELS
-
-        target = DIFFICULTY_LABELS.get(difficulty, difficulty)
         prompt = (
-            f"Rencontre DnD 5e pour un groupe de {party_size} joueurs "
-            f"de niveau moyen {party_level}, difficulté visée : {target}.\n"
-            f"Description de la rencontre par le MJ :\n{description}\n\n"
-            "Compose la rencontre correspondant à cette description : "
-            "reprends les créatures explicitement mentionnées (même nom) "
-            "avec les quantités qu'implique le texte : un pluriel ou un "
-            "collectif (« une meute », « une cavalerie », « plusieurs », "
-            "« une trentaine »...) signifie PLUSIEURS exemplaires du même "
-            "monstre — jamais 1 seul. Si la description n'impose pas de "
-            "créature précise, choisis-en de cohérentes. Choisis le CR de "
-            "chaque créature pour que la rencontre totale (quantités "
-            "multiplicateur compris) atteigne la difficulté visée sans la "
-            "dépasser : plus il y a d'exemplaires, plus le CR doit être "
-            "faible.\n"
-            "Réponds UNIQUEMENT en JSON valide, format strict :\n"
-            '{"monsters": [{"name": "...", "cr": 0.25, "count": 4}]}\n'
-            "Le champ cr accepte 0, 0.125, 0.25, 0.5 ou un entier "
-            "(1 à 20). Pas de texte en dehors du JSON."
+            "Description d'une rencontre DnD 5e r\u00e9dig\u00e9e par un MJ :\n"
+            f"{description}\n\n"
+            "Liste les cr\u00e9atures qui composent cette rencontre. Pour "
+            "chacune :\n"
+            "- name : le nom de la cr\u00e9ature (reprends le nom du texte ; "
+            "s'il s'agit d'une cr\u00e9ature officielle DnD, utilise ce nom)\n"
+            "- count : le nombre d'exemplaires qu'implique le texte \u2014 un "
+            "pluriel ou un collectif (« une meute », « une cavalerie », "
+            "« plusieurs », « une trentaine »...) signifie PLUSIEURS "
+            "exemplaires, jamais 1 ; un chiffre explicite prime\n"
+            "- traits : ses caract\u00e9ristiques notables dans le texte "
+            "(armes, aptitudes, r\u00e4le, ambiance) en une phrase courte\n\n"
+            "N'invente pas de cr\u00e9ature non d\u00e9crite ; s'il n'y en a "
+            "qu'une seule, ne renvoie qu'elle.\n"
+            "R\u00e9ponds UNIQUEMENT en JSON valide, format strict :\n"
+            '{"creatures": [{"name": "...", "count": 4, "traits": "..."}]}\n'
+            "Pas de texte en dehors du JSON."
         )
 
         raw = _backend_generate(prompt, max_tokens=400)
         data = self._parse_json(raw)
-        if not data or not isinstance(data.get("monsters"), list):
+        if not data or not isinstance(data.get("creatures"), list):
             raise RuntimeError(
-                "Le modèle n'a pas produit de composition exploitable."
+                "Le mod\u00e8le n'a pas pu d\u00e9cortiquer la description."
             )
 
         result = []
-        for entry in data["monsters"][:6]:
+        for entry in data["creatures"][:8]:
             if not isinstance(entry, dict) or not entry.get("name"):
                 continue
-            try:
-                cr = float(entry.get("cr") or 0)
-            except (TypeError, ValueError):
-                cr = 0
             try:
                 count = max(1, int(entry.get("count") or 1))
             except (TypeError, ValueError):
                 count = 1
-            result.append((str(entry["name"]).strip(), cr, count))
+            result.append({
+                "name": str(entry["name"]).strip(),
+                "count": count,
+                "traits": str(entry.get("traits") or "").strip(),
+            })
         if not result:
             raise RuntimeError(
-                "Le modèle n'a pas produit de composition exploitable."
+                "Le mod\u00e8le n'a pas pu d\u00e9cortiquer la description."
             )
         return result
+
 
 
 # Instance globale

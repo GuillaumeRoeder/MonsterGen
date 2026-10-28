@@ -21,7 +21,7 @@ from src.rules.encounter import (
     XP_THRESHOLDS,
     party_xp_budget,
 )
-from src.rules.stat_builder import cr_display, cr_xp
+from src.rules.stat_builder import CR_ENTRIES, cr_display, cr_xp
 
 # Multiplicateur de PX selon le nombre de monstres (DMG ch. 9).
 # La tranche est indexée par le nombre total de monstres.
@@ -196,6 +196,70 @@ def _count_for_budget(monster_cr: Optional[float], budget: int) -> int:
         else:
             break
     return best
+
+def assign_crs(counts: List[int], party_size: int, avg_level: int,
+               difficulty: str) -> List[float]:
+    """Assigne un CR \u00e0 chaque type de monstre pour matcher la difficult\u00e9.
+
+    Les quantit\u00e9s sont fix\u00e9es d'avance (issues de la description) ;
+    on cherche le CR commun (granularit\u00e9 la plus simple) puis, si un
+    seul CR ne permet pas de tomber dans la bande de la difficult\u00e9, on
+    essaie des combinaisons de CR diff\u00e9rents (les premiers types plus
+    forts, les derniers plus faibles).
+
+    Retourne une liste de CR, un par type, dans l'ordre.
+    """
+    from src.rules.encounter import XP_THRESHOLDS
+
+    total_count = sum(max(1, c) for c in counts)
+    budget = party_xp_budget(party_size, avg_level, difficulty)
+
+    keys = ["easy", "medium", "hard", "deadly"]
+    index = keys.index(difficulty)
+    upper = (XP_THRESHOLDS[avg_level][index + 1] * party_size
+             if index < 3 else int(budget * 1.5))
+
+    crs = [float(f) for f, _ in CR_ENTRIES]
+
+    def total_xp(assignments):
+        raw = sum(cr_xp(cr) * max(1, c) for cr, c in zip(assignments, counts))
+        return round(raw * xp_multiplier(
+            sum(max(1, c) for c in counts)
+        ))
+
+    def score(adjusted):
+        if adjusted < budget:
+            return (budget - adjusted) * 2
+        if adjusted > upper:
+            return (adjusted - upper) * 3
+        return 0
+
+    best, best_score = None, None
+
+    # 1. CR identique pour tous les types
+    for cr in crs:
+        assignments = [cr] * len(counts)
+        s = score(total_xp(assignments))
+        s += total_count
+        if best_score is None or s < best_score:
+            best, best_score = assignments, s
+    if best_score is not None and best_score <= total_count:
+        return best
+
+    # 2. CR diff\u00e9renci\u00e9s (proc\u00e9duaux : types pr\u00e9c\u00e9dents plus forts)
+    #    Recherche gloutonne par paire de CR adjacents.
+    n = len(counts)
+    for hi in crs:
+        for lo in crs:
+            if lo > hi:
+                continue
+            for k in range(n + 1):
+                assignments = [hi] * k + [lo] * (n - k)
+                s = score(total_xp(assignments)) + total_count
+                if best_score is None or s < best_score:
+                    best, best_score = assignments, s
+    return best if best is not None else [1.0] * len(counts)
+
 
 
 def suggest_count(monster_cr: Optional[float], party_size: int, avg_level: int,
