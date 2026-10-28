@@ -26,7 +26,7 @@ MonsterGen est une application Python qui génère des fiches de PNJ, monstres e
 - **Étiquette de statut** : mode IA actif affiché en permanence en haut de l'UI
 
 ### Rencontres (multi-monstres)
-- **Onglet dédié « Rencontre »** : groupe + difficulté, puis sélection de monstres dans la bibliothèque
+- **Mode dédié « Rencontre »** (sélecteur Fiche/Rencontre en haut de la fenêtre) : groupe + difficulté, puis sélection de monstres dans la bibliothèque
 - **Quantités calculées automatiquement** : les monstres forts restent seuls, les faibles forment des groupes — selon le budget de PX et les multiplicateurs du DMG
 - **CR inadaptés gérés** : monstre trop fort ou trop faible pour la difficulté ? Diagnostic + suggestions (difficulté supérieure, monstre de remplacement…), le MJ garde la main
 - **Difficulté réelle en temps réel** : PX ajustés vs budget, label coloré

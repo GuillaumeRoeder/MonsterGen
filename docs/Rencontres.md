@@ -1,6 +1,7 @@
 # Rencontres
 
-Le mode **Rencontre** (4ᵉ onglet de l'éditeur) permet de construire des
+Le mode **Rencontre** (sélecteur « Mode : Fiche / Rencontre » en haut
+de la fenêtre) permet de construire des
 combats multi-monstres pour un groupe de joueurs, avec équilibrage
 automatique selon les règles du Guide du Maître (ch. 9).
 
@@ -118,7 +119,7 @@ sans inventer de stats.
   difficulté réelle, quantités suggérées, diagnostics de sélection,
   `build_auto_encounter`.
 - `src/library/encounter_manager.py` — persistance des rencontres.
-- `src/ui/encounter_tab.py` — l'onglet UI (tableau, labels temps
+- `src/ui/encounter_tab.py` — le panneau UI du mode Rencontre (tableau, labels temps
   réel, dialogues de sélection).
 - `src/ai/ai_generator.py::generate_encounter_scenario` — prompt du
   scénario multi-monstres.

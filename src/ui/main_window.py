@@ -13,7 +13,8 @@ from typing import Optional
 
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QFileDialog, QHBoxLayout, QInputDialog, QLabel,
-    QMainWindow, QMessageBox, QPushButton, QTabWidget, QVBoxLayout, QWidget,
+    QMainWindow, QMessageBox, QPushButton, QRadioButton, QStackedWidget,
+    QTabWidget, QVBoxLayout, QWidget,
 )
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIcon
@@ -46,7 +47,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("MonsterGen - Générateur de fiches DnD 5e")
-        self.setGeometry(100, 100, 900, 700)
+        self.setGeometry(100, 100, 1100, 750)
 
         self.monster_manager = MonsterManager(self)
         self._preview_timer = QTimer(self)
@@ -75,17 +76,59 @@ class MainWindow(QMainWindow):
         self.backend_status_label.setFixedHeight(26)
         root_layout.addWidget(self.backend_status_label)
 
-        main_layout = QHBoxLayout()
+        # --- Sélecteur de mode : Fiche / Rencontre ---
+        mode_bar = QWidget()
+        mode_bar.setStyleSheet("background-color: #10151c;")
+        mode_layout = QHBoxLayout(mode_bar)
+        mode_layout.setContentsMargins(10, 4, 10, 4)
+        mode_layout.setSpacing(16)
+
+        mode_title = QLabel("Mode :")
+        mode_title.setStyleSheet("color: #90caf9; font-weight: bold; background: transparent;")
+        mode_layout.addWidget(mode_title)
+
+        self.mode_fiche_radio = QRadioButton("Fiche (PNJ/Monstre)")
+        self.mode_fiche_radio.setChecked(True)
+        self.mode_fiche_radio.setToolTip(
+            "Générer une fiche de PNJ/monstre unique "
+            "(description, stats, actions, scénario, exports)"
+        )
+        mode_layout.addWidget(self.mode_fiche_radio)
+
+        self.mode_rencontre_radio = QRadioButton("Rencontre (multi-monstres)")
+        self.mode_rencontre_radio.setToolTip(
+            "Construire une rencontre complète : sélection de monstres, "
+            "quantités, équilibrage, scénario de combat"
+        )
+        mode_layout.addWidget(self.mode_rencontre_radio)
+
+        mode_layout.addStretch()
+        root_layout.addWidget(mode_bar)
+
+        # --- Contenu empilé : un panneau par mode ---
+        self.mode_stack = QStackedWidget()
+        root_layout.addWidget(self.mode_stack, stretch=1)
+
+        self.mode_stack.addWidget(self._create_fiche_page())
+        self.mode_stack.addWidget(self.encounter_tab)
+
+        self.mode_fiche_radio.toggled.connect(self._switch_mode)
+        self.mode_rencontre_radio.toggled.connect(self._switch_mode)
+
+        self.update_backend_status()
+
+    def _create_fiche_page(self) -> QWidget:
+        """Page du mode Fiche : formulaire + boutons + aperçu."""
+        page = QWidget()
+        main_layout = QHBoxLayout(page)
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(10)
-        root_layout.addLayout(main_layout, stretch=1)
 
         main_layout.addWidget(self._create_form_panel(), stretch=1)
 
         self.preview_panel = PreviewPanel()
         main_layout.addWidget(self.preview_panel, stretch=1)
-
-        self.update_backend_status()
+        return page
 
     def _create_form_panel(self) -> QWidget:
         """Crée le panneau de formulaire (onglets + boutons de contrôle)."""
@@ -104,7 +147,6 @@ class MainWindow(QMainWindow):
         tab_widget.addTab(self.basic_tab, "Description")
         tab_widget.addTab(self.stats_tab, "Statistiques")
         tab_widget.addTab(self.actions_tab, "Actions")
-        tab_widget.addTab(self.encounter_tab, "Rencontre")
         layout.addWidget(tab_widget)
 
         control_layout = QHBoxLayout()
@@ -126,6 +168,13 @@ class MainWindow(QMainWindow):
         layout.addLayout(control_layout)
 
         return panel
+
+    def _switch_mode(self):
+        """Bascule entre le panneau Fiche et le panneau Rencontre."""
+        if self.mode_fiche_radio.isChecked():
+            self.mode_stack.setCurrentIndex(0)
+        else:
+            self.mode_stack.setCurrentIndex(1)
 
     def setup_connections(self):
         """Configure les connexions des signaux entre widgets."""

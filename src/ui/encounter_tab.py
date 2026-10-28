@@ -38,9 +38,17 @@ class EncounterTab(QWidget):
         self._monsters = []          # [EncounterMonster]
         self._monster_files = {}     # nom -> chemin de fiche bibliothèque
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
+        root = QHBoxLayout(self)
+        root.setContentsMargins(10, 10, 10, 10)
+        root.setSpacing(10)
+
+        layout = QVBoxLayout()
         layout.setSpacing(10)
+        root.addLayout(layout, stretch=3)
+
+        right_panel = QVBoxLayout()
+        right_panel.setSpacing(6)
+        root.addLayout(right_panel, stretch=2)
 
         # --- Groupe cible + difficulté ---
         party_layout = QHBoxLayout()
@@ -152,7 +160,7 @@ class EncounterTab(QWidget):
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
-        # --- Scénario + persistance ---
+        # --- Scénario + persistance (bas de la colonne gauche) ---
         bottom_layout = QHBoxLayout()
         bottom_layout.setSpacing(8)
 
@@ -175,6 +183,20 @@ class EncounterTab(QWidget):
         bottom_layout.addStretch()
         layout.addLayout(bottom_layout)
 
+        # --- Colonne droite : scénario de rencontre ---
+        scenario_title = QLabel("Scénario de rencontre")
+        scenario_title.setStyleSheet(
+            "color: #90caf9; font-weight: bold;"
+        )
+        right_panel.addWidget(scenario_title)
+        self.scenario_edit = QTextEdit()
+        self.scenario_edit.setPlaceholderText(
+            "Le scénario généré (contexte, disposition, tactique, "
+            "récompense) s'affichera ici. Utilisez « 📝 Générer le "
+            "scénario » — reste éditable et sauvegardé avec la rencontre."
+        )
+        right_panel.addWidget(self.scenario_edit, stretch=1)
+
         # --- Signaux temps réel ---
         self.table.itemChanged.connect(self.on_count_edited)
         self.party_size_spin.valueChanged.connect(self._refresh_summary)
@@ -195,6 +217,7 @@ class EncounterTab(QWidget):
             party_level=self.party_level_spin.value(),
             difficulty=self.difficulty_combo.currentData() or "medium",
             description=self.description_edit.toPlainText().strip(),
+            scenario=self.scenario_edit.toPlainText().strip(),
             monsters=[EncounterMonster(m.name, m.challenge_rating, m.count)
                       for m in self._monsters],
         )
@@ -509,22 +532,8 @@ class EncounterTab(QWidget):
             )
 
     def _show_scenario(self, scenario: str):
-        """Affiche le scénario dans une boîte éditable (le MJ peut ajuster)."""
-        from PySide6.QtWidgets import QTextEdit
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Scénario de rencontre")
-        dialog.setMinimumSize(500, 400)
-        layout = QVBoxLayout(dialog)
-        editor = QTextEdit()
-        editor.setPlainText(scenario)
-        layout.addWidget(editor)
-        buttons = QHBoxLayout()
-        buttons.addStretch()
-        close_btn = QPushButton("Fermer")
-        close_btn.clicked.connect(dialog.accept)
-        buttons.addWidget(close_btn)
-        layout.addLayout(buttons)
-        dialog.exec()
+        """Affiche le scénario dans la colonne dédiée (éditable par le MJ)."""
+        self.scenario_edit.setPlainText(scenario)
 
     # ------------------------------------------------------------------
     # Persistance + export
@@ -574,6 +583,7 @@ class EncounterTab(QWidget):
             if index >= 0:
                 self.difficulty_combo.setCurrentIndex(index)
             self.description_edit.setPlainText(encounter.description or "")
+            self.scenario_edit.setPlainText(encounter.scenario or "")
             self._refresh_table()
 
     def _export_pdfs(self):
