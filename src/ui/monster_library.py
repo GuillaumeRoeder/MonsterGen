@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QLabel, QMessageBox, QPushButton, QTableWidget, QTableWidgetItem,
     QVBoxLayout
 )
+from src.ui.widgets.row_buttons import RowButton, RowButtons
 
 from src.library.library_manager import library_manager
 
@@ -123,16 +124,14 @@ class MonsterLibraryDialog(QDialog):
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self._list.insertRow(row)
             self._list.setItem(row, 0, item)
-            delete_btn = QPushButton("\u2715")
-            delete_btn.setFixedSize(20, 18)
-            delete_btn.setStyleSheet(
-                "QPushButton { font-size: 10px; padding: 0; color: #ff8888; }"
+            delete_btn = RowButton(
+                "\u2715", "Supprimer cette sauvegarde",
+                normal_color="#9aa0b4", hover_color="#ff8888",
             )
-            delete_btn.setToolTip("Supprimer cette sauvegarde")
             delete_btn.clicked.connect(
                 lambda *args, r=row: self._delete_row(r)
             )
-            self._list.setCellWidget(row, 1, delete_btn)
+            self._list.setCellWidget(row, 1, RowButtons([delete_btn]))
 
     def _selected_file(self):
         item = self._list.currentItem()

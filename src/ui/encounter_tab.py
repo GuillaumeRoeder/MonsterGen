@@ -27,6 +27,7 @@ from src.rules.encounter_builder import (
 )
 from src.rules.stat_builder import cr_display
 from src.ui.styles import ACCENT_BUTTON_STYLE
+from src.ui.widgets.row_buttons import RowButton, RowButtons
 
 
 class EncounterTab(QWidget):
@@ -99,16 +100,14 @@ class EncounterTab(QWidget):
         layout.addWidget(self.description_edit)
 
         # --- Table des monstres de la rencontre ---
-        self.table = QTableWidget(0, 6)
+        self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(
-            ["Monstre", "CR", "Quantité", "Fiche", "", ""]
+            ["Monstre", "CR", "Quantité", "Fiche", ""]
         )
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(4, 26)
-        self.table.setColumnWidth(5, 26)
+        self.table.setColumnWidth(4, 56)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         layout.addWidget(self.table, stretch=1)
@@ -248,20 +247,24 @@ class EncounterTab(QWidget):
             self.table.setItem(row, 2, count_item)
             has_sheet = "✓" if m.name in self._monster_files else "—"
             self.table.setItem(row, 3, QTableWidgetItem(has_sheet))
-            lib_btn = QPushButton("📖")
-            lib_btn.setFixedSize(20, 18)
-            lib_btn.setStyleSheet("QPushButton { font-size: 10px; padding: 0; }")
-            lib_btn.setToolTip("Remplacer cette ligne par un monstre de la bibliothèque")
-            lib_btn.clicked.connect(lambda *args, r=row: self._pick_library_for_row(r))
-            self.table.setCellWidget(row, 4, lib_btn)
-            remove_btn = QPushButton("✕")
-            remove_btn.setFixedSize(20, 18)
-            remove_btn.setToolTip("Retirer cette ligne de la rencontre")
-            remove_btn.setStyleSheet(
-                "QPushButton { font-size: 10px; padding: 0; color: #ff8888; }"
+            lib_btn = RowButton(
+                "📖",
+                "Remplacer cette ligne par un monstre de la bibliothèque",
+                normal_color="#9aa0b4", hover_color="#90caf9",
             )
-            remove_btn.clicked.connect(lambda *args, r=row: self._remove_row(r))
-            self.table.setCellWidget(row, 5, remove_btn)
+            lib_btn.clicked.connect(
+                lambda *args, r=row: self._pick_library_for_row(r)
+            )
+            remove_btn = RowButton(
+                "✕", "Retirer cette ligne de la rencontre",
+                normal_color="#9aa0b4", hover_color="#ff8888",
+            )
+            remove_btn.clicked.connect(
+                lambda *args, r=row: self._remove_row(r)
+            )
+            self.table.setCellWidget(
+                row, 4, RowButtons([lib_btn, remove_btn])
+            )
         self.table.blockSignals(False)
         self._refresh_summary()
 
