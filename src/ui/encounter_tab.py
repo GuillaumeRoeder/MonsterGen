@@ -101,18 +101,34 @@ class EncounterTab(QWidget):
         self.description_edit.setFixedHeight(72)
         layout.addWidget(self.description_edit)
 
-        desc_btn_layout = QHBoxLayout()
-        self.gen_from_desc_btn = QPushButton("\U0001F4DD G\u00e9n\u00e9rer depuis la description")
-        self.gen_from_desc_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
-        self.gen_from_desc_btn.setToolTip(
-            "Compose la rencontre \u00e0 partir de la description : choisit "
-            "les cr\u00e9atures, leurs CR et quantit\u00e9s pour atteindre la "
-            "difficult\u00e9 vis\u00e9e, puis g\u00e9n\u00e8re leurs fiches"
+        # --- Boutons de génération (au-dessus de la liste) ---
+        gen_bar = QHBoxLayout()
+        gen_bar.setSpacing(8)
+
+        random_btn = QPushButton("\U0001F3B2 G\u00e9n\u00e9rer")
+        random_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        random_btn.setToolTip(
+            "Si une description est saisie : compose la rencontre depuis "
+            "cette description (cr\u00e9atures, CR et quantit\u00e9s conformes au "
+            "texte) pour la difficult\u00e9 vis\u00e9e. Sinon : g\u00e9n\u00e8re des monstres "
+            "in\u00e9dits \u00e9quilibr\u00e9s pour la difficult\u00e9, puis quantit\u00e9s, "
+            "description et sc\u00e9nario. Les fiches restent temporaires "
+            "jusqu'\u00e0 int\u00e9gration volontaire."
         )
-        self.gen_from_desc_btn.clicked.connect(self._generate_from_description)
-        desc_btn_layout.addWidget(self.gen_from_desc_btn)
-        desc_btn_layout.addStretch()
-        layout.addLayout(desc_btn_layout)
+        random_btn.clicked.connect(self._generate_full_from_scratch)
+        gen_bar.addWidget(random_btn)
+
+        full_btn = QPushButton("\U0001F4D6 G\u00e9n\u00e9rer depuis la biblioth\u00e8que")
+        full_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        full_btn.setToolTip(
+            "Choisir des monstres de la biblioth\u00e8que puis g\u00e9n\u00e9rer fiches "
+            "manquantes + quantit\u00e9s + description + sc\u00e9nario"
+        )
+        full_btn.clicked.connect(self._generate_full)
+        gen_bar.addWidget(full_btn)
+
+        gen_bar.addStretch()
+        layout.addLayout(gen_bar)
 
         # --- Table des monstres de la rencontre ---
         self.table = QTableWidget(0, 5)
@@ -147,26 +163,6 @@ class EncounterTab(QWidget):
         )
         new_btn.clicked.connect(self._generate_new_monster)
         btn_layout.addWidget(new_btn)
-
-        random_btn = QPushButton("🎲 Générer tout de zéro")
-        random_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
-        random_btn.setToolTip(
-            "Part d'une rencontre vide : génère de nouveaux monstres par IA "
-            "(CR équilibrés pour la difficulté visée), les sauvegarde dans la "
-            "bibliothèque, puis calcule les quantités, la description et le "
-            "scénario"
-        )
-        random_btn.clicked.connect(self._generate_full_from_scratch)
-        btn_layout.addWidget(random_btn)
-
-        full_btn = QPushButton("📖 Générer depuis la bibliothèque")
-        full_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
-        full_btn.setToolTip(
-            "Choisir des monstres de la bibliothèque puis générer fiches "
-            "manquantes + quantités + description + scénario"
-        )
-        full_btn.clicked.connect(self._generate_full)
-        btn_layout.addWidget(full_btn)
 
         counts_btn = QPushButton("⚖ Ajuster les quantités")
         counts_btn.setToolTip(
@@ -579,10 +575,12 @@ class EncounterTab(QWidget):
                 self._monster_files[name] = str(target)
         self._refresh_table()
 
-        # Ajuste les quantit\u00e9s vers la difficult\u00e9 vis\u00e9e, puis fiches
-        # temporaires pour les monstres sans fiche.
-        self._adjust_counts(silent=True)
-        self._generate_full()
+        # Les quantit\u00e9s viennent de la description (une \u00ab cavalerie \u00bb =
+        # plusieurs exemplaires) : on ne les \u00e9crase pas par un calcul
+        # d'\u00e9quilibrage automatique. La difficult\u00e9 r\u00e9elle reste affich\u00e9e
+        # dans le label de synth\u00e8se ; le MJ ajuste \u00e0 la main ou via
+        # \u00ab Ajuster les quantit\u00e9s \u00bb.
+        self._generate_full(keep_counts=True)
 
     def _generate_new_monster(self, silent: bool = False, cr=None):
         """Génère une fiche de monstre temporaire pour la difficulté visée.
@@ -639,14 +637,21 @@ class EncounterTab(QWidget):
         self._refresh_table()
 
     def _generate_full_from_scratch(self):
-        """Génération complète de zéro : rencontre vidée, nouveaux monstres IA.
+        """Bouton « Générer » : depuis la description si remplie, sinon de zéro.
 
-        Crée plusieurs monstres inédits (CR équilibrés pour la difficulté
-        visée), les sauvegarde dans la bibliothèque, puis calcule les
-        quantités, la description et le scénario.
+        Description saisie : l'IA compose la rencontre depuis le texte
+        (créatures, CR et quantités conformes — une « cavalerie » donne
+        plusieurs centaures) puis les fiches manquantes sont générées.
+        Sinon : rencontre vide, nouveaux monstres équilibrés pour la
+        difficulté visée.
         """
+        description = self.description_edit.toPlainText().strip()
+        if description:
+            self._generate_from_description()
+            return
+
         confirm = QMessageBox.question(
-            self, "Générer tout de zéro",
+            self, "Générer",
             "La rencontre actuelle sera remplacée par des monstres "
             "entièrement générés. Continuer ?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -656,36 +661,66 @@ class EncounterTab(QWidget):
             return
 
         how_many, ok = QInputDialog.getInt(
-            self, "Générer tout de zéro",
+            self, "Générer",
             "Nombre de types de monstres à générer :", 2, 1, 6, 1,
         )
         if not ok:
             return
 
-        # Chaque type de monstre reçoit sa part du budget de la
-        # difficulté : budget / nombre de types → CR le plus proche.
-        # Les quantités sont ensuite affinées vers la difficulté
-        # visée par _adjust_counts.
-        from src.rules.encounter import budget_to_cr, party_xp_budget
+        # Cherche le CR dont la rencontre finale (types x quantités
+        # ajustées par build_auto_encounter) est la plus proche de la
+        # difficulté demandée : on simule chaque CR possible.
+        from src.rules.encounter_builder import build_auto_encounter
+        from src.rules.stat_builder import CR_ENTRIES
 
-        budget = party_xp_budget(
-            self.party_size_spin.value(),
-            self.party_level_spin.value(),
-            self.difficulty_combo.currentData() or "medium",
-        )
-        per_monster_budget = max(1, round(budget / how_many))
+        party_size = self.party_size_spin.value()
+        party_level = self.party_level_spin.value()
+        difficulty = self.difficulty_combo.currentData() or "medium"
+
+        # Le CR unitaire idéal vaut le budget divis\u00e9 par le nombre
+        # d'exemplaires typiques ; on retient le CR dont la rencontre
+        # simul\u00e9e est la plus proche de la difficult\u00e9, avec une
+        # pr\u00e9f\u00e9rence pour les rencontres \u00e0 peu d'exemplaires (plus
+        # lisibles \u00e0 la table) et sans d\u00e9passement du budget.
+        best_cr, best_score = 0.0, None
+        for frac, _label in CR_ENTRIES:
+            cr = float(frac)
+            probe = build_auto_encounter(
+                [EncounterMonster(f"m{i}", cr, 1)
+                 for i in range(how_many)],
+                party_size, party_level, difficulty,
+            )[0]
+            # Viser la bande de la difficult\u00e9 : au-dessus du budget
+            # (le budget est le seuil de la difficult\u00e9) mais sous le
+            # seuil de la difficult\u00e9 sup\u00e9rieure ; bonus pour les
+            # rencontres \u00e0 peu d'exemplaires (plus lisibles \u00e0 la table).
+            from src.rules.encounter import XP_THRESHOLDS
+            keys = ["easy", "medium", "hard", "deadly"]
+            index = keys.index(difficulty)
+            lower = probe.budget
+            upper = (
+                XP_THRESHOLDS[party_level][index + 1] * party_size
+                if index < 3 else lower * 1.5
+            )
+            gap = probe.adjusted_xp - lower
+            if probe.adjusted_xp < lower:
+                score = (lower - probe.adjusted_xp) * 2
+            elif probe.adjusted_xp > upper:
+                score = (probe.adjusted_xp - upper) * 3
+            else:
+                score = 0
+            score += probe.monster_count
+            if best_score is None or score < best_score:
+                best_cr, best_score = cr, score
 
         self._monsters = []
         self._monster_files = {}
         self._temp_monsters = {}
         for _ in range(how_many):
-            self._generate_new_monster(
-                silent=True, cr=budget_to_cr(per_monster_budget)
-            )
+            self._generate_new_monster(silent=True, cr=best_cr)
 
         self._adjust_counts(silent=True)
-        if not self.description_edit.toPlainText().strip():
-            self._generate_description(silent=True)
+        self._generate_description(silent=True)
         if self._parent._check_backend():
             from src.ai.ai_generator import ai_generator
             encounter = self.current_encounter()
@@ -696,15 +731,20 @@ class EncounterTab(QWidget):
                 pass
         self._refresh_table()
 
-    def _generate_full(self):
-        """Génération complète : fiches manquantes + quantités + scénario."""
+    def _generate_full(self, keep_counts: bool = False):
+        """Génération complète : fiches manquantes + quantités + scénario.
+
+        keep_counts : conserve les quantités courantes (composition
+        issue de la description) au lieu de rééquilibrer.
+        """
         if not self._monsters:
             QMessageBox.information(
                 self, "Aucun monstre",
                 "Ajoutez d'abord des monstres depuis la bibliothèque."
             )
             return
-        self._adjust_counts(silent=True)
+        if not keep_counts:
+            self._adjust_counts(silent=True)
 
         # Fiches manquantes : stats équilibrées, gardées temporaires.
         # Le MJ les intègre à la bibliothèque depuis la fiche (bouton 📝)

@@ -179,6 +179,25 @@ def evaluate(encounter: Encounter) -> Dict:
     }
 
 
+def _count_for_budget(monster_cr: Optional[float], budget: int) -> int:
+    """Nombre d'exemplaires d'un monstre pour consommer une part du budget.
+
+    Maximal sans que les PX ajustés (multiplicateur compris) dépassent
+    la part : la répartition entre types reste ainsi dans le budget
+    global de la difficulté.
+    """
+    xp = cr_xp(monster_cr)
+    if xp <= 0 or budget <= 0:
+        return 1
+    best = 1
+    for n in range(1, 31):
+        if round(xp * n * xp_multiplier(n)) <= budget:
+            best = n
+        else:
+            break
+    return best
+
+
 def suggest_count(monster_cr: Optional[float], party_size: int, avg_level: int,
                   difficulty: str) -> int:
     """Nombre d'exemplaires d'un monstre pour atteindre la difficulté visée.
@@ -256,9 +275,11 @@ def check_selection(monsters: List[EncounterMonster], party_size: int,
     budget = party_xp_budget(party_size, avg_level, difficulty)
     issues: List[SelectionIssue] = []
 
-    # Cas 1 : un monstre solitaire dépasse le budget
+    # Cas 1 : un monstre solitaire dépasse nettement le budget
+    # (une lère surcharge < 25 % reste jouable : c'est souvent le CR
+    # le plus proche du budget, on garde donc l'équilibrage actif)
     for m in monsters:
-        if m.xp > budget:
+        if m.xp > budget * 1.25:
             issues.append(SelectionIssue(
                 kind="too_strong",
                 message=(
@@ -340,18 +361,32 @@ def build_auto_encounter(monsters: List[EncounterMonster], party_size: int,
     too_strong = any(i.kind == "too_strong" for i in issues)
 
     if not too_strong:
-        # Chaque monstre reçoit la quantité qui l'amène au budget,
-        # puis on répartit le reliquat : les monstres dont le CR est
-        # le plus proche du budget unitaire reçoivent le surplus.
+        # Le budget de la difficulté est partagé entre les types de
+        # monstres : chaque type reçoit la quantité qui l'amène à SA
+        # part du budget (sinon N types = N fois la difficulté visée).
         budget = encounter.budget
+        share = max(1, round(budget / max(1, len(encounter.monsters))))
         for m in encounter.monsters:
-            m.count = suggest_count(
-                m.challenge_rating, party_size, avg_level, difficulty
+            m.count = _count_for_budget(
+                m.challenge_rating, share
             )
 
-        # Réduction si les PX ajustés dépassent le budget de plus de 10 %
-        # (sinon la rencontre est trop difficile par rapport à la cible).
-        while (encounter.adjusted_xp > budget * 1.10
+        # Ajustement global : la difficulté réelle tient compte du
+        # multiplicateur de nombre total de monstres. On ajoute des
+        # exemplaires tant qu'on reste sous le budget ajusté, puis on
+        # retire ceux qui dépassent — la difficulté demandée reste
+        # la cible, pas un minimum.
+        improved = True
+        while improved:
+            improved = False
+            for m in encounter.monsters:
+                m.count += 1
+                if encounter.adjusted_xp <= budget:
+                    improved = True
+                else:
+                    m.count -= 1
+
+        while (encounter.adjusted_xp > budget
                and any(m.count > 1 for m in encounter.monsters)):
             biggest = max(
                 (m for m in encounter.monsters if m.count > 1),
