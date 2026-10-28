@@ -1,0 +1,648 @@
+"""
+Mode « Rencontre » : génération de rencontres multi-monstres.
+
+Deux approches complémentaires :
+- Depuis la bibliothèque : sélection de monstres existants ; le système
+  calcule les quantités pour atteindre la difficulté visée, et gère les
+  cas où les CR sélectionnés sont trop hauts ou trop bas pour le budget
+  (diagnostics + suggestions, le MJ garde la main).
+- Génération complète : les fiches manquantes des monstres choisis
+  sont générées comme en mode monstre (tables DMG + IA pour le texte).
+
+Logique pure dans src/rules/encounter_builder.py ; persistance dans
+src/library/encounter_manager.py ; ce module ne contient que l'UI.
+"""
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QComboBox, QDialog, QHBoxLayout, QHeaderView, QInputDialog, QLabel,
+    QMessageBox, QPushButton, QSpinBox, QTableWidget, QTableWidgetItem,
+    QVBoxLayout, QWidget,
+)
+
+from src.library.encounter_manager import encounter_manager
+from src.rules.encounter import DIFFICULTIES
+from src.rules.encounter_builder import (
+    Encounter, EncounterMonster, build_auto_encounter, evaluate,
+)
+from src.rules.stat_builder import cr_display
+from src.ui.styles import ACCENT_BUTTON_STYLE
+
+
+class EncounterTab(QWidget):
+    """Onglet de création de rencontres multi-monstres."""
+
+    def __init__(self, parent_window):
+        super().__init__()
+        self._parent = parent_window
+        self._monsters = []          # [EncounterMonster]
+        self._monster_files = {}     # nom -> chemin de fiche bibliothèque
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
+
+        # --- Groupe cible + difficulté ---
+        party_layout = QHBoxLayout()
+        party_layout.setSpacing(6)
+
+        self.party_size_spin = QSpinBox()
+        self.party_size_spin.setRange(1, 10)
+        self.party_size_spin.setValue(4)
+        party_layout.addWidget(QLabel("Joueurs :"))
+        party_layout.addWidget(self.party_size_spin)
+
+        self.party_level_spin = QSpinBox()
+        self.party_level_spin.setRange(1, 20)
+        self.party_level_spin.setValue(2)
+        party_layout.addWidget(QLabel("Niveau moyen :"))
+        party_layout.addWidget(self.party_level_spin)
+
+        self.difficulty_combo = QComboBox()
+        for key, label in DIFFICULTIES:
+            self.difficulty_combo.addItem(label, key)
+        self.difficulty_combo.setCurrentIndex(1)
+        party_layout.addWidget(QLabel("Difficulté :"))
+        party_layout.addWidget(self.difficulty_combo)
+
+        party_layout.addStretch()
+        layout.addLayout(party_layout)
+
+        self.summary_label = QLabel("")
+        self.summary_label.setStyleSheet("font-weight: bold;")
+        layout.addWidget(self.summary_label)
+
+        # --- Table des monstres de la rencontre ---
+        self.table = QTableWidget(0, 4)
+        self.table.setHorizontalHeaderLabels(
+            ["Monstre", "CR", "Quantité", "Fiche"]
+        )
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        layout.addWidget(self.table, stretch=1)
+
+        # --- Boutons d'action sur la sélection ---
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+
+        add_btn = QPushButton("＋ Ajouter depuis la bibliothèque")
+        add_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        add_btn.clicked.connect(self._add_from_library)
+        btn_layout.addWidget(add_btn)
+
+        new_btn = QPushButton("✨ Générer un monstre")
+        new_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        new_btn.setToolTip(
+            "Génère directement une nouvelle fiche de monstre équilibrée "
+            "pour la difficulté visée, sans passer par la bibliothèque"
+        )
+        new_btn.clicked.connect(self._generate_new_monster)
+        btn_layout.addWidget(new_btn)
+
+        random_btn = QPushButton("🎲 Génération complète")
+        random_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        random_btn.setToolTip(
+            "Choisir des monstres de la bibliothèque et générer fiches "
+            "manquantes + quantités + scénario"
+        )
+        random_btn.clicked.connect(self._generate_full)
+        btn_layout.addWidget(random_btn)
+
+        counts_btn = QPushButton("⚖ Ajuster les quantités")
+        counts_btn.setToolTip(
+            "Recalcule les quantités pour atteindre la difficulté visée"
+        )
+        counts_btn.clicked.connect(self._adjust_counts)
+        btn_layout.addWidget(counts_btn)
+
+        remove_btn = QPushButton("✕ Retirer la ligne")
+        remove_btn.clicked.connect(self._remove_selected)
+        btn_layout.addWidget(remove_btn)
+
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+
+        # --- Scénario + persistance ---
+        bottom_layout = QHBoxLayout()
+        bottom_layout.setSpacing(8)
+
+        scenario_btn = QPushButton("📝 Générer le scénario")
+        scenario_btn.clicked.connect(self._generate_scenario)
+        bottom_layout.addWidget(scenario_btn)
+
+        save_btn = QPushButton("💾 Sauvegarder la rencontre")
+        save_btn.clicked.connect(self._save_encounter)
+        bottom_layout.addWidget(save_btn)
+
+        load_btn = QPushButton("📂 Charger une rencontre")
+        load_btn.clicked.connect(self._load_encounter)
+        bottom_layout.addWidget(load_btn)
+
+        export_pdf_btn = QPushButton("📄 Exporter les fiches (PDF)")
+        export_pdf_btn.clicked.connect(self._export_pdfs)
+        bottom_layout.addWidget(export_pdf_btn)
+
+        bottom_layout.addStretch()
+        layout.addLayout(bottom_layout)
+
+        # --- Signaux temps réel ---
+        self.table.itemChanged.connect(self.on_count_edited)
+        self.party_size_spin.valueChanged.connect(self._refresh_summary)
+        self.party_level_spin.valueChanged.connect(self._refresh_summary)
+        self.difficulty_combo.currentIndexChanged.connect(self._refresh_summary)
+
+        self._refresh_table()
+        self._refresh_summary()
+
+    # ------------------------------------------------------------------
+    # Construction de l'objet Rencontre depuis l'UI
+    # ------------------------------------------------------------------
+
+    def current_encounter(self) -> Encounter:
+        """Rencontre telle qu'affichée dans le tableau."""
+        return Encounter(
+            party_size=self.party_size_spin.value(),
+            party_level=self.party_level_spin.value(),
+            difficulty=self.difficulty_combo.currentData() or "medium",
+            monsters=[EncounterMonster(m.name, m.challenge_rating, m.count)
+                      for m in self._monsters],
+        )
+
+    # ------------------------------------------------------------------
+    # Rafraîchissement temps réel (table + label de difficulté)
+    # ------------------------------------------------------------------
+
+    def _refresh_table(self):
+        """Reconstruit le tableau des monstres de la rencontre."""
+        self.table.blockSignals(True)
+        self.table.setRowCount(len(self._monsters))
+        for row, m in enumerate(self._monsters):
+            self.table.setItem(row, 0, QTableWidgetItem(m.name))
+            self.table.setItem(row, 1, QTableWidgetItem(cr_display(m.challenge_rating)))
+            count_item = QTableWidgetItem()
+            count_item.setData(Qt.ItemDataRole.DisplayRole, m.count)
+            count_item.setFlags(count_item.flags() | Qt.ItemFlag.ItemIsEditable)
+            self.table.setItem(row, 2, count_item)
+            has_sheet = "✓" if m.name in self._monster_files else "—"
+            self.table.setItem(row, 3, QTableWidgetItem(has_sheet))
+        self.table.blockSignals(False)
+        self._refresh_summary()
+
+    def _refresh_summary(self):
+        """Met à jour le label coloré de difficulté réelle."""
+        encounter = self.current_encounter()
+        if not self._monsters:
+            self.summary_label.setText(
+                "Aucun monstre — ajoutez-en depuis la bibliothèque."
+            )
+            self.summary_label.setStyleSheet("color: #9aa0b4;")
+            return
+        info = evaluate(encounter)
+        self.summary_label.setText(
+            f"● {info['adjusted_xp']} PX ajustés (×{info['multiplier']}) / "
+            f"budget {info['budget']} PX — difficulté réelle : "
+            f"{info['actual_label']}"
+        )
+        self.summary_label.setStyleSheet(
+            f"font-weight: bold; color: {info['actual_color']};"
+        )
+
+    def on_count_edited(self, item):
+        """Applique l'édition manuelle d'une quantité."""
+        row = item.row()
+        if row < 0 or row >= len(self._monsters):
+            return
+        if item.column() != 2:
+            return
+        try:
+            count = max(1, int(item.data(Qt.ItemDataRole.DisplayRole)))
+        except (TypeError, ValueError):
+            count = 1
+        self._monsters[row].count = count
+        self._refresh_summary()
+
+    # ------------------------------------------------------------------
+    # Sélection depuis la bibliothèque
+    # ------------------------------------------------------------------
+
+    def _add_from_library(self):
+        """Ouvre la bibliothèque en mode sélection multiple."""
+        dialog = LibraryPickDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            for file, name, cr in dialog.selected:
+                if any(m.name == name for m in self._monsters):
+                    continue
+                self._monsters.append(EncounterMonster(name, cr, 0))
+                self._monster_files[name] = str(file)
+            self._adjust_counts(silent=True)
+            self._refresh_table()
+
+    def _remove_selected(self):
+        """Retire la ligne sélectionnée du tableau."""
+        row = self.table.currentRow()
+        if row < 0 or row >= len(self._monsters):
+            return
+        name = self._monsters[row].name
+        del self._monsters[row]
+        self._monster_files.pop(name, None)
+        self._refresh_table()
+
+    # ------------------------------------------------------------------
+    # Quantités automatiques + diagnostics
+    # ------------------------------------------------------------------
+
+    def _adjust_counts(self, silent: bool = False):
+        """Recalcule les quantités pour la difficulté visée."""
+        if not self._monsters:
+            if not silent:
+                QMessageBox.information(
+                    self, "Aucun monstre",
+                    "Ajoutez d'abord des monstres à la rencontre."
+                )
+            return
+        encounter, issues = build_auto_encounter(
+            self._monsters,
+            self.party_size_spin.value(),
+            self.party_level_spin.value(),
+            self.difficulty_combo.currentData() or "medium",
+        )
+        self._monsters = encounter.monsters
+        self._refresh_table()
+        if issues and not silent:
+            text = "\n\n".join(
+                f"⚠ {i.message}\n" + "\n".join(f"  • {s}" for s in i.suggestions)
+                for i in issues
+            )
+            QMessageBox.warning(
+                self, "Sélection incompatible avec la difficulté", text
+            )
+
+    # ------------------------------------------------------------------
+    # Génération complète (fiches manquantes + scénario)
+    # ------------------------------------------------------------------
+
+    def _generate_new_monster(self):
+        """Génère directement une fiche de monstre pour la difficulté visée.
+
+        Le CR cible est calculé comme en mode monstre : budget de PX de
+        la difficulté → CR le plus proche. La fiche est construite par
+        les tables DMG (stats) + IA pour nom/description/actions si le
+        backend est disponible, puis sauvegardée dans la bibliothèque
+        et ajoutée à la rencontre.
+        """
+        from src.ai.ai_generator import ai_generator
+        from src.library.library_manager import library_manager
+        from src.models.monster import Monster
+        from src.rules.encounter import encounter_cr
+        from src.rules.stat_builder import build_balanced_monster
+
+        party_size = self.party_size_spin.value()
+        party_level = self.party_level_spin.value()
+        difficulty = self.difficulty_combo.currentData() or "medium"
+
+        cr = encounter_cr(party_size, party_level, difficulty)
+        monster = build_balanced_monster(cr, base=Monster(name=""))
+
+        if self._parent._check_backend():
+            try:
+                options = ai_generator.generate_options(monster, "name")
+                if options:
+                    monster.name = options[0]
+                options = ai_generator.generate_options(monster, "description")
+                if options:
+                    monster.description = options[0]
+                monster.actions = ai_generator.generate_actions(monster)
+            except Exception:
+                pass
+
+        if not monster.name:
+            monster.name = f"Monstre CR {cr_display(cr)}"
+
+        base_name = monster.name
+        name = base_name
+        suffix = 2
+        while any(m.name == name for m in self._monsters):
+            name = f"{base_name} {suffix}"
+            suffix += 1
+        monster.name = name
+
+        try:
+            library_manager.save(monster, name)
+            self._monster_files[name] = str(library_manager.target_path(name))
+        except OSError as e:
+            QMessageBox.critical(self, "Erreur", f"Échec de la sauvegarde :\n{e}")
+            return
+
+        self._monsters.append(EncounterMonster(name, monster.challenge_rating, 0))
+        self._adjust_counts(silent=True)
+        self._refresh_table()
+
+    def _generate_full(self):
+        """Génération complète : fiches manquantes + quantités + scénario."""
+        if not self._monsters:
+            QMessageBox.information(
+                self, "Aucun monstre",
+                "Ajoutez d'abord des monstres depuis la bibliothèque."
+            )
+            return
+        self._adjust_counts(silent=True)
+
+        # Génère les fiches manquantes en mode monstre (une par une).
+        from src.library.library_manager import library_manager
+        from src.models.monster import Monster
+        from src.rules.stat_builder import build_balanced_monster
+
+        for m in self._monsters:
+            if m.name in self._monster_files:
+                continue
+            # Fiche manquante : stats équilibrées pour le CR du monstre.
+            monster = build_balanced_monster(m.challenge_rating or 0,
+                                             base=Monster(name=m.name))
+            try:
+                library_manager.save(monster, m.name)
+                self._monster_files[m.name] = str(library_manager.target_path(m.name))
+            except OSError:
+                pass
+
+        # Scénario de rencontre (IA).
+        if self._parent._check_backend():
+            from src.ai.ai_generator import ai_generator
+            encounter = self.current_encounter()
+            try:
+                scenario = ai_generator.generate_encounter_scenario(
+                    encounter
+                )
+                self._show_scenario(scenario)
+            except Exception as e:
+                QMessageBox.warning(
+                    self, "Scénario non généré",
+                    f"Le scénario de rencontre n'a pas pu être généré :\n{e}\n\n"
+                    "Les fiches et quantités restent disponibles."
+                )
+        self._refresh_table()
+
+    def _generate_scenario(self):
+        """Génère uniquement le scénario de la rencontre courante."""
+        if not self._monsters:
+            QMessageBox.information(
+                self, "Aucun monstre",
+                "Ajoutez d'abord des monstres à la rencontre."
+            )
+            return
+        if not self._parent._check_backend():
+            return
+        from src.ai.ai_generator import ai_generator
+        encounter = self.current_encounter()
+        try:
+            scenario = ai_generator.generate_encounter_scenario(
+                encounter
+            )
+            self._show_scenario(scenario)
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Erreur", f"Erreur lors de la génération : {e}"
+            )
+
+    def _show_scenario(self, scenario: str):
+        """Affiche le scénario dans une boîte éditable (le MJ peut ajuster)."""
+        from PySide6.QtWidgets import QTextEdit
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Scénario de rencontre")
+        dialog.setMinimumSize(500, 400)
+        layout = QVBoxLayout(dialog)
+        editor = QTextEdit()
+        editor.setPlainText(scenario)
+        layout.addWidget(editor)
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        close_btn = QPushButton("Fermer")
+        close_btn.clicked.connect(dialog.accept)
+        buttons.addWidget(close_btn)
+        layout.addLayout(buttons)
+        dialog.exec()
+
+    # ------------------------------------------------------------------
+    # Persistance + export
+    # ------------------------------------------------------------------
+
+    def _save_encounter(self):
+        """Sauvegarde la rencontre dans la bibliothèque de rencontres."""
+        if not self._monsters:
+            QMessageBox.warning(
+                self, "Rencontre vide",
+                "Ajoutez des monstres avant de sauvegarder."
+            )
+            return
+        name, ok = QInputDialog.getText(
+            self, "Sauvegarder la rencontre", "Nom de la rencontre :"
+        )
+        if not ok or not name.strip():
+            return
+        encounter = self.current_encounter()
+        encounter.name = name.strip()
+        try:
+            encounter_manager.save(encounter, name)
+        except OSError as e:
+            QMessageBox.critical(self, "Erreur", f"Échec de la sauvegarde :\n{e}")
+            return
+        QMessageBox.information(
+            self, "Sauvegarde réussie",
+            f"La rencontre « {encounter.name} » a été sauvegardée."
+        )
+
+    def _load_encounter(self):
+        """Charge une rencontre sauvegardée."""
+        dialog = EncounterPickDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            encounter = dialog.selected_encounter
+            self._monsters = [EncounterMonster(m.name, m.challenge_rating, m.count)
+                              for m in encounter.monsters]
+            self._monster_files = {}
+            from src.library.library_manager import library_manager
+            for m in self._monsters:
+                target = library_manager.target_path(m.name)
+                if target.exists():
+                    self._monster_files[m.name] = str(target)
+            self.party_size_spin.setValue(encounter.party_size)
+            self.party_level_spin.setValue(encounter.party_level)
+            index = self.difficulty_combo.findData(encounter.difficulty)
+            if index >= 0:
+                self.difficulty_combo.setCurrentIndex(index)
+            self._refresh_table()
+
+    def _export_pdfs(self):
+        """Exporte chaque fiche de monstre de la rencontre en PDF."""
+        if not self._monsters:
+            QMessageBox.information(
+                self, "Aucun monstre",
+                "Ajoutez d'abord des monstres à la rencontre."
+            )
+            return
+        from src.library.library_manager import library_manager
+        from src.models.monster import Monster
+        from src.rules.stat_builder import build_balanced_monster
+        from PySide6.QtWidgets import QFileDialog
+        from config.config_manager import config_manager
+
+        folder = QFileDialog.getExistingDirectory(
+            self, "Dossier d'export des fiches",
+            config_manager.get_save_path(),
+        )
+        if not folder:
+            return
+        exported = 0
+        for m in self._monsters:
+            target = library_manager.target_path(m.name)
+            monster = None
+            if target.exists():
+                try:
+                    monster = library_manager.load(target)
+                except (OSError, ValueError):
+                    monster = None
+            if monster is None:
+                monster = build_balanced_monster(
+                    m.challenge_rating or 0, base=Monster(name=m.name)
+                )
+            path = f"{folder}/{m.name.replace(' ', '_')}_fiche_DnD.pdf"
+            try:
+                self._parent.monster_manager.export_to_pdf(monster, path)
+                exported += 1
+            except Exception:
+                continue
+        QMessageBox.information(
+            self, "Export terminé",
+            f"{exported} fiche(s) PDF exportée(s) vers :\n{folder}"
+        )
+
+
+class LibraryPickDialog(QDialog):
+    """Sélection multi-monstres dans la bibliothèque."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Choisir des monstres")
+        self.setMinimumSize(480, 400)
+        self.selected = []   # [(file, name, cr)]
+
+        from src.library.library_manager import library_manager
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(8)
+
+        layout.addWidget(QLabel(
+            "Sélectionnez un ou plusieurs monstres (Ctrl+clic) :"
+        ))
+
+        self.list = QTableWidget(0, 2)
+        self.list.setHorizontalHeaderLabels(["Monstre", "CR"])
+        self.list.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.list.setSelectionMode(QTableWidget.SelectionMode.MultiSelection)
+        self.list.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.Stretch
+        )
+        self.list.verticalHeader().setVisible(False)
+        layout.addWidget(self.list, stretch=1)
+
+        self._entries = library_manager.list_entries()
+        for entry in self._entries:
+            row = self.list.rowCount()
+            self.list.insertRow(row)
+            self.list.setItem(row, 0, QTableWidgetItem(entry.name))
+            self.list.setItem(row, 1, QTableWidgetItem(
+                cr_display(entry.challenge_rating)
+            ))
+
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        ok_btn = QPushButton("Ajouter à la rencontre")
+        ok_btn.clicked.connect(self._confirm)
+        buttons.addWidget(ok_btn)
+        cancel_btn = QPushButton("Annuler")
+        cancel_btn.clicked.connect(self.reject)
+        buttons.addWidget(cancel_btn)
+        layout.addLayout(buttons)
+
+    def _confirm(self):
+        rows = sorted(set(i.row() for i in self.list.selectedIndexes()))
+        self.selected = [
+            (self._entries[row].file, self._entries[row].name,
+             self._entries[row].challenge_rating)
+            for row in rows
+            if row < len(self._entries)
+        ]
+        if not self.selected:
+            return
+        self.accept()
+
+
+class EncounterPickDialog(QDialog):
+    """Choix d'une rencontre sauvegardée."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Charger une rencontre")
+        self.setMinimumSize(420, 350)
+        self.selected_encounter = None
+
+        from PySide6.QtWidgets import QListWidget, QListWidgetItem
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(8)
+        layout.addWidget(QLabel("Rencontres sauvegardées :"))
+
+        self.list = QListWidget()
+        layout.addWidget(self.list, stretch=1)
+
+        self._entries = encounter_manager.list_entries()
+        for entry in self._entries:
+            self.list.addItem(QListWidgetItem(entry.label))
+
+        buttons = QHBoxLayout()
+        buttons.addStretch()
+        load_btn = QPushButton("Charger")
+        load_btn.clicked.connect(self._confirm)
+        buttons.addWidget(load_btn)
+        delete_btn = QPushButton("Supprimer")
+        delete_btn.setStyleSheet("color: #ff8888;")
+        delete_btn.clicked.connect(self._delete)
+        buttons.addWidget(delete_btn)
+        cancel_btn = QPushButton("Annuler")
+        cancel_btn.clicked.connect(self.reject)
+        buttons.addWidget(cancel_btn)
+        layout.addLayout(buttons)
+
+    def _confirm(self):
+        row = self.list.currentRow()
+        if row < 0 or row >= len(self._entries):
+            return
+        try:
+            self.selected_encounter = encounter_manager.load(
+                self._entries[row].file
+            )
+        except (OSError, ValueError) as e:
+            QMessageBox.critical(self, "Erreur", f"Fichier illisible :\n{e}")
+            return
+        self.accept()
+
+    def _delete(self):
+        row = self.list.currentRow()
+        if row < 0 or row >= len(self._entries):
+            return
+        confirm = QMessageBox.question(
+            self, "Supprimer la rencontre",
+            f"Supprimer « {self._entries[row].name} » ?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if confirm == QMessageBox.StandardButton.Yes:
+            try:
+                encounter_manager.delete(self._entries[row].file)
+            except OSError:
+                pass
+            self._entries.pop(row)
+            self.list.takeItem(row)

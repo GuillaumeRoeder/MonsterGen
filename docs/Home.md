@@ -13,6 +13,7 @@ Bienvenue sur le wiki de **MonsterGen**, le générateur de fiches de PNJ/monstr
 7. [Configuration](Configuration.md) — tous les réglages disponibles
 8. [Bibliothèque](Bibliothèque.md) — sauvegardes, chargement, suppression
 9. [Exports](Exports.md) — PNG style officiel, PDF
+10. [Rencontres](Rencontres.md) — rencontres multi-monstres, budget de PX, quantités automatiques
 
 ## En bref
 

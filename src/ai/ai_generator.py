@@ -13,6 +13,7 @@ import re
 from typing import List, Optional
 
 from src.models.monster import Monster, Action
+from src.rules.encounter_builder import Encounter
 from src.ai.local_model import local_model, ModelNotAvailableError
 from src.ai.api_client import api_client
 from config.config_manager import config_manager
@@ -328,6 +329,55 @@ class AIGenerator:
             "**Récompense** : 1 phrase (butin, information ou objet récupéré après le combat).\n"
             "N'invente pas de stats nouvelles : appuie-toi uniquement sur la fiche ci-dessus. "
             "Réponds UNIQUEMENT avec le texte du scénario, sans préambule ni conclusion."
+        )
+
+        raw = _backend_generate(prompt, max_tokens=600, temperature=0.8)
+        cleaned = raw.replace('```', '').strip()
+        if not cleaned:
+            raise RuntimeError("Le modèle n'a pas produit de scénario.")
+        return cleaned
+    def generate_encounter_scenario(self, encounter: Encounter,
+                                    monster_files: Optional[dict] = None) -> str:
+        """Génère un scénario de rencontre multi-monstres pour le MJ.
+
+        encounter : la rencontre complète (monstres, quantités, groupe
+        cible, difficulté visée). monster_files : dictionnaire optionnel
+        nom -> résumé de fiche détaillée (race, description, actions).
+        """
+        from src.rules.encounter import DIFFICULTY_LABELS
+        from src.rules.encounter_builder import cr_display
+
+        lines = []
+        for m in encounter.monsters:
+            cr = cr_display(m.challenge_rating)
+            line = f"- {m.count} × {m.name} (CR {cr})"
+            if monster_files and m.name in monster_files:
+                line += f" — {monster_files[m.name]}"
+            lines.append(line)
+        monsters_detail = "\n".join(lines)
+
+        target = DIFFICULTY_LABELS.get(encounter.difficulty, encounter.difficulty)
+        actual = DIFFICULTY_LABELS.get(encounter.actual_difficulty,
+                                       encounter.actual_difficulty)
+
+        prompt = (
+            f"Rencontre DnD 5e pour un groupe de {encounter.party_size} "
+            f"joueurs de niveau moyen {encounter.party_level}.\n"
+            f"Difficulté visée : {target} (difficulté réelle calculée : "
+            f"{actual}, {encounter.adjusted_xp} PX ajustés).\n"
+            f"Monstres :\n{monsters_detail}\n\n"
+            "Écris, en français, un scénario de RENCONTRE DE COMBAT pour le MJ, "
+            "structuré ainsi, avec ces titres exacts en gras :\n"
+            "**Contexte** : 1 à 2 phrases (lieu, circonstances, pourquoi le combat éclate).\n"
+            "**Disposition** : 1 à 2 phrases (placement des monstres, terrain, "
+            "déclencheur de l'initiative).\n"
+            "**Tactique** : 3 à 5 phrases (qui ouvre le combat, ciblage prioritaire, "
+            "coordination entre les monstres, réaction à mi-PV, conditions de "
+            "repli ou de reddition).\n"
+            "**Récompense** : 1 phrase (butin, information ou objet récupéré).\n"
+            "N'invente pas de stats nouvelles : appuie-toi uniquement sur les "
+            "monstres listés ci-dessus. "
+            "Réponds UNIQUEMENT avec le texte du scénario, sans préambule."
         )
 
         raw = _backend_generate(prompt, max_tokens=600, temperature=0.8)

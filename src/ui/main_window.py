@@ -33,6 +33,7 @@ from src.ui.monster_library import (
 )
 from src.ui.styles import ACCENT_BUTTON_STYLE
 from src.ui.widgets.actions_tab import ActionsTab
+from src.ui.encounter_tab import EncounterTab
 from src.ui.widgets.basic_tab import BasicTab
 from src.ui.widgets.equipment_widget import EquipmentWidget
 from src.ui.widgets.preview_panel import PreviewPanel
@@ -97,11 +98,13 @@ class MainWindow(QMainWindow):
         self.stats_tab = StatsTab()
         self.actions_tab = ActionsTab()
         self.equipment_widget = EquipmentWidget()
+        self.encounter_tab = EncounterTab(self)
 
         tab_widget = QTabWidget()
         tab_widget.addTab(self.basic_tab, "Description")
         tab_widget.addTab(self.stats_tab, "Statistiques")
         tab_widget.addTab(self.actions_tab, "Actions")
+        tab_widget.addTab(self.encounter_tab, "Rencontre")
         layout.addWidget(tab_widget)
 
         control_layout = QHBoxLayout()
