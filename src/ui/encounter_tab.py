@@ -348,18 +348,6 @@ class EncounterTab(QWidget):
     # Sélection depuis la bibliothèque
     # ------------------------------------------------------------------
 
-    def _add_from_library(self):
-        """Ouvre la bibliothèque en mode sélection multiple."""
-        dialog = LibraryPickDialog(self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            for file, name, cr in dialog.selected:
-                if any(m.name == name for m in self._monsters):
-                    continue
-                self._monsters.append(EncounterMonster(name, cr, 0))
-                self._monster_files[name] = str(file)
-            self._adjust_counts(silent=True)
-            self._refresh_table()
-
     def _add_empty_row(self):
         """Ajoute une ligne vide à remplir à la main."""
         self._monsters.append(EncounterMonster("", None, 1))
@@ -372,7 +360,7 @@ class EncounterTab(QWidget):
         """Remplit une ligne depuis un monstre choisi dans la bibliothèque."""
         if row < 0 or row >= len(self._monsters):
             return
-        dialog = LibraryPickDialog(self, single=True)
+        dialog = LibraryPickDialog(self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         if not dialog.selected:
@@ -529,16 +517,16 @@ class EncounterTab(QWidget):
     # ------------------------------------------------------------------
 
     def _generate_new_monster(self, silent: bool = False):
-        """Génère directement une fiche de monstre pour la difficulté visée.
+        """Génère une fiche de monstre temporaire pour la difficulté visée.
 
         Le CR cible est calculé comme en mode monstre : budget de PX de
         la difficulté → CR le plus proche. La fiche est construite par
         les tables DMG (stats) + IA pour nom/description/actions si le
-        backend est disponible, puis sauvegardée dans la bibliothèque
-        et ajoutée à la rencontre.
+        backend est disponible, puis ajoutée à la rencontre. Elle reste
+        temporaire : le MJ l'intègre à la bibliothèque depuis la fiche
+        (bouton 📝) s'il le souhaite.
         """
         from src.ai.ai_generator import ai_generator
-        from src.library.library_manager import library_manager
         from src.models.monster import Monster
         from src.rules.encounter import encounter_cr
         from src.rules.stat_builder import build_balanced_monster
@@ -876,11 +864,11 @@ class EncounterTab(QWidget):
 
 
 class LibraryPickDialog(QDialog):
-    """Sélection multi-monstres dans la bibliothèque."""
+    """Sélection d'un monstre de la bibliothèque pour une ligne."""
 
-    def __init__(self, parent=None, single: bool = False):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Choisir un monstre" if single else "Choisir des monstres")
+        self.setWindowTitle("Choisir un monstre")
         self.setMinimumSize(480, 400)
         self.selected = []   # [(file, name, cr)]
 
@@ -890,18 +878,12 @@ class LibraryPickDialog(QDialog):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
 
-        layout.addWidget(QLabel(
-            "Sélectionnez un monstre :" if single
-            else "Sélectionnez un ou plusieurs monstres (Ctrl+clic) :"
-        ))
+        layout.addWidget(QLabel("Sélectionnez un monstre :"))
 
         self.list = QTableWidget(0, 2)
         self.list.setHorizontalHeaderLabels(["Monstre", "CR"])
         self.list.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.list.setSelectionMode(
-            QTableWidget.SelectionMode.SingleSelection if single
-            else QTableWidget.SelectionMode.MultiSelection
-        )
+        self.list.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.list.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.Stretch
         )
@@ -919,7 +901,7 @@ class LibraryPickDialog(QDialog):
 
         buttons = QHBoxLayout()
         buttons.addStretch()
-        ok_btn = QPushButton("Choisir" if single else "Ajouter à la rencontre")
+        ok_btn = QPushButton("Choisir")
         ok_btn.clicked.connect(self._confirm)
         buttons.addWidget(ok_btn)
         cancel_btn = QPushButton("Annuler")
@@ -928,15 +910,11 @@ class LibraryPickDialog(QDialog):
         layout.addLayout(buttons)
 
     def _confirm(self):
-        rows = sorted(set(i.row() for i in self.list.selectedIndexes()))
-        self.selected = [
-            (self._entries[row].file, self._entries[row].name,
-             self._entries[row].challenge_rating)
-            for row in rows
-            if row < len(self._entries)
-        ]
-        if not self.selected:
+        row = self.list.currentRow()
+        if row < 0 or row >= len(self._entries):
             return
+        entry = self._entries[row]
+        self.selected = [(entry.file, entry.name, entry.challenge_rating)]
         self.accept()
 
 
