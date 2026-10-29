@@ -15,7 +15,7 @@ src/library/encounter_manager.py ; ce module ne contient que l'UI.
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QComboBox, QDialog, QHBoxLayout, QHeaderView, QInputDialog, QLabel,
+    QComboBox, QDialog, QFrame, QHBoxLayout, QHeaderView, QInputDialog, QLabel,
     QMessageBox, QPushButton, QSpinBox, QTableWidget, QTableWidgetItem,
     QTextEdit, QVBoxLayout, QWidget,
 )
@@ -27,6 +27,7 @@ from src.rules.encounter_builder import (
 )
 from src.rules.stat_builder import cr_display
 from src.ui.styles import ACCENT_BUTTON_STYLE
+from src.ui.widgets.card_list import card_add_button
 from src.ui.widgets.row_buttons import RowButton, RowButtons
 from src.ui.widgets.monster_edit_dialog import MonsterEditDialog
 
@@ -119,18 +120,15 @@ class EncounterTab(QWidget):
         random_btn.clicked.connect(self._generate_full_from_scratch)
         gen_bar.addWidget(random_btn)
 
-        full_btn = QPushButton("\U0001F4D6 G\u00e9n\u00e9rer depuis la biblioth\u00e8que")
-        full_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
-        full_btn.setToolTip(
-            "Choisir des monstres de la biblioth\u00e8que puis g\u00e9n\u00e9rer fiches "
-            "manquantes + quantit\u00e9s + description + sc\u00e9nario"
-        )
-        full_btn.clicked.connect(self._generate_full)
-        gen_bar.addWidget(full_btn)
-
         gen_bar.addStretch()
-        layout.addLayout(gen_bar)
+        counts_btn = QPushButton("⚖ Ajuster les quantités")
+        counts_btn.setToolTip(
+            "Recalcule les quantités pour atteindre la difficulté visée"
+        )
+        counts_btn.clicked.connect(self._adjust_counts)
+        gen_bar.addWidget(counts_btn)
 
+        layout.addLayout(gen_bar)
         # --- Table des monstres de la rencontre ---
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(
@@ -144,44 +142,39 @@ class EncounterTab(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         layout.addWidget(self.table, stretch=1)
 
-        # --- Boutons d'action sur la sélection ---
+        # --- Boutons d'ajout sous la liste (modèle onglet Actions) ---
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
+        btn_layout.addStretch()
 
-        add_btn = QPushButton("＋ Ligne vide")
-        add_btn.setToolTip(
+        add_btn = card_add_button(
+            "＋ Ligne vide",
             "Ajoute une ligne que vous remplissez à la main, ou via le "
-            "bouton 📖 qui choisit un monstre dans la bibliothèque"
+            "bouton 📖 qui choisit un monstre dans la bibliothèque",
         )
         add_btn.clicked.connect(self._add_empty_row)
         btn_layout.addWidget(add_btn)
 
-        new_btn = QPushButton("✨ Générer un monstre")
-        new_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
-        new_btn.setToolTip(
+        new_btn = card_add_button(
+            "✨ Générer un monstre",
             "Génère directement une nouvelle fiche de monstre équilibrée "
-            "pour la difficulté visée, sans passer par la bibliothèque"
+            "pour la difficulté visée, sans passer par la bibliothèque",
         )
         new_btn.clicked.connect(self._generate_new_monster)
         btn_layout.addWidget(new_btn)
 
-        counts_btn = QPushButton("⚖ Ajuster les quantités")
-        counts_btn.setToolTip(
-            "Recalcule les quantités pour atteindre la difficulté visée"
-        )
-        counts_btn.clicked.connect(self._adjust_counts)
-        btn_layout.addWidget(counts_btn)
-
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
-        # --- Scénario + persistance (bas de la colonne gauche) ---
+        # --- Persistance (bas de la colonne gauche) ---
+        separator = QFrame()
+        separator.setFixedHeight(1)
+        separator.setStyleSheet("background-color: #39485c; border: none;")
+        layout.addWidget(separator)
+
         bottom_layout = QHBoxLayout()
         bottom_layout.setSpacing(8)
-
-        scenario_btn = QPushButton("📝 Générer le scénario")
-        scenario_btn.clicked.connect(self._generate_scenario)
-        bottom_layout.addWidget(scenario_btn)
+        bottom_layout.addStretch()
 
         save_btn = QPushButton("💾 Sauvegarder la rencontre")
         save_btn.clicked.connect(self._save_encounter)
@@ -211,6 +204,11 @@ class EncounterTab(QWidget):
             "scénario » — reste éditable et sauvegardé avec la rencontre."
         )
         right_panel.addWidget(self.scenario_edit, stretch=1)
+
+        scenario_btn = QPushButton("📝 Générer le scénario")
+        scenario_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        scenario_btn.clicked.connect(self._generate_scenario)
+        right_panel.addWidget(scenario_btn)
 
         # --- Signaux temps réel ---
         self.table.itemChanged.connect(self.on_count_edited)
