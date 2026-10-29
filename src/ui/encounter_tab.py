@@ -120,15 +120,6 @@ class EncounterTab(QWidget):
         random_btn.clicked.connect(self._generate_full_from_scratch)
         gen_bar.addWidget(random_btn)
 
-        full_btn = QPushButton("\U0001F4D6 G\u00e9n\u00e9rer depuis la biblioth\u00e8que")
-        full_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
-        full_btn.setToolTip(
-            "Choisir des monstres de la biblioth\u00e8que puis g\u00e9n\u00e9rer fiches "
-            "manquantes + quantit\u00e9s + description + sc\u00e9nario"
-        )
-        full_btn.clicked.connect(self._generate_full)
-        gen_bar.addWidget(full_btn)
-
         gen_bar.addStretch()
         counts_btn = QPushButton("⚖ Ajuster les quantités")
         counts_btn.setToolTip(
