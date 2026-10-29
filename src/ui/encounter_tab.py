@@ -15,7 +15,7 @@ src/library/encounter_manager.py ; ce module ne contient que l'UI.
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QComboBox, QDialog, QHBoxLayout, QHeaderView, QInputDialog, QLabel,
+    QComboBox, QDialog, QFrame, QHBoxLayout, QHeaderView, QInputDialog, QLabel,
     QMessageBox, QPushButton, QSpinBox, QTableWidget, QTableWidgetItem,
     QTextEdit, QVBoxLayout, QWidget,
 )
@@ -167,6 +167,11 @@ class EncounterTab(QWidget):
         layout.addLayout(btn_layout)
 
         # --- Persistance (bas de la colonne gauche) ---
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
+        layout.addWidget(separator)
+
         bottom_layout = QHBoxLayout()
         bottom_layout.setSpacing(8)
         bottom_layout.addStretch()
