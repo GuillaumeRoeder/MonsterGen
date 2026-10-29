@@ -168,8 +168,8 @@ class EncounterTab(QWidget):
 
         # --- Persistance (bas de la colonne gauche) ---
         separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setFrameShadow(QFrame.Shadow.Sunken)
+        separator.setFixedHeight(1)
+        separator.setStyleSheet("background-color: #39485c; border: none;")
         layout.addWidget(separator)
 
         bottom_layout = QHBoxLayout()
