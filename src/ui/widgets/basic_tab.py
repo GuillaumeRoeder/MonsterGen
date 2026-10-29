@@ -139,8 +139,6 @@ class BasicTab(QWidget):
         )
         scenario_inner.addWidget(scenario_header)
 
-        scenario_layout = QHBoxLayout()
-        scenario_layout.setSpacing(6)
         self.scenario_edit = QTextEdit()
         self.scenario_edit.setPlaceholderText(
             "Scénario de rencontre (lieu, circonstances, motivation du monstre...)"
@@ -154,15 +152,12 @@ class BasicTab(QWidget):
                 font-size: 11px;
             }
         """)
-        scenario_layout.addWidget(self.scenario_edit, stretch=1)
+        scenario_inner.addWidget(self.scenario_edit)
 
-        self.gen_scenario_btn = QPushButton("Générer\nscénario")
+        self.gen_scenario_btn = QPushButton("Générer le scénario")
         self.gen_scenario_btn.setIcon(QIcon.fromTheme("system-run"))
         self.gen_scenario_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
-        self.gen_scenario_btn.setMaximumWidth(110)
-        scenario_layout.addWidget(self.gen_scenario_btn)
-
-        scenario_inner.addLayout(scenario_layout)
+        scenario_inner.addWidget(self.gen_scenario_btn)
         scenario_vlayout.addWidget(self.scenario_content)
 
         self._apply_scenario_toggle_state()
