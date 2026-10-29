@@ -175,13 +175,9 @@ class EncounterTab(QWidget):
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
-        # --- Scénario + persistance (bas de la colonne gauche) ---
+        # --- Persistance (bas de la colonne gauche) ---
         bottom_layout = QHBoxLayout()
         bottom_layout.setSpacing(8)
-
-        scenario_btn = QPushButton("📝 Générer le scénario")
-        scenario_btn.clicked.connect(self._generate_scenario)
-        bottom_layout.addWidget(scenario_btn)
 
         save_btn = QPushButton("💾 Sauvegarder la rencontre")
         save_btn.clicked.connect(self._save_encounter)
@@ -211,6 +207,11 @@ class EncounterTab(QWidget):
             "scénario » — reste éditable et sauvegardé avec la rencontre."
         )
         right_panel.addWidget(self.scenario_edit, stretch=1)
+
+        scenario_btn = QPushButton("📝 Générer le scénario")
+        scenario_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
+        scenario_btn.clicked.connect(self._generate_scenario)
+        right_panel.addWidget(scenario_btn)
 
         # --- Signaux temps réel ---
         self.table.itemChanged.connect(self.on_count_edited)
