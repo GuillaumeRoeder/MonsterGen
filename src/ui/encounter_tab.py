@@ -27,6 +27,7 @@ from src.rules.encounter_builder import (
 )
 from src.rules.stat_builder import cr_display
 from src.ui.styles import ACCENT_BUTTON_STYLE
+from src.ui.widgets.card_list import card_add_button
 from src.ui.widgets.row_buttons import RowButton, RowButtons
 from src.ui.widgets.monster_edit_dialog import MonsterEditDialog
 
@@ -144,36 +145,41 @@ class EncounterTab(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         layout.addWidget(self.table, stretch=1)
 
-        # --- Boutons d'action sur la sélection ---
+        # --- Boutons d'ajout sous la liste (modèle onglet Actions) ---
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
+        btn_layout.addStretch()
 
-        add_btn = QPushButton("＋ Ligne vide")
-        add_btn.setToolTip(
+        add_btn = card_add_button(
+            "＋ Ligne vide",
             "Ajoute une ligne que vous remplissez à la main, ou via le "
-            "bouton 📖 qui choisit un monstre dans la bibliothèque"
+            "bouton 📖 qui choisit un monstre dans la bibliothèque",
         )
         add_btn.clicked.connect(self._add_empty_row)
         btn_layout.addWidget(add_btn)
 
-        new_btn = QPushButton("✨ Générer un monstre")
-        new_btn.setStyleSheet(ACCENT_BUTTON_STYLE)
-        new_btn.setToolTip(
+        new_btn = card_add_button(
+            "✨ Générer un monstre",
             "Génère directement une nouvelle fiche de monstre équilibrée "
-            "pour la difficulté visée, sans passer par la bibliothèque"
+            "pour la difficulté visée, sans passer par la bibliothèque",
         )
         new_btn.clicked.connect(self._generate_new_monster)
         btn_layout.addWidget(new_btn)
 
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+
+        # --- Équilibrage ---
+        counts_layout = QHBoxLayout()
+        counts_layout.setSpacing(8)
         counts_btn = QPushButton("⚖ Ajuster les quantités")
         counts_btn.setToolTip(
             "Recalcule les quantités pour atteindre la difficulté visée"
         )
         counts_btn.clicked.connect(self._adjust_counts)
-        btn_layout.addWidget(counts_btn)
-
-        btn_layout.addStretch()
-        layout.addLayout(btn_layout)
+        counts_layout.addWidget(counts_btn)
+        counts_layout.addStretch()
+        layout.addLayout(counts_layout)
 
         # --- Persistance (bas de la colonne gauche) ---
         bottom_layout = QHBoxLayout()
