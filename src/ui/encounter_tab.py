@@ -169,6 +169,7 @@ class EncounterTab(QWidget):
         # --- Persistance (bas de la colonne gauche) ---
         bottom_layout = QHBoxLayout()
         bottom_layout.setSpacing(8)
+        bottom_layout.addStretch()
 
         save_btn = QPushButton("💾 Sauvegarder la rencontre")
         save_btn.clicked.connect(self._save_encounter)
