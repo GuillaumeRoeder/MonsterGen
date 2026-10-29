@@ -130,8 +130,14 @@ class EncounterTab(QWidget):
         gen_bar.addWidget(full_btn)
 
         gen_bar.addStretch()
-        layout.addLayout(gen_bar)
+        counts_btn = QPushButton("⚖ Ajuster les quantités")
+        counts_btn.setToolTip(
+            "Recalcule les quantités pour atteindre la difficulté visée"
+        )
+        counts_btn.clicked.connect(self._adjust_counts)
+        gen_bar.addWidget(counts_btn)
 
+        layout.addLayout(gen_bar)
         # --- Table des monstres de la rencontre ---
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(
@@ -168,18 +174,6 @@ class EncounterTab(QWidget):
 
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
-
-        # --- Équilibrage ---
-        counts_layout = QHBoxLayout()
-        counts_layout.setSpacing(8)
-        counts_btn = QPushButton("⚖ Ajuster les quantités")
-        counts_btn.setToolTip(
-            "Recalcule les quantités pour atteindre la difficulté visée"
-        )
-        counts_btn.clicked.connect(self._adjust_counts)
-        counts_layout.addWidget(counts_btn)
-        counts_layout.addStretch()
-        layout.addLayout(counts_layout)
 
         # --- Persistance (bas de la colonne gauche) ---
         bottom_layout = QHBoxLayout()
