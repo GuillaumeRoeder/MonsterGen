@@ -167,6 +167,73 @@ def set_stylesheet(app):
             color: #ffffff;
         }
         
+        QComboBox {
+            background-color: #1e2632;
+            color: #dce4ee;
+        }
+        
+        QComboBox:disabled {
+            background-color: #171e28;
+            color: #6a7a8a;
+        }
+        
+        QComboBox QAbstractItemView {
+            background-color: #1e2632;
+            color: #dce4ee;
+            border: 1px solid #39485c;
+            selection-background-color: #1e5fa8;
+            selection-color: #ffffff;
+            outline: none;
+        }
+        
+        QTableWidget {
+            background-color: #1e2632;
+            color: #dce4ee;
+            border: 1px solid #39485c;
+            border-radius: 4px;
+            gridline-color: #39485c;
+            selection-background-color: #1e5fa8;
+            selection-color: #ffffff;
+            alternate-background-color: #232c3b;
+        }
+        
+        QTableWidget::item {
+            background-color: transparent;
+            color: #dce4ee;
+            padding: 4px;
+            border: none;
+        }
+        
+        QTableWidget::item:selected {
+            background-color: #1e5fa8;
+            color: #ffffff;
+        }
+        
+        QHeaderView {
+            background-color: #10151c;
+            border: none;
+            border-bottom: 1px solid #39485c;
+        }
+        
+        QHeaderView::section {
+            background-color: #212b38;
+            color: #dce4ee;
+            font-weight: bold;
+            padding: 6px 8px;
+            border: none;
+            border-right: 1px solid #39485c;
+            border-bottom: 1px solid #39485c;
+        }
+        
+        QHeaderView::section:hover {
+            background-color: #26344a;
+        }
+        
+        QHeaderView::section:selected {
+            background-color: #1e2f47;
+            color: #90caf9;
+        }
+        
         QScrollArea {
             background-color: #161d26;
             border: none;

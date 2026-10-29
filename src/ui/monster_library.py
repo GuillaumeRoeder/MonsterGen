@@ -9,25 +9,27 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QCheckBox, QDialog, QFileDialog, QHBoxLayout, QInputDialog, QLabel,
-    QListWidget, QListWidgetItem, QMessageBox, QPushButton, QVBoxLayout
+    QCheckBox, QDialog, QFileDialog, QHBoxLayout, QHeaderView, QInputDialog,
+    QLabel, QMessageBox, QPushButton, QTableWidget, QTableWidgetItem,
+    QVBoxLayout
 )
+from src.ui.widgets.row_buttons import RowButton, RowButtons
 
 from src.library.library_manager import library_manager
 
 LIBRARY_STYLE = """
-    QListWidget {
+    QTableWidget {
         background-color: #4a4a4a;
         color: #e0e0e0;
         border: 1px solid #5a5a6a;
         border-radius: 4px;
         padding: 4px;
     }
-    QListWidget::item {
+    QTableWidget::item {
         padding: 6px;
         border: none;
     }
-    QListWidget::item:selected {
+    QTableWidget::item:selected {
         background-color: #00aaff;
         color: #ffffff;
     }
@@ -58,8 +60,18 @@ class MonsterLibraryDialog(QDialog):
         header.addWidget(self._path_label, stretch=1)
         layout.addLayout(header)
 
-        self._list = QListWidget()
-        self._list.itemDoubleClicked.connect(self._load_selected)
+        self._list = QTableWidget(0, 2)
+        self._list.setHorizontalHeaderLabels(["Monstre", ""])
+        header = self._list.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        self._list.setColumnWidth(1, 28)
+        self._list.verticalHeader().setVisible(False)
+        self._list.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self._list.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self._list.cellDoubleClicked.connect(
+            lambda *args: self._load_selected()
+        )
         layout.addWidget(self._list, stretch=1)
 
         buttons = QHBoxLayout()
@@ -93,11 +105,6 @@ class MonsterLibraryDialog(QDialog):
         import_btn.clicked.connect(self._import_from_file)
         buttons.addWidget(import_btn)
 
-        delete_btn = QPushButton("\U0001F5D1 Supprimer")
-        delete_btn.setStyleSheet("color: #ff8888;")
-        delete_btn.clicked.connect(self._delete_selected)
-        buttons.addWidget(delete_btn)
-
         close_btn = QPushButton("Fermer")
         close_btn.clicked.connect(self.accept)
         buttons.addWidget(close_btn)
@@ -109,18 +116,50 @@ class MonsterLibraryDialog(QDialog):
     def _refresh(self):
         """Recharge la liste des monstres sauvegardés."""
         self._path_label.setText(f"Dossier : {library_manager.library_dir}")
-        self._list.clear()
-        for entry in library_manager.list_entries():
+        self._list.setRowCount(0)
+        for row, entry in enumerate(library_manager.list_entries()):
             label = entry.label if entry.readable else f"{entry.file.stem} — (fichier illisible)"
-            item = QListWidgetItem(label)
+            item = QTableWidgetItem(label)
             item.setData(Qt.ItemDataRole.UserRole, str(entry.file))
-            self._list.addItem(item)
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self._list.insertRow(row)
+            self._list.setItem(row, 0, item)
+            delete_btn = RowButton(
+                "\u2715", "Supprimer cette sauvegarde",
+                normal_color="#9aa0b4", hover_color="#ff8888",
+            )
+            delete_btn.clicked.connect(
+                lambda *args, r=row: self._delete_row(r)
+            )
+            self._list.setCellWidget(row, 1, RowButtons([delete_btn]))
 
     def _selected_file(self):
         item = self._list.currentItem()
         if not item:
             return None
         return Path(item.data(Qt.ItemDataRole.UserRole))
+
+    def _delete_row(self, row: int):
+        """Supprime la sauvegarde d'une ligne (bouton ✕), avec confirmation."""
+        item = self._list.item(row, 0)
+        if item is None:
+            return
+        file = Path(item.data(Qt.ItemDataRole.UserRole))
+
+        confirm = QMessageBox.question(
+            self, "Supprimer la sauvegarde",
+            f"Supprimer définitivement « {file.stem} » ?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            library_manager.delete(file)
+        except OSError as e:
+            QMessageBox.critical(self, "Erreur", f"Échec de la suppression :\n{e}")
+            return
+        self._refresh()
 
     def _save_current(self):
         """Sauvegarde le monstre actuel, nom de fichier éditable."""
@@ -203,28 +242,6 @@ class MonsterLibraryDialog(QDialog):
             QMessageBox.critical(self, "Erreur", f"Fichier illisible :\n{e}")
             return
         callback(monster)
-
-    def _delete_selected(self):
-        """Supprime la sauvegarde sélectionnée (avec confirmation)."""
-        file = self._selected_file()
-        if not file:
-            QMessageBox.information(self, "Supprimer", "Sélectionnez un monstre dans la liste.")
-            return
-
-        confirm = QMessageBox.question(
-            self, "Supprimer la sauvegarde",
-            f"Supprimer définitivement « {file.stem} » ?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        )
-        if confirm != QMessageBox.StandardButton.Yes:
-            return
-
-        try:
-            library_manager.delete(file)
-        except OSError as e:
-            QMessageBox.critical(self, "Erreur", f"Échec de la suppression :\n{e}")
-            return
-        self._refresh()
 
     def _import_from_file(self):
         """Importe des monstres depuis un fichier d'export de bibliothèque."""

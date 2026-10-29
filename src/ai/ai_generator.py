@@ -13,6 +13,7 @@ import re
 from typing import List, Optional
 
 from src.models.monster import Monster, Action
+from src.rules.encounter_builder import Encounter
 from src.ai.local_model import local_model, ModelNotAvailableError
 from src.ai.api_client import api_client
 from config.config_manager import config_manager
@@ -335,6 +336,157 @@ class AIGenerator:
         if not cleaned:
             raise RuntimeError("Le modèle n'a pas produit de scénario.")
         return cleaned
+    def generate_encounter_description(self, encounter: Encounter) -> List[str]:
+        """Génère des options de description de rencontre (champ vide).
+
+        Propose 3 descriptions courtes cohérentes avec la composition de
+        la rencontre : monstres, quantités, groupe cible et difficulté.
+        L'utilisateur en choisit une (ou saisit la sienne) dans l'UI.
+        """
+        from src.rules.encounter import DIFFICULTY_LABELS
+        from src.rules.encounter_builder import cr_display
+
+        monsters_detail = "; ".join(
+            f"{m.count} × {m.name} (CR {cr_display(m.challenge_rating)})"
+            for m in encounter.monsters
+        )
+        target = DIFFICULTY_LABELS.get(encounter.difficulty, encounter.difficulty)
+
+        prompt = (
+            f"Rencontre DnD 5e pour un groupe de {encounter.party_size} "
+            f"joueurs de niveau moyen {encounter.party_level}, difficulté "
+            f"visée : {target}.\n"
+            f"Monstres : {monsters_detail}\n\n"
+            "Propose 3 descriptions courtes (1 à 2 phrases chacune) de cette "
+            "rencontre pour le MJ : lieu, circonstances du combat, disposition "
+            "ou armes remarquables des monstres. Chaque description doit être "
+            "différente (ambiance, lieu ou déclencheur distinct).\n"
+            "Réponds UNIQUEMENT avec les 3 propositions, séparées par des "
+            "points-virgules, sans numérotation ni texte supplémentaire."
+        )
+
+        raw = _backend_generate(prompt, max_tokens=300)
+        options = [opt.strip() for opt in raw.replace('\n', ';').split(';') if opt.strip()]
+        return options[:3]
+
+    def generate_encounter_scenario(self, encounter: Encounter,
+                                    monster_files: Optional[dict] = None) -> str:
+        """Génère un scénario de rencontre multi-monstres pour le MJ.
+
+        encounter : la rencontre complète (monstres, quantités, groupe
+        cible, difficulté visée). monster_files : dictionnaire optionnel
+        nom -> résumé de fiche détaillée (race, description, actions).
+        """
+        from src.rules.encounter import DIFFICULTY_LABELS
+        from src.rules.encounter_builder import cr_display
+
+        lines = []
+        for m in encounter.monsters:
+            cr = cr_display(m.challenge_rating)
+            line = f"- {m.count} × {m.name} (CR {cr})"
+            if monster_files and m.name in monster_files:
+                line += f" — {monster_files[m.name]}"
+            lines.append(line)
+        monsters_detail = "\n".join(lines)
+
+        target = DIFFICULTY_LABELS.get(encounter.difficulty, encounter.difficulty)
+        actual = DIFFICULTY_LABELS.get(encounter.actual_difficulty,
+                                       encounter.actual_difficulty)
+
+        context_line = ""
+        if encounter.description:
+            context_line = (
+                f"Description de la rencontre fournie par le MJ (contexte "
+                f"à rendre cohérent, éléments à intégrer tels quels) :\n"
+                f"{encounter.description}\n\n"
+            )
+
+        prompt = (
+            f"Rencontre DnD 5e pour un groupe de {encounter.party_size} "
+            f"joueurs de niveau moyen {encounter.party_level}.\n"
+            f"Difficulté visée : {target} (difficulté réelle calculée : "
+            f"{actual}, {encounter.adjusted_xp} PX ajustés).\n"
+            f"Monstres :\n{monsters_detail}\n\n"
+            f"{context_line}"
+            "Écris, en français, un scénario de RENCONTRE DE COMBAT pour le MJ, "
+            "structuré ainsi, avec ces titres exacts en gras :\n"
+            "**Contexte** : 1 à 2 phrases (lieu, circonstances, pourquoi le combat éclate — "
+            "reprend le contexte décrit par le MJ s'il est fourni).\n"
+            "**Disposition** : 1 à 2 phrases (placement des monstres, terrain, "
+            "déclencheur de l'initiative — reprend les armes, compositions et "
+            "détails décrits par le MJ s'ils sont fournis).\n"
+            "**Tactique** : 3 à 5 phrases (qui ouvre le combat, ciblage prioritaire, "
+            "coordination entre les monstres, réaction à mi-PV, conditions de "
+            "repli ou de reddition).\n"
+            "**Récompense** : 1 phrase (butin, information ou objet récupéré).\n"
+            "N'invente pas de stats nouvelles : appuie-toi uniquement sur les "
+            "monstres listés ci-dessus. "
+            "R\u00e9ponds UNIQUEMENT avec le texte du scénario, sans préambule."
+        )
+
+        raw = _backend_generate(prompt, max_tokens=600, temperature=0.8)
+        cleaned = raw.replace('```', '').strip()
+        if not cleaned:
+            raise RuntimeError("Le modèle n'a pas produit de scénario.")
+        return cleaned
+
+    def extract_creatures_from_description(self, description: str) -> list:
+        """Phase 1 du flux description -> rencontre : décorticage du texte.
+
+        Extrait les créatures de la description SANS leur attribuer de
+        difficulté (c'est le moteur de règles qui la calcule ensuite) :
+        pour chaque type de créature, son nom, le nombre d'exemplaires
+        qu'implique le texte (un pluriel ou un collectif = plusieurs) et
+        ses caractéristiques notables (armes, aptitudes, ambiance).
+
+        Retourne [{"name": str, "count": int, "traits": str}, ...].
+        """
+        prompt = (
+            "Description d'une rencontre DnD 5e r\u00e9dig\u00e9e par un MJ :\n"
+            f"{description}\n\n"
+            "Liste les cr\u00e9atures qui composent cette rencontre. Pour "
+            "chacune :\n"
+            "- name : le nom de la cr\u00e9ature (reprends le nom du texte ; "
+            "s'il s'agit d'une cr\u00e9ature officielle DnD, utilise ce nom)\n"
+            "- count : le nombre d'exemplaires qu'implique le texte \u2014 un "
+            "pluriel ou un collectif (« une meute », « une cavalerie », "
+            "« plusieurs », « une trentaine »...) signifie PLUSIEURS "
+            "exemplaires, jamais 1 ; un chiffre explicite prime\n"
+            "- traits : ses caract\u00e9ristiques notables dans le texte "
+            "(armes, aptitudes, r\u00e4le, ambiance) en une phrase courte\n\n"
+            "N'invente pas de cr\u00e9ature non d\u00e9crite ; s'il n'y en a "
+            "qu'une seule, ne renvoie qu'elle.\n"
+            "R\u00e9ponds UNIQUEMENT en JSON valide, format strict :\n"
+            '{"creatures": [{"name": "...", "count": 4, "traits": "..."}]}\n'
+            "Pas de texte en dehors du JSON."
+        )
+
+        raw = _backend_generate(prompt, max_tokens=400)
+        data = self._parse_json(raw)
+        if not data or not isinstance(data.get("creatures"), list):
+            raise RuntimeError(
+                "Le mod\u00e8le n'a pas pu d\u00e9cortiquer la description."
+            )
+
+        result = []
+        for entry in data["creatures"][:8]:
+            if not isinstance(entry, dict) or not entry.get("name"):
+                continue
+            try:
+                count = max(1, int(entry.get("count") or 1))
+            except (TypeError, ValueError):
+                count = 1
+            result.append({
+                "name": str(entry["name"]).strip(),
+                "count": count,
+                "traits": str(entry.get("traits") or "").strip(),
+            })
+        if not result:
+            raise RuntimeError(
+                "Le mod\u00e8le n'a pas pu d\u00e9cortiquer la description."
+            )
+        return result
+
 
 
 # Instance globale

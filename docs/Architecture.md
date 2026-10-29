@@ -13,10 +13,12 @@ MonsterGen/
 │   ├── core/                # Systèmes métier (sans UI)
 │   │   └── monster_manager.py  # Monstre courant + exports PNG/PDF
 │   ├── library/             # Système bibliothèque (sans UI)
-│   │   └── library_manager.py  # Sauvegardes : liste/load/save/delete/import/export
+│   │   ├── library_manager.py  # Sauvegardes : liste/load/save/delete/import/export
+│   │   └── encounter_manager.py  # Sauvegardes de rencontres
 │   ├── rules/               # Moteur de règles DnD 5e (aucune IA)
 │   │   ├── stat_builder.py  # Tables DMG : CA, PV, dés de vie, actions
 │   │   ├── encounter.py     # Budget de PX, CR selon groupe/difficulté
+│   │   ├── encounter_builder.py  # Rencontres multi-monstres : multiplicateurs, quantités
 │   │   └── trait_inference.py  # Race/description -> archétype, armes, etc.
 │   ├── ai/
 │   │   ├── ai_generator.py  # Prompts + parsing (textes, actions, scénario)
@@ -26,6 +28,7 @@ MonsterGen/
 │   │   ├── main_window.py   # Orchestrateur : assemble les widgets, génération
 │   │   ├── config_dialog.py # Configuration
 │   │   ├── monster_library.py  # Dialogues bibliothèque (appelle LibraryManager)
+│   │   ├── encounter_tab.py    # Onglet Rencontre : sélection, quantités, scénario
 │   │   ├── dnd_data.py     # Listes de référence DnD 5e (races, skills, dégâts)
 │   │   ├── action_editor.py    # Carte d'action éditable
 │   │   ├── pill_editor.py      # Éditeur en pills générique
