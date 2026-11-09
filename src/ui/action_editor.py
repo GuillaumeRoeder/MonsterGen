@@ -79,7 +79,7 @@ class ActionEditorWidget(QWidget):
             self.bonus_btn = QPushButton("AB")
             self.bonus_btn.setCheckable(True)
             self.bonus_btn.setChecked(action.is_bonus)
-            self.bonus_btn.setFixedSize(30, 22)
+            self.bonus_btn.setFixedSize(27, 20)
             self.bonus_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             self.bonus_btn.setToolTip(
                 "Cocher si c'est une action bonus (décoché = action classique)"
