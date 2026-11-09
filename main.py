@@ -364,14 +364,7 @@ def create_menus(window: MainWindow):
     library_action.triggered.connect(lambda: window.open_library())
     import_library_action = library_menu.addAction("Importer une bibliothèque...")
     import_library_action.triggered.connect(lambda: window.import_library())
-    
-    # Menu Export (PDF / PNG / bibliothèque)
-    export_menu = menu_bar.addMenu("Export")
-    pdf_action = export_menu.addAction("Exporter en PDF")
-    pdf_action.triggered.connect(lambda: window.export_to_pdf())
-    png_action = export_menu.addAction("Exporter en PNG")
-    png_action.triggered.connect(lambda: window.export_to_png())
-    export_library_action = export_menu.addAction("Exporter la bibliothèque...")
+    export_library_action = library_menu.addAction("Exporter la bibliothèque...")
     export_library_action.triggered.connect(lambda: window.export_library())
     
     # Menu Aide

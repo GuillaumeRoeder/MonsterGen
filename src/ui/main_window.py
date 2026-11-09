@@ -9,6 +9,7 @@ génération (règles + IA).
 """
 
 import random
+from pathlib import Path
 from typing import Optional
 
 from PySide6.QtWidgets import (
@@ -29,6 +30,7 @@ from src.models.monster import AbilityScores, Action, Monster, Skill
 from src.rules.encounter import encounter_cr
 from src.rules.stat_builder import build_balanced_monster
 from src.ui.dnd_data import DND5_RACES
+from src.ui.export_dialog import ExportDialog
 from src.ui.monster_library import (
     MonsterLibraryDialog, LibraryExportDialog, import_library_file,
 )
@@ -166,6 +168,34 @@ class MainWindow(QMainWindow):
         control_layout.addWidget(self.reset_btn)
 
         layout.addLayout(control_layout)
+
+        # --- Boutons fichier : exporter / charger / sauvegarder ---
+        file_layout = QHBoxLayout()
+        file_layout.setSpacing(8)
+
+        export_btn = QPushButton("Exporter la fiche")
+        export_btn.setToolTip(
+            "Ouvre une fenêtre pour choisir le dossier et le format "
+            "(PNG par défaut)"
+        )
+        export_btn.clicked.connect(self.open_export_dialog)
+        file_layout.addWidget(export_btn)
+
+        load_btn = QPushButton("Charger un monstre")
+        load_btn.setToolTip(
+            "Ouvre la bibliothèque pour charger un monstre sauvegardé"
+        )
+        load_btn.clicked.connect(self.open_library)
+        file_layout.addWidget(load_btn)
+
+        save_btn = QPushButton("Sauvegarder un monstre")
+        save_btn.setToolTip(
+            "Sauvegarde le monstre courant dans la bibliothèque"
+        )
+        save_btn.clicked.connect(self.save_to_library)
+        file_layout.addWidget(save_btn)
+
+        layout.addLayout(file_layout)
 
         return panel
 
@@ -833,8 +863,8 @@ class MainWindow(QMainWindow):
     # Exports (délégués au MonsterManager)
     # ------------------------------------------------------------------
 
-    def _export_monster(self, format_key: str, title: str, filter_str: str):
-        """Exporte le monstre courant via le MonsterManager."""
+    def open_export_dialog(self):
+        """Ouvre la fenêtre d'export (dossier + format, PNG par défaut)."""
         monster = self.get_monster_from_form()
 
         if not monster.name:
@@ -845,14 +875,19 @@ class MainWindow(QMainWindow):
             )
             return
 
-        save_path = config_manager.get_save_path()
-        default_filename = f"{monster.name.replace(' ', '_')}_fiche_DnD.{format_key}"
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, title, f"{save_path}/{default_filename}", filter_str
+        base_filename = f"{monster.name.replace(' ', '_')}_fiche_DnD"
+        dialog = ExportDialog(
+            default_folder=config_manager.get_save_path(),
+            base_filename=base_filename,
+            parent=self,
         )
-
-        if not file_path:
+        if dialog.exec() != QDialog.Accepted:
             return
+
+        format_key = dialog.selected_format()
+        file_path = str(
+            Path(dialog.selected_folder()) / f"{base_filename}.{format_key}"
+        )
 
         try:
             if format_key == "pdf":
@@ -870,14 +905,6 @@ class MainWindow(QMainWindow):
                 "Erreur d'export",
                 f"Erreur lors de l'export {format_key.upper()} : {str(e)}"
             )
-
-    def export_to_pdf(self):
-        """Exporte le monstre courant en PDF."""
-        self._export_monster("pdf", "Exporter en PDF", "Fichiers PDF (*.pdf)")
-
-    def export_to_png(self):
-        """Exporte la fiche courante en PNG au style officiel DnD 5e."""
-        self._export_monster("png", "Exporter en PNG", "Images PNG (*.png)")
 
     def _export_saved_monster(self, monster: Monster, format_key: str):
         """Exporte un monstre déjà construit (bibliothèque) en PDF/PNG.
