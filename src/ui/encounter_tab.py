@@ -120,14 +120,6 @@ class EncounterTab(QWidget):
         random_btn.clicked.connect(self._generate_full_from_scratch)
         gen_bar.addWidget(random_btn)
 
-        gen_bar.addStretch()
-        counts_btn = QPushButton("⚖ Ajuster les quantités")
-        counts_btn.setToolTip(
-            "Recalcule les quantités pour atteindre la difficulté visée"
-        )
-        counts_btn.clicked.connect(self._adjust_counts)
-        gen_bar.addWidget(counts_btn)
-
         layout.addLayout(gen_bar)
         # --- Table des monstres de la rencontre ---
         self.table = QTableWidget(0, 5)
@@ -162,6 +154,13 @@ class EncounterTab(QWidget):
         )
         new_btn.clicked.connect(self._generate_new_monster)
         btn_layout.addWidget(new_btn)
+
+        counts_btn = QPushButton("⚖ Ajuster les quantités")
+        counts_btn.setToolTip(
+            "Recalcule les quantités pour atteindre la difficulté visée"
+        )
+        counts_btn.clicked.connect(self._adjust_counts)
+        btn_layout.addWidget(counts_btn)
 
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
