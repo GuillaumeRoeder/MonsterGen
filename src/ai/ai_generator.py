@@ -141,9 +141,12 @@ class AIGenerator:
             "écris le DD : 'DD 13 des jets de sauvegarde de Constitution'. "
             "Aucune action sans bonus au toucher et dégâts, ni sans DD si c'est "
             "un effet de sauvegarde.\n"
+            "Si l'utilisateur demande une action bonus, mets \"is_bonus\": true "
+            "sur cette action (false pour les autres).\n"
             'Réponds UNIQUEMENT en JSON valide, format strict :\n'
             '{"actions": [{"name": "...", "description": "...", '
-            '"attack_bonus": 0, "damage": "...", "damage_type": "..."}]}\n'
+            '"attack_bonus": 0, "damage": "...", "damage_type": "...", '
+            '"is_bonus": false}]}\n'
             "Pas de texte en dehors du JSON."
         )
 
@@ -156,12 +159,17 @@ class AIGenerator:
                 if not isinstance(entry, dict) or not entry.get("name"):
                     continue
                 attack_bonus = entry.get("attack_bonus")
+                text = f"{entry.get('name', '')} {entry.get('description', '')}"
+                is_bonus = bool(entry.get("is_bonus")) or bool(re.search(
+                    r"\baction bonus\b|\bbonus action\b", text, flags=re.IGNORECASE
+                ))
                 actions.append(Action(
                     name=str(entry.get("name", "")).strip(),
                     description=str(entry.get("description", "")).strip(),
                     attack_bonus=int(attack_bonus) if isinstance(attack_bonus, (int, float)) else None,
                     damage=str(entry["damage"]).strip() if entry.get("damage") else None,
                     damage_type=str(entry.get("damage_type", "")).strip() or None,
+                    is_bonus=is_bonus,
                 ))
 
         if not actions:
