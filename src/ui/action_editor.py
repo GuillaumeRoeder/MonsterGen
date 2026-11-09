@@ -46,6 +46,20 @@ ACTION_CARD_STYLE = """
     QPushButton#RemoveButton:hover {
         color: #ff6666;
     }
+    QPushButton#BonusButton {
+        background-color: transparent;
+        border: 1px solid #ffffff;
+        border-radius: 4px;
+        color: #ffffff;
+        font-weight: bold;
+        font-size: 11px;
+        padding: 0px;
+    }
+    QPushButton#BonusButton:checked {
+        background-color: #d32f2f;
+        border: 1px solid #d32f2f;
+        color: #ffffff;
+    }
 """
 
 
@@ -58,7 +72,8 @@ class ActionEditorWidget(QWidget):
     def __init__(self, action: Action, parent=None,
                  name_placeholder: str = "Nom de l'action",
                  remove_tooltip: str = "Supprimer cette action",
-                 description_placeholder: str = None):
+                 description_placeholder: str = None,
+                 show_bonus_button: bool = False):
         super().__init__(parent)
         self.setObjectName("ActionCard")
         self.setStyleSheet(ACTION_CARD_STYLE)
@@ -68,9 +83,23 @@ class ActionEditorWidget(QWidget):
         layout.setContentsMargins(10, 8, 10, 8)
         layout.setSpacing(6)
 
-        # --- Ligne 1 : nom + croix ---
+        # --- Ligne 1 : bouton AB + nom + croix ---
         top_layout = QHBoxLayout()
         top_layout.setSpacing(6)
+
+        self.bonus_btn = None
+        if show_bonus_button:
+            self.bonus_btn = QPushButton("AB")
+            self.bonus_btn.setObjectName("BonusButton")
+            self.bonus_btn.setCheckable(True)
+            self.bonus_btn.setChecked(action.is_bonus)
+            self.bonus_btn.setFixedSize(30, 22)
+            self.bonus_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.bonus_btn.setToolTip(
+                "Cocher si c'est une action bonus (décoché = action classique)"
+            )
+            self.bonus_btn.toggled.connect(self._on_changed)
+            top_layout.addWidget(self.bonus_btn)
 
         self.name_edit = QLineEdit(action.name or "")
         self.name_edit.setPlaceholderText(name_placeholder)
@@ -116,6 +145,7 @@ class ActionEditorWidget(QWidget):
         return Action(
             name=self.name_edit.text().strip(),
             description=self.description_edit.toPlainText().strip(),
+            is_bonus=self.bonus_btn.isChecked() if self.bonus_btn else False,
         )
 
     def set_action(self, action: Action):
@@ -123,4 +153,6 @@ class ActionEditorWidget(QWidget):
         self._updating = True
         self.name_edit.setText(action.name or "")
         self.description_edit.setPlainText(action.description or "")
+        if self.bonus_btn:
+            self.bonus_btn.setChecked(action.is_bonus)
         self._updating = False

@@ -185,7 +185,8 @@ class PNGExporter:
             content.append(("rule",))
             content.append(("section", "Actions"))
             for action in monster.actions:
-                content.append(("action", action.name, action.description or ""))
+                name = f"{action.name} (action bonus)" if action.is_bonus else action.name
+                content.append(("action", name, action.description or ""))
 
         if monster.legendary_actions:
             content.append(("rule",))

@@ -24,12 +24,14 @@ class CardListWidget(QWidget):
         name_placeholder: str = "",
         remove_tooltip: str = "",
         description_placeholder: str = "",
+        show_bonus_button: bool = False,
         parent=None,
     ):
         super().__init__(parent)
         self._name_placeholder = name_placeholder
         self._remove_tooltip = remove_tooltip
         self._description_placeholder = description_placeholder
+        self._show_bonus_button = show_bonus_button
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -78,6 +80,7 @@ class CardListWidget(QWidget):
             name_placeholder=self._name_placeholder,
             remove_tooltip=self._remove_tooltip,
             description_placeholder=self._description_placeholder,
+            show_bonus_button=self._show_bonus_button,
         )
 
     def add_card(self, widget: ActionEditorWidget):

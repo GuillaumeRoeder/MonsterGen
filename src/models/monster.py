@@ -93,6 +93,7 @@ class Action:
     attack_bonus: Optional[int] = None
     damage: Optional[str] = None
     damage_type: Optional[str] = None
+    is_bonus: bool = False
 
 
 @dataclass
@@ -192,7 +193,7 @@ class Monster:
             "proficiency_bonus": self.proficiency_bonus,
             "actions": [
                 {"name": a.name, "description": a.description, "attack_bonus": a.attack_bonus, 
-                 "damage": a.damage, "damage_type": a.damage_type}
+                 "damage": a.damage, "damage_type": a.damage_type, "is_bonus": a.is_bonus}
                 for a in self.actions
             ],
             "legendary_actions": [
@@ -248,7 +249,8 @@ class Monster:
                 description=a.get("description", ""),
                 attack_bonus=a.get("attack_bonus"),
                 damage=a.get("damage"),
-                damage_type=a.get("damage_type")
+                damage_type=a.get("damage_type"),
+                is_bonus=a.get("is_bonus", False)
             )
             for a in data.get("actions", [])
         ]

@@ -317,8 +317,9 @@ class PDFExporter:
             elements.append(Paragraph("Actions", self.styles["Section"]))
             
             for action in monster.actions:
-                # Nom de l'action
-                elements.append(Paragraph(f"• {action.name}", self.styles["Value"]))
+                # Nom de l'action (avec mention "action bonus" si cochée)
+                name = f"{action.name} (action bonus)" if action.is_bonus else action.name
+                elements.append(Paragraph(f"• {name}", self.styles["Value"]))
                 
                 # Description (contient déjà bonus, dégâts, DD)
                 if action.description:
@@ -547,6 +548,8 @@ class PDFExporter:
                 if not action.name:
                     continue
                 text = f"<b>{action.name}</b>"
+                if action.is_bonus:
+                    text += " (action bonus)"
                 if action.attack_bonus:
                     text += f" {action.attack_bonus:+d}"
                 if action.damage:

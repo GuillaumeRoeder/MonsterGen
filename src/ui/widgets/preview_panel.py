@@ -146,7 +146,8 @@ class PreviewPanel(QWidget):
         if monster.actions:
             self._add_section_title("Actions :")
             for action in monster.actions:
-                self._add_preview_label(f"• {action.name}", word_wrap=True)
+                name = f"{action.name} (action bonus)" if action.is_bonus else action.name
+                self._add_preview_label(f"• {name}", word_wrap=True)
                 if action.description:
                     self._add_preview_label(f"  {action.description}", word_wrap=True)
 
