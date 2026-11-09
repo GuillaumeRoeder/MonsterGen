@@ -33,6 +33,27 @@ def _backend_generate(prompt: str, max_tokens: int, temperature: float = 0.7) ->
     return local_model.generate(prompt, max_tokens=max_tokens,
                                  temperature=temperature, system_prompt=SYSTEM_PROMPT)
 
+
+# Mention « action bonus » / « bonus action » (avec préposition éventuelle).
+_BONUS_MENTION_RE = re.compile(
+    r"(?i)(?:en\s+tant\s+qu['’]\s+|comme\s+|en\s+|par\s+|de\s+)?"
+    r"(?:action\s+bonus|bonus\s+action)\b"
+)
+
+
+def _strip_bonus_mention(text: str) -> str:
+    """Retire du texte généré toute mention du type d'action.
+
+    Le type (action / action bonus) est porté uniquement par le champ
+    is_bonus (bouton « AB »), jamais par le texte de l'action.
+    """
+    cleaned = _BONUS_MENTION_RE.sub("", text)
+    cleaned = re.sub(r"\s+([,.;:!?])", r"\1", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    cleaned = re.sub(r"^[\s,.;:!?—–-]+", "", cleaned)
+    cleaned = re.sub(r"[\s,.;:!?—–-]+$", "", cleaned)
+    return cleaned.strip()
+
 # Liste fixe des langues DnD 5e
 DND5_LANGUAGES = [
     'Abyssal', 'Aklo', 'Aquatique', 'Auran',
@@ -141,9 +162,14 @@ class AIGenerator:
             "écris le DD : 'DD 13 des jets de sauvegarde de Constitution'. "
             "Aucune action sans bonus au toucher et dégâts, ni sans DD si c'est "
             "un effet de sauvegarde.\n"
+            "Si l'utilisateur demande une action bonus, mets \"is_bonus\": true "
+            "sur cette action (false pour les autres). N'écris JAMAIS « action "
+            "bonus » ni le type d'action dans le nom ou la description : le type "
+            "est indiqué uniquement par le champ \"is_bonus\".\n"
             'Réponds UNIQUEMENT en JSON valide, format strict :\n'
             '{"actions": [{"name": "...", "description": "...", '
-            '"attack_bonus": 0, "damage": "...", "damage_type": "..."}]}\n'
+            '"attack_bonus": 0, "damage": "...", "damage_type": "...", '
+            '"is_bonus": false}]}\n'
             "Pas de texte en dehors du JSON."
         )
 
@@ -156,12 +182,18 @@ class AIGenerator:
                 if not isinstance(entry, dict) or not entry.get("name"):
                     continue
                 attack_bonus = entry.get("attack_bonus")
+                raw_name = str(entry.get("name", "")).strip()
+                raw_desc = str(entry.get("description", "")).strip()
+                is_bonus = bool(entry.get("is_bonus")) or bool(
+                    _BONUS_MENTION_RE.search(f"{raw_name} {raw_desc}")
+                )
                 actions.append(Action(
-                    name=str(entry.get("name", "")).strip(),
-                    description=str(entry.get("description", "")).strip(),
+                    name=_strip_bonus_mention(raw_name),
+                    description=_strip_bonus_mention(raw_desc),
                     attack_bonus=int(attack_bonus) if isinstance(attack_bonus, (int, float)) else None,
                     damage=str(entry["damage"]).strip() if entry.get("damage") else None,
                     damage_type=str(entry.get("damage_type", "")).strip() or None,
+                    is_bonus=is_bonus,
                 ))
 
         if not actions:

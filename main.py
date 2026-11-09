@@ -356,22 +356,13 @@ def create_menus(window: MainWindow):
     """Crée les menus de l'application."""
     menu_bar = window.menuBar()
 
-    # Menu Bibliothèque (sauvegarder/charger/supprimer des monstres)
+    # Menu Bibliothèque (charger/gérer/supprimer des monstres)
     library_menu = menu_bar.addMenu("Bibliothèque")
-    save_action = library_menu.addAction("Sauvegarder le monstre courant")
-    save_action.triggered.connect(lambda: window.save_to_library())
     library_action = library_menu.addAction("Gérer les monstres sauvegardés")
     library_action.triggered.connect(lambda: window.open_library())
     import_library_action = library_menu.addAction("Importer une bibliothèque...")
     import_library_action.triggered.connect(lambda: window.import_library())
-    
-    # Menu Export (PDF / PNG / bibliothèque)
-    export_menu = menu_bar.addMenu("Export")
-    pdf_action = export_menu.addAction("Exporter en PDF")
-    pdf_action.triggered.connect(lambda: window.export_to_pdf())
-    png_action = export_menu.addAction("Exporter en PNG")
-    png_action.triggered.connect(lambda: window.export_to_png())
-    export_library_action = export_menu.addAction("Exporter la bibliothèque...")
+    export_library_action = library_menu.addAction("Exporter la bibliothèque...")
     export_library_action.triggered.connect(lambda: window.export_library())
     
     # Menu Aide

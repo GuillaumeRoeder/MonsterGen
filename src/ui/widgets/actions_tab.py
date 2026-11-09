@@ -81,6 +81,7 @@ class ActionsTab(QWidget):
                 "Aucune action — cliquez sur \"Nouvelle action\" "
                 "ou générez-les automatiquement."
             ),
+            show_bonus_button=True,
         )
         actions_vlayout.addWidget(self.cards, stretch=1)
 
