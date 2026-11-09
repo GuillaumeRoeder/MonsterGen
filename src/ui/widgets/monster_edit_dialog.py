@@ -7,6 +7,7 @@ Le MJ passe la fiche en revue, la modifie, puis choisit :
   (géré par l'appelant via la valeur de retour).
 """
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QSpinBox, QTextEdit, QVBoxLayout, QWidget,
@@ -14,6 +15,7 @@ from PySide6.QtWidgets import (
 
 from src.models.monster import Action
 from src.rules.stat_builder import cr_display, parse_cr
+from src.ui.styles import BONUS_BUTTON_STYLE
 
 
 class MonsterEditDialog(QDialog):
@@ -132,9 +134,19 @@ class MonsterEditDialog(QDialog):
         layout.addLayout(buttons)
 
     def _add_action_row(self, action: Action):
-        """Une ligne d'action : nom, dégâts, description, suppression."""
+        """Une ligne d'action : AB, nom, dégâts, description, suppression."""
         row = QHBoxLayout()
         row.setSpacing(4)
+
+        bonus_btn = QPushButton("AB")
+        bonus_btn.setCheckable(True)
+        bonus_btn.setChecked(action.is_bonus)
+        bonus_btn.setFixedSize(30, 22)
+        bonus_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        bonus_btn.setToolTip(
+            "Cocher si c'est une action bonus (décoché = action classique)"
+        )
+        bonus_btn.setStyleSheet(BONUS_BUTTON_STYLE)
 
         name_edit = QLineEdit(action.name)
         name_edit.setPlaceholderText("Nom de l'action")
@@ -151,9 +163,10 @@ class MonsterEditDialog(QDialog):
             "background: transparent; font-size: 11px; }"
         )
         remove_btn.setToolTip("Supprimer cette action")
-        row_data = [name_edit, damage_edit, description_edit, row]
+        row_data = [bonus_btn, name_edit, damage_edit, description_edit, row]
         remove_btn.clicked.connect(lambda: self._remove_action_row(row_data))
 
+        row.addWidget(bonus_btn)
         row.addWidget(name_edit, stretch=2)
         row.addWidget(damage_edit)
         row.addWidget(description_edit, stretch=3)
@@ -162,16 +175,16 @@ class MonsterEditDialog(QDialog):
         self._action_rows.append(row_data)
 
     def _remove_action_row(self, row_data):
-        for widget in row_data[:3]:
+        for widget in row_data[:4]:
             widget.deleteLater()
         if row_data in self._action_rows:
             self._action_rows.remove(row_data)
-        layout = row_data[3]
+        layout = row_data[4]
         if layout is not None:
             index = self._actions_layout.indexOf(layout)
             if index >= 0:
                 self._actions_layout.takeAt(index)
-        row_data[3] = None
+        row_data[4] = None
 
     def _integrate(self):
         self.integrate_requested = True
@@ -194,11 +207,12 @@ class MonsterEditDialog(QDialog):
         monster.description = self.description_edit.toPlainText().strip()
         monster.actions = [
             Action(
-                name=row[0].text().strip(),
-                description=row[2].text().strip(),
-                damage=row[1].text().strip() or None,
+                name=row[1].text().strip(),
+                description=row[3].text().strip(),
+                damage=row[2].text().strip() or None,
+                is_bonus=row[0].isChecked(),
             )
             for row in self._action_rows
-            if row[0].text().strip() or row[2].text().strip()
+            if row[1].text().strip() or row[3].text().strip()
         ]
         return monster

@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.models.monster import Action
+from src.ui.styles import BONUS_BUTTON_STYLE
 
 ACTION_CARD_STYLE = """
     ActionEditorWidget#ActionCard {
@@ -46,20 +47,6 @@ ACTION_CARD_STYLE = """
     QPushButton#RemoveButton:hover {
         color: #ff6666;
     }
-    QPushButton#BonusButton {
-        background-color: transparent;
-        border: 1px solid #ffffff;
-        border-radius: 4px;
-        color: #ffffff;
-        font-weight: bold;
-        font-size: 11px;
-        padding: 0px;
-    }
-    QPushButton#BonusButton:checked {
-        background-color: #d32f2f;
-        border: 1px solid #d32f2f;
-        color: #ffffff;
-    }
 """
 
 
@@ -90,7 +77,6 @@ class ActionEditorWidget(QWidget):
         self.bonus_btn = None
         if show_bonus_button:
             self.bonus_btn = QPushButton("AB")
-            self.bonus_btn.setObjectName("BonusButton")
             self.bonus_btn.setCheckable(True)
             self.bonus_btn.setChecked(action.is_bonus)
             self.bonus_btn.setFixedSize(30, 22)
@@ -98,6 +84,7 @@ class ActionEditorWidget(QWidget):
             self.bonus_btn.setToolTip(
                 "Cocher si c'est une action bonus (décoché = action classique)"
             )
+            self.bonus_btn.setStyleSheet(BONUS_BUTTON_STYLE)
             self.bonus_btn.toggled.connect(self._on_changed)
             top_layout.addWidget(self.bonus_btn)
 

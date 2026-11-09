@@ -38,6 +38,7 @@ from src.ui.styles import ACCENT_BUTTON_STYLE
 from src.ui.widgets.actions_tab import ActionsTab
 from src.ui.encounter_tab import EncounterTab
 from src.ui.widgets.basic_tab import BasicTab
+from src.ui.widgets.card_list import card_add_button
 from src.ui.widgets.equipment_widget import EquipmentWidget
 from src.ui.widgets.preview_panel import PreviewPanel
 from src.ui.widgets.stats_tab import StatsTab
@@ -169,31 +170,31 @@ class MainWindow(QMainWindow):
 
         layout.addLayout(control_layout)
 
-        # --- Boutons fichier : exporter / charger / sauvegarder ---
+        # --- Boutons fichier : sauvegarder / charger / exporter ---
         file_layout = QHBoxLayout()
         file_layout.setSpacing(8)
 
-        export_btn = QPushButton("Exporter la fiche")
-        export_btn.setToolTip(
-            "Ouvre une fenêtre pour choisir le dossier et le format "
-            "(PNG par défaut)"
+        save_btn = card_add_button(
+            "💾 Sauvegarder le monstre",
+            "Sauvegarde le monstre courant dans la bibliothèque",
         )
-        export_btn.clicked.connect(self.open_export_dialog)
-        file_layout.addWidget(export_btn)
+        save_btn.clicked.connect(self.save_to_library)
+        file_layout.addWidget(save_btn)
 
-        load_btn = QPushButton("Charger un monstre")
-        load_btn.setToolTip(
-            "Ouvre la bibliothèque pour charger un monstre sauvegardé"
+        load_btn = card_add_button(
+            "📂 Charger un monstre",
+            "Ouvre la bibliothèque pour charger un monstre sauvegardé",
         )
         load_btn.clicked.connect(self.open_library)
         file_layout.addWidget(load_btn)
 
-        save_btn = QPushButton("Sauvegarder un monstre")
-        save_btn.setToolTip(
-            "Sauvegarde le monstre courant dans la bibliothèque"
+        export_btn = card_add_button(
+            "📤 Exporter la fiche",
+            "Ouvre une fenêtre pour choisir le dossier et le format "
+            "(PNG par défaut)",
         )
-        save_btn.clicked.connect(self.save_to_library)
-        file_layout.addWidget(save_btn)
+        export_btn.clicked.connect(self.open_export_dialog)
+        file_layout.addWidget(export_btn)
 
         layout.addLayout(file_layout)
 

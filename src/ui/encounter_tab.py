@@ -155,9 +155,9 @@ class EncounterTab(QWidget):
         new_btn.clicked.connect(self._generate_new_monster)
         btn_layout.addWidget(new_btn)
 
-        counts_btn = QPushButton("⚖ Ajuster les quantités")
-        counts_btn.setToolTip(
-            "Recalcule les quantités pour atteindre la difficulté visée"
+        counts_btn = card_add_button(
+            "⚖ Ajuster les quantités",
+            "Recalcule les quantités pour atteindre la difficulté visée",
         )
         counts_btn.clicked.connect(self._adjust_counts)
         btn_layout.addWidget(counts_btn)

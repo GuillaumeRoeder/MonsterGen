@@ -51,3 +51,22 @@ SECONDARY_BUTTON_STYLE = """
         background-color: #262c33;
     }
 """
+
+# Bouton checkable « AB » (action bonus) : blanc sur fond transparent,
+# contour blanc ; rouge quand il est coché.
+BONUS_BUTTON_STYLE = """
+    QPushButton {
+        background-color: transparent;
+        border: 1px solid #ffffff;
+        border-radius: 4px;
+        color: #ffffff;
+        font-weight: bold;
+        font-size: 11px;
+        padding: 0px;
+    }
+    QPushButton:checked {
+        background-color: #d32f2f;
+        border: 1px solid #d32f2f;
+        color: #ffffff;
+    }
+"""
