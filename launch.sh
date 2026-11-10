@@ -67,56 +67,44 @@ if [ "$PY_MAJOR" != "3" ] || [ "$PY_MINOR" != "13" ]; then
 fi
 echo "Version Python 3.13 vérifiée."
 
-# Choix du mode IA
-echo ""
-echo "======================================"
-echo "   MonsterGen - Mode de lancement"
-echo "======================================"
-echo "  1) Mode API (lancement direct)"
-echo "     -> nécessite une clé API (Fichier > Configuration)"
-echo "  2) Mode local (tentative d'installation du modèle)"
-echo "     -> installe llama-cpp-python puis télécharge le modèle GGUF"
-echo ""
-read -rp "Votre choix [1/2] (défaut : 1) : " choice
-
+# Mode local par defaut : on tente l'installation du modele local et on
+# bascule en mode API uniquement si ce n'est pas possible.
 set_ai_mode() {
     $PY -c "from config.config_manager import config_manager; config_manager.set_ai_mode('$1')"
 }
 
-case "$choice" in
-    2)
-        echo "Tentative d'installation du modèle local..."
-        if $PY -c "import llama_cpp" 2>/dev/null; then
-            echo "llama-cpp-python est déjà installé."
-        else
-            echo "Installation de llama-cpp-python (wheel précompilée d'abord)…"
-            if compgen -G "vendor/wheels/*.whl" > /dev/null; then
-                uv pip install llama-cpp-python --find-links vendor/wheels --prefer-binary --python .venv || \
-                uv pip install llama-cpp-python \
-                    --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu \
-                    --python .venv
-            else
-                uv pip install llama-cpp-python \
-                    --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu \
-                    --python .venv
-            fi
-            if ! $PY -c "import llama_cpp" 2>/dev/null; then
-                echo ""
-                echo "Échec de l'installation de llama-cpp-python."
-                echo "Retour en mode API."
-                set_ai_mode "api"
-            fi
-        fi
-        if $PY -c "import llama_cpp" 2>/dev/null; then
-            echo "Vérification/téléchargement du modèle GGUF..."
-            $PY download_model.py || set_ai_mode "api"
-        fi
-        ;;
-    *)
-        echo "Lancement en mode API..."
+echo ""
+echo "======================================"
+echo "   MonsterGen - Mode local (bascule API si indisponible)"
+echo "======================================"
+echo ""
+echo "Tentative d'installation du modele local..."
+if $PY -c "import llama_cpp" 2>/dev/null; then
+    echo "llama-cpp-python est deja installe."
+else
+    echo "Installation de llama-cpp-python (wheel precompile d'abord)..."
+    if compgen -G "vendor/wheels/*.whl" > /dev/null; then
+        uv pip install llama-cpp-python --find-links vendor/wheels --prefer-binary --python .venv || \
+        uv pip install llama-cpp-python \
+            --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu \
+            --python .venv
+    else
+        uv pip install llama-cpp-python \
+            --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu \
+            --python .venv
+    fi
+    if ! $PY -c "import llama_cpp" 2>/dev/null; then
+        echo ""
+        echo "Echec de l'installation de llama-cpp-python."
+        echo "Retour en mode API."
         set_ai_mode "api"
-        ;;
-esac
+    fi
+fi
+if $PY -c "import llama_cpp" 2>/dev/null; then
+    set_ai_mode "local"
+    echo "Verification/telechargement du modele GGUF..."
+    $PY download_model.py || set_ai_mode "api"
+fi
 
 # Lancer l'application
 echo ""
