@@ -90,9 +90,17 @@ case "$choice" in
             echo "llama-cpp-python est déjà installé."
         else
             echo "Installation de llama-cpp-python (wheel précompilée d'abord)…"
-            if ! uv pip install llama-cpp-python \
-                --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/stable \
-                --python .venv; then
+            if compgen -G "vendor/wheels/*.whl" > /dev/null; then
+                uv pip install llama-cpp-python --no-index --find-links vendor/wheels --python .venv || \
+                uv pip install llama-cpp-python \
+                    --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu \
+                    --python .venv
+            else
+                uv pip install llama-cpp-python \
+                    --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu \
+                    --python .venv
+            fi
+            if ! $PY -c "import llama_cpp" 2>/dev/null; then
                 echo ""
                 echo "Échec de l'installation de llama-cpp-python."
                 echo "Retour en mode API."

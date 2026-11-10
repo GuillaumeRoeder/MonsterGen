@@ -78,7 +78,16 @@ if not errorlevel 1 (
     echo llama-cpp-python est deja installe.
     goto download_model
 )
-uv pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/stable --python .venv
+if exist "vendor\wheels\*.whl" (
+    echo Installation depuis le wheel embarque dans le repo (vendor\wheels)...
+    uv pip install llama-cpp-python --no-index --find-links vendor\wheels --python .venv
+) else (
+    uv pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu --python .venv
+)
+if errorlevel 1 (
+    echo Tentative via l'index en ligne (wheel precompile CPU)...
+    uv pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu --python .venv
+)
 if errorlevel 1 (
     echo.
     echo Echec de l'installation de llama-cpp-python.

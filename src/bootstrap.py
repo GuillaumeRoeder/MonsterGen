@@ -10,6 +10,7 @@ en mode API. Seul PySide6 est indispensable.
 import importlib.util
 import subprocess
 import sys
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 from src.paths import is_frozen
@@ -28,7 +29,17 @@ DEPENDENCIES: List[Tuple[str, str]] = [
 
 LLAMA_CPP_MODULE = "llama_cpp"
 LLAMA_CPP_SPEC = "llama-cpp-python>=0.2.60"
-LLAMA_CPP_WHEEL_INDEX = "https://abetlen.github.io/llama-cpp-python/whl/stable"
+LLAMA_CPP_WHEEL_INDEX = "https://abetlen.github.io/llama-cpp-python/whl/cpu"
+VENDOR_WHEELS_DIR = Path(__file__).resolve().parent.parent / "vendor" / "wheels"
+
+
+def _vendored_wheel() -> Optional[Path]:
+    """Wheel précompilé embarqué dans le repo (vendor/wheels), si présent."""
+    if VENDOR_WHEELS_DIR.is_dir():
+        wheels = sorted(VENDOR_WHEELS_DIR.glob("llama_cpp_python-*.whl"))
+        if wheels:
+            return wheels[0]
+    return None
 
 
 class BootstrapError(RuntimeError):
@@ -72,6 +83,12 @@ def install_llama_cpp() -> bool:
         return False
 
     _log("Installation de llama-cpp-python (wheel précompilé)…")
+    wheel = _vendored_wheel()
+    if wheel and _pip_install(LLAMA_CPP_SPEC, [
+        "--no-index", "--find-links", str(VENDOR_WHEELS_DIR), "--prefer-binary",
+    ]):
+        return True
+
     if _pip_install(LLAMA_CPP_SPEC, [
         "--extra-index-url", LLAMA_CPP_WHEEL_INDEX,
         "--prefer-binary",
