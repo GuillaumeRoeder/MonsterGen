@@ -10,6 +10,7 @@ en mode API. Seul PySide6 est indispensable.
 import importlib.util
 import subprocess
 import sys
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 from src.paths import is_frozen
@@ -28,7 +29,17 @@ DEPENDENCIES: List[Tuple[str, str]] = [
 
 LLAMA_CPP_MODULE = "llama_cpp"
 LLAMA_CPP_SPEC = "llama-cpp-python>=0.2.60"
-LLAMA_CPP_WHEEL_INDEX = "https://abetlen.github.io/llama-cpp-python/whl/stable"
+LLAMA_CPP_WHEEL_INDEX = "https://abetlen.github.io/llama-cpp-python/whl/cpu"
+VENDOR_WHEELS_DIR = Path(__file__).resolve().parent.parent / "vendor" / "wheels"
+
+
+def _vendored_wheel() -> Optional[Path]:
+    """Wheel précompilé embarqué dans le repo (vendor/wheels), si présent."""
+    if VENDOR_WHEELS_DIR.is_dir():
+        wheels = sorted(VENDOR_WHEELS_DIR.glob("llama_cpp_python-*.whl"))
+        if wheels:
+            return wheels[0]
+    return None
 
 
 class BootstrapError(RuntimeError):
@@ -47,9 +58,9 @@ def _is_installed(module_name: str) -> bool:
         return False
 
 
-def _pip_install(spec: str, extra_args: Optional[List[str]] = None) -> bool:
-    """Installe un paquet avec l'interpréteur courant. Retourne True si OK."""
-    command = [sys.executable, "-m", "pip", "install", spec]
+def _pip_install(specs: List[str], extra_args: Optional[List[str]] = None) -> bool:
+    """Installe des paquets avec l'interpréteur courant. Retourne True si OK."""
+    command = [sys.executable, "-m", "pip", "install", *specs]
     if extra_args:
         command.extend(extra_args)
     try:
@@ -72,14 +83,21 @@ def install_llama_cpp() -> bool:
         return False
 
     _log("Installation de llama-cpp-python (wheel précompilé)…")
-    if _pip_install(LLAMA_CPP_SPEC, [
+    specs = [LLAMA_CPP_SPEC]
+    wheel = _vendored_wheel()
+    if wheel and _pip_install(specs, [
+        "--find-links", str(VENDOR_WHEELS_DIR), "--prefer-binary",
+    ]):
+        return True
+
+    if _pip_install(specs, [
         "--extra-index-url", LLAMA_CPP_WHEEL_INDEX,
         "--prefer-binary",
     ]):
         return True
 
     _log("Wheel précompilé indisponible, tentative par compilation (un compilateur C peut être requis)…")
-    return _pip_install(LLAMA_CPP_SPEC)
+    return _pip_install(specs)
 
 
 def ensure_dependencies() -> None:
@@ -90,7 +108,7 @@ def ensure_dependencies() -> None:
         if _is_installed(module):
             continue
         _log(f"Installation de {spec}…")
-        if not _pip_install(spec):
+        if not _pip_install([spec]):
             raise BootstrapError(
                 f"Impossible d'installer {spec} automatiquement.\n"
                 f"Lancez manuellement : {sys.executable} -m pip install {spec}"

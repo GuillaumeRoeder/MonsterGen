@@ -7,6 +7,7 @@ Le modèle est téléchargé une seule fois par le script download_model.py
 (ou automatiquement au premier lancement si huggingface_hub est disponible).
 """
 
+import os
 import threading
 from pathlib import Path
 from typing import Optional
@@ -78,11 +79,20 @@ class LocalModelClient:
         MODELS_DIR.mkdir(parents=True, exist_ok=True)
         try:
             from huggingface_hub import hf_hub_download
-            downloaded = hf_hub_download(
-                repo_id=info["repo_id"],
-                filename=info["filename"],
-                local_dir=str(MODELS_DIR),
-            )
+            try:
+                downloaded = hf_hub_download(
+                    repo_id=info["repo_id"],
+                    filename=info["filename"],
+                    local_dir=str(MODELS_DIR),
+                )
+            except Exception:
+                os.environ["HF_HUB_DISABLE_XET"] = "1"
+                os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
+                downloaded = hf_hub_download(
+                    repo_id=info["repo_id"],
+                    filename=info["filename"],
+                    local_dir=str(MODELS_DIR),
+                )
             return Path(downloaded)
         except ImportError:
             raise ModelNotAvailableError(

@@ -2,8 +2,8 @@
 :: MonsterGen - Script de lancement pour Windows
 :: Utilise uv pour créer un environnement virtuel Python 3.13 (téléchargé
 :: automatiquement par uv, sans toucher au Python du système), puis lance
-:: l'application. Au démarrage, il propose : mode API (direct) ou tentative
-:: d'installation du modèle local (llama-cpp-python + téléchargement GGUF).
+:: l'application en mode local par défaut (bascule en API si le modèle
+:: local n'est pas installable).
 
 :: Vérifier que uv est installé ; sinon l'installer automatiquement
 where uv >nul 2>&1
@@ -56,29 +56,34 @@ if errorlevel 1 (
 )
 echo Version Python 3.13 verifiee.
 
-:: Choix du mode IA
+:: Mode local par defaut : on tente l'installation du modele local et on
+:: bascule en mode API uniquement si ce n'est pas possible.
 echo.
 echo ======================================
-echo    MonsterGen - Mode de lancement
+echo    MonsterGen - Mode local (bascule API si indisponible)
 echo ======================================
-echo   1) Mode API (lancement direct)
-echo      -^> necessite une cle API (Fichier ^> Configuration)
-echo   2) Mode local (tentative d'installation du modele)
-echo      -^> installe llama-cpp-python puis telecharge le modele GGUF
 echo.
-set /p choice="Votre choix [1/2] (defaut : 1) : "
 
-if "%choice%"=="2" goto local_mode
-goto api_mode
+goto local_mode
 
 :local_mode
 echo Tentative d'installation du modele local...
+.venv\Scripts\python -c "from config.config_manager import config_manager; config_manager.set_ai_mode('local')"
 .venv\Scripts\python -c "import llama_cpp" >nul 2>&1
 if not errorlevel 1 (
     echo llama-cpp-python est deja installe.
     goto download_model
 )
-uv pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/stable --python .venv
+if exist "vendor\wheels\*.whl" (
+    echo Installation depuis le wheel embarque dans le repo : vendor\wheels
+    uv pip install llama-cpp-python --find-links vendor\wheels --prefer-binary --python .venv
+) else (
+    uv pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu --python .venv
+)
+if errorlevel 1 (
+    echo Tentative via l'index en ligne - wheel precompile CPU...
+    uv pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu --python .venv
+)
 if errorlevel 1 (
     echo.
     echo Echec de l'installation de llama-cpp-python.
@@ -95,10 +100,6 @@ if errorlevel 1 (
     .venv\Scripts\python -c "from config.config_manager import config_manager; config_manager.set_ai_mode('api')"
 )
 goto launch
-
-:api_mode
-echo Lancement en mode API...
-.venv\Scripts\python -c "from config.config_manager import config_manager; config_manager.set_ai_mode('api')"
 
 :launch
 :: Lancer l'application
