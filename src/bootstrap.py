@@ -58,9 +58,9 @@ def _is_installed(module_name: str) -> bool:
         return False
 
 
-def _pip_install(spec: str, extra_args: Optional[List[str]] = None) -> bool:
-    """Installe un paquet avec l'interpréteur courant. Retourne True si OK."""
-    command = [sys.executable, "-m", "pip", "install", spec]
+def _pip_install(specs: List[str], extra_args: Optional[List[str]] = None) -> bool:
+    """Installe des paquets avec l'interpréteur courant. Retourne True si OK."""
+    command = [sys.executable, "-m", "pip", "install", *specs]
     if extra_args:
         command.extend(extra_args)
     try:
@@ -83,20 +83,21 @@ def install_llama_cpp() -> bool:
         return False
 
     _log("Installation de llama-cpp-python (wheel précompilé)…")
+    specs = [LLAMA_CPP_SPEC, "numpy<2"]
     wheel = _vendored_wheel()
-    if wheel and _pip_install(LLAMA_CPP_SPEC, [
-        "--no-index", "--find-links", str(VENDOR_WHEELS_DIR), "--prefer-binary",
+    if wheel and _pip_install(specs, [
+        "--find-links", str(VENDOR_WHEELS_DIR), "--prefer-binary",
     ]):
         return True
 
-    if _pip_install(LLAMA_CPP_SPEC, [
+    if _pip_install(specs, [
         "--extra-index-url", LLAMA_CPP_WHEEL_INDEX,
         "--prefer-binary",
     ]):
         return True
 
     _log("Wheel précompilé indisponible, tentative par compilation (un compilateur C peut être requis)…")
-    return _pip_install(LLAMA_CPP_SPEC)
+    return _pip_install(specs)
 
 
 def ensure_dependencies() -> None:
@@ -107,7 +108,7 @@ def ensure_dependencies() -> None:
         if _is_installed(module):
             continue
         _log(f"Installation de {spec}…")
-        if not _pip_install(spec):
+        if not _pip_install([spec]):
             raise BootstrapError(
                 f"Impossible d'installer {spec} automatiquement.\n"
                 f"Lancez manuellement : {sys.executable} -m pip install {spec}"

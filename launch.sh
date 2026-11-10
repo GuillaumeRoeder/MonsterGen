@@ -91,12 +91,12 @@ case "$choice" in
         else
             echo "Installation de llama-cpp-python (wheel précompilée d'abord)…"
             if compgen -G "vendor/wheels/*.whl" > /dev/null; then
-                uv pip install llama-cpp-python --no-index --find-links vendor/wheels --python .venv || \
-                uv pip install llama-cpp-python \
+                uv pip install llama-cpp-python "numpy<2" --find-links vendor/wheels --prefer-binary --python .venv || \
+                uv pip install llama-cpp-python "numpy<2" \
                     --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu \
                     --python .venv
             else
-                uv pip install llama-cpp-python \
+                uv pip install llama-cpp-python "numpy<2" \
                     --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu \
                     --python .venv
             fi
