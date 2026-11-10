@@ -86,6 +86,7 @@ class LocalModelClient:
                     local_dir=str(MODELS_DIR),
                 )
             except Exception:
+                os.environ["HF_HUB_DISABLE_XET"] = "1"
                 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
                 downloaded = hf_hub_download(
                     repo_id=info["repo_id"],

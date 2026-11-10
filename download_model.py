@@ -17,6 +17,7 @@ from src.bootstrap import ensure_dependencies
 ensure_dependencies()
 
 os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
+os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
 
 from src.ai.local_model import LOCAL_MODELS, local_model, ModelNotAvailableError
 
