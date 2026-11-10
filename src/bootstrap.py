@@ -83,7 +83,7 @@ def install_llama_cpp() -> bool:
         return False
 
     _log("Installation de llama-cpp-python (wheel précompilé)…")
-    specs = [LLAMA_CPP_SPEC, "numpy<2"]
+    specs = [LLAMA_CPP_SPEC]
     wheel = _vendored_wheel()
     if wheel and _pip_install(specs, [
         "--find-links", str(VENDOR_WHEELS_DIR), "--prefer-binary",

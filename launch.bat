@@ -80,13 +80,13 @@ if not errorlevel 1 (
 )
 if exist "vendor\wheels\*.whl" (
     echo Installation depuis le wheel embarque dans le repo : vendor\wheels
-    uv pip install llama-cpp-python "numpy<2" --find-links vendor\wheels --prefer-binary --python .venv
+    uv pip install llama-cpp-python --find-links vendor\wheels --prefer-binary --python .venv
 ) else (
-    uv pip install llama-cpp-python "numpy<2" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu --python .venv
+    uv pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu --python .venv
 )
 if errorlevel 1 (
     echo Tentative via l'index en ligne - wheel precompile CPU...
-    uv pip install llama-cpp-python "numpy<2" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu --python .venv
+    uv pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu --python .venv
 )
 if errorlevel 1 (
     echo.
